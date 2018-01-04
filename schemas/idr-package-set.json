@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "definitions": {
+    "package": {
+      "type": "object",
+      "additionalProperties": "false",
+      "properties": {
+        "repo": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "subdir": {
+          "type": "string"
+        }
+      },
+      "required": ["repo", "version"]
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/definitions/package"
+  }
+}

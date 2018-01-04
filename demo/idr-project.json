@@ -1,0 +1,6 @@
+{
+  "packages": [
+    "demo_lib",
+    "demo_bin"
+  ]
+}
