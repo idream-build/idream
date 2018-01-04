@@ -1,5 +1,12 @@
+external/
+output/
+
 *.ipkg
 *.ibc
 *.o
-output/
-external/
+*.pyc
+
+*.swo
+*.swp
+*~
+*.bak
