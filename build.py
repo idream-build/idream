@@ -7,7 +7,7 @@ import sys
 
 
 _ROOT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-_IDRIS_COMMANDS = set(['build', 'install', 'repl', 'clean', 'mkdoc', 'checkpkg', 'testpkg'])
+_IDRIS_COMMANDS = set(['build', 'install', 'repl', 'clean', 'mkdoc', 'checkpkg'])
 
 
 def read_packages():
@@ -23,6 +23,7 @@ def read_package(project):
 
 
 def generate(project, package):
+    modules = package.get('modules', [])
     pkgs = package.get('pkgs', [])
     executable = package.get('executable', False)
 
@@ -31,6 +32,8 @@ def generate(project, package):
     with open(ipkg_path, 'w') as f:
         f.write('package {}\n'.format(project))
         f.write('sourcedir = src\n')
+        if modules:
+            f.write('modules = {}\n'.format(', '.join(modules)))
         if executable:
             f.write('executable = {}\n'.format(project))
             f.write('main = Main\n')
@@ -38,9 +41,9 @@ def generate(project, package):
             f.write('pkgs = {}\n'.format(', '.join(pkgs)))
 
 
-def system(command):
+def system(command, cwd=None):
     print('+', command)
-    os.system(command)
+    subprocess.call(command, shell=True, cwd=cwd)
 
 
 def idris(location, project, command, package):
@@ -51,9 +54,9 @@ def idris(location, project, command, package):
     output_path = os.path.join(_ROOT, 'output')
     bin_path = os.path.join(output_path, 'bin')
     lib_path = os.path.join(output_path, 'lib')
-    project_output_path = os.path.join(lib_path, project)
+    project_lib_path = os.path.join(lib_path, project)
     os.makedirs(bin_path, exist_ok=True)
-    os.makedirs(project_output_path, exist_ok=True)
+    os.makedirs(project_lib_path, exist_ok=True)
 
     orig_idrispath = subprocess.run(['idris', '--libdir'], stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
     idrispaths = []
@@ -64,11 +67,11 @@ def idris(location, project, command, package):
         idrispaths.append(pkg_output_path)
     idrispaths_arg = ' '.join('--idrispath {}'.format(p) for p in idrispaths)
 
-    idris = 'cd {0} && idris --ibcsubdir {4} {3} --verbose --{2} {1}.ipkg'.format(
-        project_path, project, command, idrispaths_arg, project_output_path)
-    system(idris)
+    idris = 'idris --ibcsubdir {3} {2} --verbose --{1} {0}.ipkg'.format(
+        project, command, idrispaths_arg, project_lib_path)
+    system(idris, cwd=project_path)
 
-    generated_bin = '{0}/{1}/{1}'.format(location, project)
+    generated_bin = os.path.join(project_path, project)
     if executable and os.path.isfile(generated_bin):
         os.rename(generated_bin, os.path.join(bin_path, project))
 
@@ -78,9 +81,10 @@ def fetch(project, package):
     os.makedirs(ext_path, exist_ok=True)
     project_path = os.path.join(ext_path, project)
     if not os.path.isdir(project_path):
-        cmd = 'cd {} && git clone {} && cd {} && git checkout {}'.format(
-            ext_path, package['source'], project, package['tag'])
-        system(cmd)
+        source = package['source']
+        tag = package['tag']
+        system('git clone {}'.format(source), cwd=ext_path)
+        system('git checkout {}'.format(tag), cwd=project_path)
     else:
         print('skipping', project)
 

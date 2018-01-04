@@ -1,4 +1,7 @@
 module Main
 
+import DemoLib
+
+||| Print that fancy message
 main : IO ()
-main = putStrLn "Hello world"
+main = putStrLn demoMessage

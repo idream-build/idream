@@ -1,3 +1,4 @@
 {
-  "name": "demo_lib"
+  "name": "demo_lib",
+  "modules": ["DemoLib"]
 }
