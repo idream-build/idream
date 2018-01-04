@@ -1,5 +1,6 @@
 {
   "name": "demo_bin",
+  "sourcedir": "src",
   "executable": true,
   "pkgs": ["demo_lib"]
 }

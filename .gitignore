@@ -1,6 +1,12 @@
+.venv/
+demo/.idream/
+
 *.ipkg
 *.ibc
 *.o
+
+__pycache__/
+*.egg-info
 *.pyc
 
 *.swo
