@@ -1,6 +1,7 @@
 {
   "internal": [
-    "hello"
+    "demo_lib",
+    "demo_bin"
   ],
   "external": {
     "lightyear": {

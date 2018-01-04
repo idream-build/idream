@@ -86,13 +86,12 @@ def fetch(project, package):
 
 
 def dispatch(location, project, command, package):
-    if command == 'generate':
-        assert location == 'internal'
-        generate(project, package)
-    elif command == 'fetch':
+    if command == 'fetch':
         assert location == 'external'
         fetch(project, package)
     elif command in _IDRIS_COMMANDS:
+        if location == 'internal':
+            generate(project, package)
         idris(location, project, command, package)
     else:
         raise Exception('Unknown command', command)

@@ -1,0 +1,5 @@
+{
+  "name": "demo_bin",
+  "executable": true,
+  "pkgs": ["demo_lib"]
+}
