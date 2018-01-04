@@ -6,8 +6,8 @@ import subprocess
 import sys
 
 
-_ROOT = os.path.dirname(os.path.dirname(__file__))
-_IDRIS_COMMANDS = set(['build', 'repl', 'clean', 'mkdoc', 'checkpkg', 'testpkg'])
+_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+_IDRIS_COMMANDS = set(['build', 'install', 'repl', 'clean', 'mkdoc', 'checkpkg', 'testpkg'])
 
 
 def read_packages():
@@ -49,8 +49,9 @@ def idris(location, project, command, package):
 
     project_path = os.path.join(_ROOT, location, project)
     output_path = os.path.join(_ROOT, 'output')
-    bin_path = os.path.join(_ROOT, 'output', 'bin')
-    project_output_path = os.path.join(output_path, 'lib', project)
+    bin_path = os.path.join(output_path, 'bin')
+    lib_path = os.path.join(output_path, 'lib')
+    project_output_path = os.path.join(lib_path, project)
     os.makedirs(bin_path, exist_ok=True)
     os.makedirs(project_output_path, exist_ok=True)
 
@@ -59,11 +60,12 @@ def idris(location, project, command, package):
     for pkg in os.listdir(orig_idrispath):
         idrispaths.append(os.path.join(orig_idrispath, pkg))
     for pkg in pkgs:
-        idrispaths.append('../../../output/lib/{}'.format(pkg))
+        pkg_output_path = os.path.join(output_path, 'lib', pkg)
+        idrispaths.append(pkg_output_path)
     idrispaths_arg = ' '.join('--idrispath {}'.format(p) for p in idrispaths)
 
-    idris = 'cd {0} && idris --ibcsubdir ../../../output/lib/{1} {3} --{2} {1}.ipkg'.format(
-        project_path, project, command, idrispaths_arg)
+    idris = 'cd {0} && idris --ibcsubdir {4} {3} --verbose --{2} {1}.ipkg'.format(
+        project_path, project, command, idrispaths_arg, project_output_path)
     system(idris)
 
     generated_bin = '{0}/{1}/{1}'.format(location, project)

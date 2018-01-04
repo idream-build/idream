@@ -1,2 +1,2 @@
-brew "bazel"
+brew "python3"
 brew "idris"
