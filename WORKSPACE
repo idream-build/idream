@@ -7,5 +7,6 @@ workspace(
 new_git_repository(
   name = 'lightyear',
   remote = 'https://github.com/ziman/lightyear.git',
-  build_file = '3rdparty/lightyear/BUILD'
+  build_file = '3rdparty/lightyear/BUILD',
+  tag = 'master'
 )

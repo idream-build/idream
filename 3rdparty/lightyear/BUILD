@@ -1,6 +1,5 @@
-load('//rules:idris.bzl', 'idris_library')
+load('//rules:idris.bzl', 'idris_ipkg_library')
 
-idris_library(
-  name = 'lightyear',
-  srcs = glob(['*.idr'])
+idris_ipkg_library(
+  name = 'lightyear'
 )
