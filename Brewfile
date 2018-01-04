@@ -1,1 +1,2 @@
+brew "bazel"
 brew "idris"
