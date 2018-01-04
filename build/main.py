@@ -2,17 +2,21 @@
 
 import json
 import os
+import subprocess
 import sys
 
 
 _ROOT = os.path.dirname(os.path.dirname(__file__))
 
 
-def generate(project):
+def read_package(project):
     package_path = os.path.join(_ROOT, 'internal', project, 'package.json')
-    ipkg_path = os.path.join(_ROOT, 'internal', project, '{}.ipkg'.format(project))
     with open(package_path, 'r') as f:
-        package = json.load(f)
+        return json.load(f)
+
+def generate(project):
+    ipkg_path = os.path.join(_ROOT, 'internal', project, '{}.ipkg'.format(project))
+    package = read_package(project)
     assert package['name'] == project
     pkgs = package.get('pkgs')
     executable = package.get('executable', False)
@@ -33,15 +37,20 @@ def system(command):
 
 def idris(project, command):
     output_path = os.path.join(_ROOT, 'output')
-    project_output_path = os.path.join(output_path, project)
-    os.makedirs(output_path, exist_ok=True)
-    command = 'cd internal/{0} && idris --ibcsubdir output --idrispath ../../output --{1} {0}.ipkg'.format(
-        project, command)
-    system(command)
-    if command == 'build':
-        system('ln -s internal/{}/output {}'.format(project, project_output_path))
-    elif command == 'clean':
-        system('unlink {}'.format(project_output_path))
+    bin_path = os.path.join(_ROOT, 'output', 'bin')
+    project_output_path = os.path.join(output_path, 'lib', project)
+    os.makedirs(project_output_path, exist_ok=True)
+    orig_idrispath = subprocess.run(['idris', '--libdir'], stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
+    package = read_package(project)
+    idrispaths = []
+    for pkg in ['base', 'prelude']:
+        idrispaths.append(os.path.join(orig_idrispath, pkg))
+    for pkg in package.get('pkgs', []):
+        idrispaths.append('../../output/{}'.format(pkg))
+    idrispaths_arg = ' '.join('--idrispath {}'.format(p) for p in idrispaths)
+    idris = 'cd internal/{0} && idris --ibcsubdir ../../output/{0} {2} --{1} {0}.ipkg'.format(
+        project, command, idrispaths_arg)
+    system(idris)
 
 
 def dispatch(project):
