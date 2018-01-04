@@ -24,7 +24,8 @@ _IDR_PACKAGE_SET_JSON = 'idr-package-set.json'
 _IDR_PROJECT_JSON = 'idr-project.json'
 
 
-_IDRIS_COMMANDS = set(['build', 'install', 'repl', 'clean', 'mkdoc', 'installdoc', 'checkpkg', 'testpkg'])
+_IDRIS_COMMANDS = set(['build', 'install', 'repl', 'clean', 'mkdoc',
+                       'installdoc', 'checkpkg', 'testpkg'])
 
 
 def system(command, cwd=None):
@@ -69,8 +70,8 @@ def make_parser():
     parser.add_argument('--project', type=str, default=None, help='project definitions')
     parser.add_argument('--log-level', type=str, default=None, help='log level')
     subparsers = parser.add_subparsers(dest='op')
-    nuke_parser = subparsers.add_parser('nuke', help='remove cache')
-    validate_parser = subparsers.add_parser('validate', help='validate configuration')
+    subparsers.add_parser('nuke', help='remove cache')
+    subparsers.add_parser('validate', help='validate configuration')
     generate_parser = subparsers.add_parser('generate', help='generate ipkg')
     generate_parser.add_argument('name', type=str, help='name in local packages')
     fetch_parser = subparsers.add_parser('fetch', help='fetch an external dependency')
@@ -173,7 +174,7 @@ def resolve_package_set(paths):
     return package_set
 
 
-def assert_can_find_packages(all_names, pkgs):
+def assert_can_find_packages(all_names, name, pkgs):
     for pkg in pkgs:
         if pkg not in all_names:
             raise Exception('Unknown pkg for', name, pkg)
@@ -187,10 +188,10 @@ def validate(paths, context):
     all_names.update(package_set.keys())
     for (name, package_pair) in context.packages.items():
         pkgs = package_pair.package.get('pkgs', [])
-        assert_can_find_packages(all_names, pkgs)
+        assert_can_find_packages(all_names, name, pkgs)
     for (name, ext_package) in package_set.items():
         pkgs = ext_package.get('pkgs', [])
-        assert_can_find_packages(all_names, pkgs)
+        assert_can_find_packages(all_names, name, pkgs)
 
 
 def make_project_ext_path(paths, name):
