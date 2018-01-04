@@ -1,4 +1,5 @@
+*.ipkg
 *.ibc
 *.o
-
-bazel-*
+output/
+external/

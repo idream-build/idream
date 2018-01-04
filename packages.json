@@ -1,0 +1,11 @@
+{
+  "internal": [
+    "hello"
+  ],
+  "external": {
+    "lightyear": {
+      "source": "https://github.com/ziman/lightyear.git",
+      "tag": "master"
+    }
+  }
+}
