@@ -11,6 +11,9 @@ import time
 _LOGGER = logging.getLogger(__name__)
 
 
+_SCHEMAS_PATH = os.path.join(os.path.dirname(__file__), 'schemas')
+
+
 _CACHE = '.idream'
 _BIN = 'bin'
 _LIB = 'lib'

@@ -16,6 +16,8 @@ Requires `python3`, `idris`, and `git`. Development requires `virtualenv`.
 When it's all packaged, `pip3 install idream` should be enough to get idream on
 your path. Crawl the docs with `idream --help`.
 
+If you want to develop locally, initialize the virtualenv with `./scripts/develop.sh`.
+You can try out demo builds with `./scripts/demo.sh`, and lint and test with other scripts.
 
 ## Design
 
