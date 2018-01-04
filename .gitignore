@@ -3,6 +3,3 @@
 *.o
 output/
 external/
-
-# TODO remove this
-internal/hello/hello

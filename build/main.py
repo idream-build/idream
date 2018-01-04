@@ -39,6 +39,7 @@ def idris(project, command):
     output_path = os.path.join(_ROOT, 'output')
     bin_path = os.path.join(_ROOT, 'output', 'bin')
     project_output_path = os.path.join(output_path, 'lib', project)
+    os.makedirs(bin_path, exist_ok=True)
     os.makedirs(project_output_path, exist_ok=True)
     orig_idrispath = subprocess.run(['idris', '--libdir'], stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
     package = read_package(project)
@@ -46,11 +47,13 @@ def idris(project, command):
     for pkg in ['base', 'prelude']:
         idrispaths.append(os.path.join(orig_idrispath, pkg))
     for pkg in package.get('pkgs', []):
-        idrispaths.append('../../output/{}'.format(pkg))
+        idrispaths.append('../../../output/lib/{}'.format(pkg))
     idrispaths_arg = ' '.join('--idrispath {}'.format(p) for p in idrispaths)
-    idris = 'cd internal/{0} && idris --ibcsubdir ../../output/{0} {2} --{1} {0}.ipkg'.format(
+    idris = 'cd internal/{0} && idris --ibcsubdir ../../../output/lib/{0} {2} --{1} {0}.ipkg'.format(
         project, command, idrispaths_arg)
     system(idris)
+    if package.get('executable', False) and command == 'build':
+        os.rename('internal/{0}/{0}'.format(project), os.path.join(bin_path, project))
 
 
 def dispatch(project):
