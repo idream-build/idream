@@ -78,10 +78,12 @@ We call a collection of `packages` a `project`. We can throw an `idr-project.jso
 file at the root of a repository (or in the same directory as a single project)
 to list the relative paths to the packages exist in this project.
 
-Drawing insipiration from Purescript's (package-sets)[https://github.com/purescript/package-sets],
+Drawing insipiration from Purescript's [package-sets](https://github.com/purescript/package-sets),
 we can define our own `package set` to resolve libraries to specific refs and subdirectories in
 specific git repositories. One might maintain this list in-repository in an
 `idr-package-set.json` file or depend on a shared collection.
+
+Take a look at the `jsonschema` definitions for these files in `idream/idream/schemas`.
 
 ### idream specifics
 
