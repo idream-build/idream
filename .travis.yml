@@ -3,13 +3,11 @@ sudo: false
 install:
   - sudo apt-get install python3-pip cabal-install
   - sudo pip3 install virtualenv
-  - echo $(which cabal)
-  - cabal update
-  - cabal install cabal-install
-  - echo $(which cabal)
-  - cabal update
-  - cabal install idris
-  - echo $(which idris)
+  - sudo cabal update
+  - sudo cabal install cabal-install
+  - sudo cabal update
+  - sudo cabal install idris-1.1.1
+  - ./scripts/develop.sh
 
 script:
   - ./scripts/develop.sh
