@@ -5,29 +5,44 @@ A simple build system for Idris
 
 ## Current status
 
-It works for simple projects but does not attempt to do anything smart with
-phases or dependencies. With a recent `idris` on your path, try this:
+It works for simple projects (with local or remote dependencies) but does not
+attempt to do anything smart with phases or ordering (i.e. you have to manually
+build all dependencies in order). No guarantees on projects with FFI or custom
+makefiles or targeting JS.
 
+Contributions are welcome. Open questions:
+
+* Can we simply replace ipkg files with JSON or YAML files?
+* Why is ipkg a custom data format in the first place?
+* What is the community process by which we curate package sets?
+* Can we reuse "real" build systems like `bazel`?
+
+
+## Installation and use
+
+Requires `python3`, a recent `idris`, and maybe `git` on your path. Try these:
+
+    # install idream globally
     pip3 install idream
+
+    # take a look at the argparse options
     idream --help
+
+    # play with the demo projects
     cd demo
+    idream validate
     idream build demo_lib
     idream mkdoc demo_lib
     idream build demo_bin
     idream execute demo_bin
     idream build lightyear
 
-No guarantees on projects with FFI or custom makefiles or targeting JS.
+`idream --log-level=DEBUG` will crank up the noise.
 
 
 ## Installation and use
 
-Requires `python3`, `idris`, and `git`. Development requires `virtualenv`.
-
-`pip3 install idream` should be enough to get idream on your path. Crawl the
-docs with `idream --help`.
-
-If you want to develop locally, follow this flow:
+Development requires `virtualenv` on your path. Follow this flow:
 
     # initialize the virtualenv
     ./scripts/develop.sh
