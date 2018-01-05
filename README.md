@@ -5,19 +5,42 @@ A simple build system for Idris
 
 ## Current status
 
-It works for simple projects but has trouble installing dependencies to a
-custom path, a [known issue](https://github.com/idris-lang/Idris-dev/issues/3383).
+It works for simple projects but does not attempt to do anything smart with
+phases or dependencies. With a recent `idris` on your path, try this:
+
+    pip3 install idream
+    idream --help
+    cd demo
+    idream build demo_lib
+    idream mkdoc demo_lib
+    idream build demo_bin
+    idream execute demo_bin
+    idream build lightyear
+
+No guarantees on projects with FFI or custom makefiles or targeting JS.
 
 
 ## Installation and use
 
 Requires `python3`, `idris`, and `git`. Development requires `virtualenv`.
 
-When it's all packaged, `pip3 install idream` should be enough to get idream on
-your path. Crawl the docs with `idream --help`.
+`pip3 install idream` should be enough to get idream on your path. Crawl the
+docs with `idream --help`.
 
-If you want to develop locally, initialize the virtualenv with `./scripts/develop.sh`.
-You can try out demo builds with `./scripts/demo.sh`, and lint and test with other scripts.
+If you want to develop locally, follow this flow:
+
+    # initialize the virtualenv
+    ./scripts/develop.sh
+
+    # lint the project
+    ./scripts/lint.sh
+
+    # run the unit tests
+    ./scripts/test.sh
+
+    # run idream out of the virtualenv on the demo projects
+    ./scripts/demo.sh build demo_lib
+
 
 ## Design
 
@@ -26,3 +49,35 @@ with external dependencies. To that end, there are definitions for project,
 package set, and package configuration files in JSON format that can be used
 by any build system. This one just happens to be written in Python and happens
 to sandbox things in a certain way.
+
+### General metadata
+
+To start with, we call a single library or executable corresponding to a single
+`ipkg` file a `package`. We can put some subset of what would be in an `ipkg` file
+into an `idr-package.json` file in a directory where the `ipkg` would ordinarily be.
+
+We call a collection of `packages` a `project`. We can throw an `idr-project.json`
+file at the root of a repository (or in the same directory as a single project)
+to list the relative paths to the packages exist in this project.
+
+Drawing insipiration from Purescript's (package-sets)[https://github.com/purescript/package-sets],
+we can define our own `package set` to resolve libraries to specific refs and subdirectories in
+specific git repositories. One might maintain this list in-repository in an
+`idr-package-set.json` file or depend on a shared collection.
+
+### idream specifics
+
+`idream` goes out of its way to keep build and external dependency artifacts out
+of source and global directories. When you invoke `idream` it looks for
+an `idr-project.json` file in the current directory (though you can point it
+elsewhere). It uses the package paths in the project to load all package
+definitions in the project. (Note that local package names always shadow remote ones.)
+
+`idream` then creates an ignorable "cache" directory `.idream` (also configurable)
+in the same directory as the project file. This acts much like the directory
+containing `idris --libdir` and the like, but is local to your project. `idream` stores
+executables, compiled libraries, docs, and cloned dependencies in the cache.
+
+When necessary, `idream` will search for package set definitions to resolve
+dependencies. Currently, it only looks for a local `idr-package-set.json` file
+next to the project file.

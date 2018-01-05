@@ -27,8 +27,10 @@ _IDR_PACKAGE_SET_JSON = 'idr-package-set.json'
 _IDR_PROJECT_JSON = 'idr-project.json'
 
 
-_IDRIS_COMMANDS = set(['build', 'repl', 'clean', 'mkdoc',
-                       'checkpkg', 'testpkg'])
+# TODO it's not clear how useful the other commands are given our
+# artifact management strategy. something analogous to clean (without
+# resorting to nuke) would be nice
+_IDRIS_COMMANDS = set(['build', 'repl', 'mkdoc', 'checkpkg'])
 
 
 def system(command, cwd=None, env=None):
@@ -172,11 +174,12 @@ def load_local_package_set(paths):
         return json.load(f)
 
 
+# TODO support remote package sets
 def resolve_package_set(paths):
     if not has_local_package_set(paths):
-        raise Exception('TODO support remote package sets')
+        return None
     package_set = load_local_package_set(paths)
-    _LOGGER.debug('loaded package set %s', package_set)
+    _LOGGER.debug('loaded local package set %s', package_set)
     return package_set
 
 
@@ -200,17 +203,21 @@ def validate(paths, context):
     jsonschema.validate(context.project, schemas[_IDR_PROJECT_JSON])
     for package_pair in context.packages.values():
         jsonschema.validate(package_pair.package, schemas[_IDR_PACKAGE_JSON])
-    package_set = resolve_package_set(paths)
-    jsonschema.validate(package_set, schemas[_IDR_PACKAGE_SET_JSON])
-
     all_names = set(context.packages.keys())
-    all_names.update(package_set.keys())
+
+    package_set = resolve_package_set(paths)
+    if package_set is not None:
+        jsonschema.validate(package_set, schemas[_IDR_PACKAGE_SET_JSON])
+        all_names.update(package_set.keys())
+
     for (name, package_pair) in context.packages.items():
         pkgs = package_pair.package.get('pkgs', [])
         assert_can_find_packages(all_names, name, pkgs)
-    for (name, ext_package) in package_set.items():
-        pkgs = ext_package.get('pkgs', [])
-        assert_can_find_packages(all_names, name, pkgs)
+
+    if package_set is not None:
+        for (name, ext_package) in package_set.items():
+            pkgs = ext_package.get('pkgs', [])
+            assert_can_find_packages(all_names, name, pkgs)
 
 
 def make_project_ext_path(paths, name):
@@ -219,6 +226,8 @@ def make_project_ext_path(paths, name):
 
 def fetch(paths, context, name, force_fetch):
     package_set = resolve_package_set(paths)
+    if package_set is None:
+        raise Exception('No package set to fetch', name)
     package = package_set[name]
     repo = package['repo']
     version = package['version']
@@ -261,38 +270,32 @@ def generate(paths, context, name):
             f.write('pkgs = {}\n'.format(', '.join(pkgs)))
 
 
-def resolve_package_pair(paths, context, name, no_generate, no_fetch, force_fetch):
+def resolve_package_root(paths, context, name, no_generate, no_fetch, force_fetch):
     if name in context.packages:
         _LOGGER.debug('resolved local package %s', name)
         if not no_generate:
             generate(paths, context, name)
-        return context.packages[name]
+        return context.packages[name].package_root
     else:
         _LOGGER.debug('resolving remote package %s', name)
         package_set = resolve_package_set(paths)
+        if package_set is None:
+            raise Exception('No package set to resolve', name)
         if name not in package_set:
             raise Exception('Unknown package', name)
-        package = package_set[name]
         project_ext_path = make_project_ext_path(paths, name)
         if not os.isdir(project_ext_path):
             if not no_fetch:
                 fetch(paths, context, name, force_fetch)
             else:
                 raise Exception('Need to fetch', name)
-        else:
-            if force_fetch:
-                fetch(paths, context, name, force_fetch)
-            return PackagePair(package_path=project_ext_path, package=package)
+        elif force_fetch:
+            fetch(paths, context, name, force_fetch)
+        return project_ext_path
 
 
 def idris(paths, context, name, command, no_generate, no_fetch, force_fetch):
-    package_pair = resolve_package_pair(paths, context, name, no_generate, no_fetch, force_fetch)
-
-    package_root = package_pair.package_root
-    package = package_pair.package
-    pkgs = package.get('pkgs', [])
-    # TODO migrate executable attribute to match ipkg
-    executable = package.get('executable', False)
+    package_root = resolve_package_root(paths, context, name, no_generate, no_fetch, force_fetch)
 
     package_lib = os.path.join(paths.cache_lib_path, name)
 
@@ -308,7 +311,7 @@ def idris(paths, context, name, command, no_generate, no_fetch, force_fetch):
 
     # Move any generated bin into place
     generated_bin = os.path.join(package_root, name)
-    if executable and os.path.isfile(generated_bin):
+    if os.path.isfile(generated_bin):
         dest = os.path.join(paths.cache_bin_path, name)
         os.rename(generated_bin, dest)
 
