@@ -6,6 +6,8 @@ demo/.idream/
 *.o
 
 __pycache__/
+idream/build/
+idream/dist/
 *.egg-info
 *.pyc
 
