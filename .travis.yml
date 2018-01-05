@@ -5,8 +5,9 @@ install:
   - sudo pip3 install virtualenv
   - echo $(which cabal)
   - cabal update
-  - cabal install caball-install
+  - cabal install cabal-install
   - echo $(which cabal)
+  - cabal update
   - cabal install idris
   - echo $(which idris)
 
