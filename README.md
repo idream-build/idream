@@ -1,5 +1,7 @@
 # idream
 
+[![Build Status](https://travis-ci.org/ejconlon/idream.svg?branch=master)](https://travis-ci.org/ejconlon/idream)
+
 A simple build system for Idris
 
 

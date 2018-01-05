@@ -4,6 +4,7 @@ install:
   - sudo apt-get install python3-pip cabal-install
   - sudo pip3 install virtualenv
   - cabal update
+  - cabal install Cabal
   - cabal install idris
 
 script:
