@@ -1,7 +1,7 @@
 sudo: false
 
 install:
-  - apt-get install python3-pip idris
+  - sudo apt-get install python3-pip idris
   - pip3 install virtualenv
 
 script:
