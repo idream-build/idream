@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='idream',
-    version='0.1.0',
+    version='0.1.1',
     maintainer='Eric Conlon',
     maintainer_email='ejconlon@gmail.com',
     packages=['idream'],

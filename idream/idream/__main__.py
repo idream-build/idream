@@ -236,7 +236,7 @@ def fetch(paths, context, name, force_fetch):
         shutil.rmtree(project_ext_path)
     if not os.path.isdir(project_ext_path):
         _LOGGER.debug('fetching %s', name)
-        system('git clone {}'.format(repo), cwd=paths.cache_ext_path)
+        system('git clone {} {}'.format(repo, name), cwd=paths.cache_ext_path)
         system('git checkout {}'.format(version), cwd=project_ext_path)
     else:
         _LOGGER.debug('skipping %s', name)
@@ -284,7 +284,7 @@ def resolve_package_root(paths, context, name, no_generate, no_fetch, force_fetc
         if name not in package_set:
             raise Exception('Unknown package', name)
         project_ext_path = make_project_ext_path(paths, name)
-        if not os.isdir(project_ext_path):
+        if not os.path.isdir(project_ext_path):
             if not no_fetch:
                 fetch(paths, context, name, force_fetch)
             else:
