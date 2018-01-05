@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Setup the venv for local development
+
 set -e
 
 virtualenv .venv --python=python3
