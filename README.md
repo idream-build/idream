@@ -10,7 +10,7 @@ A simple build system for Idris
 It works for simple projects (with local or remote dependencies) but does not
 attempt to do anything smart with phases or ordering (i.e. you have to manually
 build all dependencies in order). No guarantees on projects with FFI, custom
-makefiles, JS targets, or on non-Mac platforms.
+makefiles, or JS targets.
 
 Contributions are welcome. Open questions:
 
