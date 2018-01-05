@@ -1,14 +1,11 @@
-sudo: false
+sudo: required
+
+services:
+  - docker
 
 install:
-  - sudo apt-get install python3-pip cabal-install
-  - sudo pip3 install virtualenv
-  - sudo cabal update
-  - sudo cabal install cabal-install
-  - sudo cabal update
-  - sudo cabal install idris-1.1.1
-  - ./scripts/develop.sh
+  - ./scripts/docker_build.sh
+  - ./scripts/docker_run.sh ./scripts/develop.sh
 
 script:
-  - ./scripts/develop.sh
-  - ./scripts/ci.sh
+  - ./scripts/docker_run.sh ./scripts/ci.sh

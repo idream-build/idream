@@ -18,6 +18,7 @@ Contributions are welcome. Open questions:
 * Why is ipkg a custom data format in the first place?
 * What is the community process by which we curate package sets?
 * Can we reuse "real" build systems like `bazel`?
+* Do multi-package projects and sandboxed libs work well with existing tooling and IDEs?
 
 
 ## Installation and use
@@ -60,6 +61,12 @@ Development requires `virtualenv` on your path. Follow this flow:
 
     # run all the standard checks
     ./scripts/ci.sh
+
+Alternatively, you can build a docker image with the right deps and run in it:
+
+    ./scripts/docker_build.sh
+    ./scripts/docker_run.sh ./scripts/develop.sh
+    ./scripts/docker_run.sh ./scripts/ci.sh
 
 
 ## Design
