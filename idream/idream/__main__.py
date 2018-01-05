@@ -195,7 +195,8 @@ def fetch(paths, context, name, force_fetch):
     repo = package['repo']
     version = package['version']
     project_ext_path = make_project_ext_path(paths, name)
-    # TODO support force
+    if os.path.isdir(project_ext_path) and force_fetch:
+        shutil.rmtree(project_ext_path)
     if not os.path.isdir(project_ext_path):
         _LOGGER.debug('fetching %s', name)
         system('git clone {}'.format(repo), cwd=paths.cache_ext_path)
@@ -272,7 +273,7 @@ def idris(paths, context, name, command, no_generate, no_fetch, force_fetch):
     package_root = package_pair.package_root
     package = package_pair.package
     pkgs = package.get('pkgs', [])
-    # TODO migrate to ipkg format for executable
+    # TODO migrate executable attribute to match ipkg
     executable = package.get('executable', False)
 
     package_lib = os.path.join(paths.cache_lib_path, name)
