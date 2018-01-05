@@ -1,0 +1,9 @@
+sudo: false
+
+install:
+  - apt-get install python3-pip idris
+  - pip3 install virtualenv
+
+script:
+  - ./scripts/develop.sh
+  - ./scripts/ci.sh
