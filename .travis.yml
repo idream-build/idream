@@ -2,7 +2,7 @@ sudo: false
 
 install:
   - sudo apt-get install python3-pip cabal-install
-  - pip3 install virtualenv
+  - sudo pip3 install virtualenv
   - cabal update
   - cabal install idris
 
