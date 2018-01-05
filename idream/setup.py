@@ -12,6 +12,6 @@ setup(
         'idream': ['schemas/*.json'],
     },
     install_requires=[
-        # 'jsonschema'
+        'jsonschema'
     ]
 )

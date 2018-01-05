@@ -1,9 +1,10 @@
 {
+  "$id": "idris/idr-package-set",
   "type": "object",
   "definitions": {
     "package": {
       "type": "object",
-      "additionalProperties": "false",
+      "additionalProperties": false,
       "properties": {
         "repo": {
           "type": "string"

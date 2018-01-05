@@ -1,8 +1,12 @@
 {
+  "$id": "idris/idr-package",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "name": {
+      "type": "string"
+    },
+    "sourcedir": {
       "type": "string"
     },
     "executable": {

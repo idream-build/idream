@@ -1,4 +1,5 @@
 {
+  "$id": "idream/idr-project",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -7,9 +8,6 @@
       "items": {
         "type": "string"
       }
-    },
-    "external": {
-      "type": "string"
     }
   }
 }
