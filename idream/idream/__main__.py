@@ -17,8 +17,9 @@ _SCHEMAS_PATH = os.path.join(os.path.dirname(__file__), 'schemas')
 
 _CACHE = '.idream'
 _BIN = 'bin'
-_LIB = 'lib'
+_LIB = 'libs'
 _EXT = 'ext'
+_DOC = 'docs'
 
 
 _IDR_PACKAGE_JSON = 'idr-package.json'
@@ -26,13 +27,18 @@ _IDR_PACKAGE_SET_JSON = 'idr-package-set.json'
 _IDR_PROJECT_JSON = 'idr-project.json'
 
 
-_IDRIS_COMMANDS = set(['build', 'install', 'repl', 'clean', 'mkdoc',
-                       'installdoc', 'checkpkg', 'testpkg'])
+_IDRIS_COMMANDS = set(['build', 'repl', 'clean', 'mkdoc',
+                       'checkpkg', 'testpkg'])
 
 
-def system(command, cwd=None):
+def system(command, cwd=None, env=None):
     _LOGGER.debug('+ %s', command)
-    subprocess.call(command, shell=True, cwd=cwd)
+    if env is None:
+        env = {}
+    pop = subprocess.Popen(command, cwd=cwd, env=dict(os.environ, **env), shell=True)
+    pop.wait()
+    if pop.returncode != 0:
+        raise Exception('Bad return code', pop.returncode)
 
 
 def make_parser():
@@ -48,8 +54,11 @@ def make_parser():
     fetch_parser = subparsers.add_parser('fetch', help='fetch an external dependency')
     fetch_parser.add_argument('name', type=str, help='name in package set')
     fetch_parser.add_argument('--force-fetch', action='store_true', help='force re-download')
+    execute_parser = subparsers.add_parser('execute', help='run a binary')
+    execute_parser.add_argument('name', type=str, help='name local packages or package set')
+    execute_parser.add_argument('remainder', type=str, nargs=argparse.REMAINDER, help='passthrough args (will discard `--`)')
     for command in _IDRIS_COMMANDS:
-        command_parser = subparsers.add_parser(command, help='idris {}'.format(command))
+        command_parser = subparsers.add_parser(command, help='idris --{}'.format(command))
         command_parser.add_argument('name', type=str, help='name local packages or package set')
         command_parser.add_argument('--no-generate', action='store_true', help='do not generate ipkg')
         command_parser.add_argument('--no-fetch', action='store_true', help='do not fetch an external dependency')
@@ -65,7 +74,8 @@ Paths = namedtuple('Paths', [
     'remote_package_set_path',
     'cache_bin_path',
     'cache_lib_path',
-    'cache_ext_path'
+    'cache_ext_path',
+    'cache_doc_path'
 ])
 
 
@@ -86,6 +96,7 @@ def make_paths(project, cache):
     cache_bin_path = os.path.join(cache_path, _BIN)
     cache_lib_path = os.path.join(cache_path, _LIB)
     cache_ext_path = os.path.join(cache_path, _EXT)
+    cache_doc_path = os.path.join(cache_path, _DOC)
     return Paths(
         root_path=root_path,
         project_path=project_path,
@@ -94,7 +105,22 @@ def make_paths(project, cache):
         remote_package_set_path=remote_package_set_path,
         cache_bin_path=cache_bin_path,
         cache_lib_path=cache_lib_path,
-        cache_ext_path=cache_ext_path)
+        cache_ext_path=cache_ext_path,
+        cache_doc_path=cache_doc_path)
+
+
+def query_libdir():
+    result = subprocess.run(['idris', '--libdir'], stdout=subprocess.PIPE)
+    return result.stdout.decode('utf-8').strip()
+
+
+def symlink_libdir_subdirs(paths):
+    libdir = query_libdir()
+    for pkg in os.listdir(libdir):
+        link_from = os.path.join(paths.cache_lib_path, pkg)
+        link_to = os.path.join(libdir, pkg)
+        if not os.path.exists(link_from):
+            os.symlink(src=link_to, dst=link_from, target_is_directory=True)
 
 
 def init_paths(paths):
@@ -103,6 +129,8 @@ def init_paths(paths):
     os.makedirs(paths.cache_bin_path, exist_ok=True)
     os.makedirs(paths.cache_lib_path, exist_ok=True)
     os.makedirs(paths.cache_ext_path, exist_ok=True)
+    os.makedirs(paths.cache_doc_path, exist_ok=True)
+    symlink_libdir_subdirs(paths)
 
 
 PackagePair = namedtuple('PackagePair', [
@@ -257,16 +285,6 @@ def resolve_package_pair(paths, context, name, no_generate, no_fetch, force_fetc
             return PackagePair(package_path=project_ext_path, package=package)
 
 
-def query_orig_idrispath():
-    result = subprocess.run(['idris', '--libdir'], stdout=subprocess.PIPE)
-    return result.stdout.decode('utf-8').strip()
-
-
-def query_builtin_pkgs():
-    orig_idrispath = query_orig_idrispath()
-    return list(os.path.join(orig_idrispath, pkg) for pkg in os.listdir(orig_idrispath))
-
-
 def idris(paths, context, name, command, no_generate, no_fetch, force_fetch):
     package_pair = resolve_package_pair(paths, context, name, no_generate, no_fetch, force_fetch)
 
@@ -278,23 +296,42 @@ def idris(paths, context, name, command, no_generate, no_fetch, force_fetch):
 
     package_lib = os.path.join(paths.cache_lib_path, name)
 
-    pkg_paths = query_builtin_pkgs()
-    for pkg in pkgs:
-        path = os.path.join(paths.cache_lib_path, pkg)
-        pkg_paths.append(path)
-
     args = ['idris', '--verbose', '--ibcsubdir', package_lib]
-    for path in pkg_paths:
-        args.extend(['--idrispath', path])
     args.extend(['--{}'.format(command), '{}.ipkg'.format(name)])
 
     exe = ' '.join(args)
-    system(exe, cwd=package_root)
+    env = {
+        'IDRIS_LIBRARY_PATH': paths.cache_lib_path,
+        'IDRIS_DOC_PATH': paths.cache_doc_path
+    }
+    system(exe, cwd=package_root, env=env)
 
+    # Move any generated bin into place
     generated_bin = os.path.join(package_root, name)
     if executable and os.path.isfile(generated_bin):
         dest = os.path.join(paths.cache_bin_path, name)
         os.rename(generated_bin, dest)
+
+    # Move any generated doc into place
+    generated_doc = os.path.join(package_root, '{}_doc'.format(name))
+    if os.path.isdir(generated_doc):
+        dest = os.path.join(paths.cache_doc_path, name)
+        if os.path.isdir(dest):
+            shutil.rmtree(dest)
+        os.rename(generated_doc, dest)
+
+
+def execute(paths, context, name, remainder):
+    if remainder and remainder[0] == '--':
+        remainder = remainder[1:]
+    generated_bin = os.path.join(paths.cache_bin_path, name)
+    if not os.path.isfile(generated_bin):
+        raise Exception('Bin not found', name)
+    else:
+        exe = generated_bin
+        if remainder:
+            exe += ' '.join(remainder)
+        system(exe)
 
 
 def dispatch(paths, context, args):
@@ -304,6 +341,8 @@ def dispatch(paths, context, args):
         fetch(paths, context, args.name, args.force_fetch)
     elif args.op == 'generate':
         generate(paths, context, args.name)
+    elif args.op == 'execute':
+        execute(paths, context, args.name, args.remainder)
     elif args.op in _IDRIS_COMMANDS:
         idris(paths, context, args.name, args.op, args.no_generate, args.no_fetch, args.force_fetch)
     else:
