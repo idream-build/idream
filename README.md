@@ -56,6 +56,9 @@ Development requires `virtualenv` on your path. Follow this flow:
     # run idream out of the virtualenv on the demo projects
     ./scripts/demo.sh build demo_lib
 
+    # run all the standard checks
+    ./scripts/ci.sh
+
 
 ## Design
 
