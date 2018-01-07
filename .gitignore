@@ -15,3 +15,6 @@ idream/dist/
 *.swp
 *~
 *.bak
+
+.stack-work/
+idream.cabal

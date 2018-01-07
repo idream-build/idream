@@ -1,0 +1,20 @@
+name:                idream
+version:             0.1.0.0
+#synopsis:
+#description:
+homepage:            https://github.com/ejconlon/idream#README.md
+license:             BSD3
+author:              ejconlon
+maintainer:          ejconlon
+copyright:           ejconlon, 2017
+category:            Web
+extra-source-files:
+- README.md
+
+dependencies:
+  - base >= 4.7 && < 5
+
+executables:
+  idream:
+    source-dirs:      src
+    main:             Main.hs
