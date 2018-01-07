@@ -17,4 +17,5 @@ idream/dist/
 *.bak
 
 .stack-work/
+result
 idream.cabal
