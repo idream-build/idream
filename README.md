@@ -19,10 +19,12 @@ Contributions are welcome. Open questions:
 * Can we reuse "real" build systems like `bazel`?
 * Do multi-package projects and sandboxed libs work well with existing tooling and IDEs?
 
+I'm also attempting to maintain a [package set](https://github.com/ejconlon/idr-package-set)
+that more or less works with the latest compiler.
 
 ## Installation and use
 
-Requires `python3`, a recent `idris`, and maybe `git` on your path. Try these:
+Requires `python3`, a recent `idris`, and optionally `git` and `wget` on your path. Try these:
 
     # install idream globally
     pip3 install idream
@@ -107,5 +109,6 @@ containing `idris --libdir` and the like, but is local to your project. `idream`
 executables, compiled libraries, docs, and cloned dependencies in the cache.
 
 When necessary, `idream` will search for package set definitions to resolve
-dependencies. Currently, it only looks for a local `idr-package-set.json` file
-next to the project file.
+dependencies. By default, it only looks for a local `idr-package-set.json` file
+next to the project file. See `idr-project-remote.json` for an example of using
+a remote package set.

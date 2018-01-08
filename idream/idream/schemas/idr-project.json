@@ -8,6 +8,21 @@
       "items": {
         "type": "string"
       }
+    },
+    "packageset": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
     }
   }
 }

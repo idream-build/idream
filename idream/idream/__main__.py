@@ -10,6 +10,7 @@ import time
 
 
 _LOGGER = logging.getLogger(__name__)
+_DEFAULT_LOG_LEVEL = logging.WARN
 
 
 _SCHEMAS_PATH = os.path.join(os.path.dirname(__file__), 'schemas')
@@ -25,6 +26,9 @@ _DOC = 'docs'
 _IDR_PACKAGE_JSON = 'idr-package.json'
 _IDR_PACKAGE_SET_JSON = 'idr-package-set.json'
 _IDR_PROJECT_JSON = 'idr-project.json'
+
+
+_GITHUB_PREFIX = 'https://github.com/'
 
 
 # TODO it's not clear how useful the other commands are given our
@@ -73,7 +77,7 @@ Paths = namedtuple('Paths', [
     'project_path',
     'cache_path',
     'local_package_set_path',
-    'remote_package_set_path',
+    'cached_package_set_path',
     'cache_bin_path',
     'cache_lib_path',
     'cache_ext_path',
@@ -94,7 +98,7 @@ def make_paths(project, cache):
     else:
         cache_path = os.path.abspath(cache)
     local_package_set_path = os.path.join(root_path, _IDR_PACKAGE_SET_JSON)
-    remote_package_set_path = os.path.join(cache_path, _IDR_PACKAGE_SET_JSON)
+    cached_package_set_path = os.path.join(cache_path, _IDR_PACKAGE_SET_JSON)
     cache_bin_path = os.path.join(cache_path, _BIN)
     cache_lib_path = os.path.join(cache_path, _LIB)
     cache_ext_path = os.path.join(cache_path, _EXT)
@@ -104,7 +108,7 @@ def make_paths(project, cache):
         project_path=project_path,
         cache_path=cache_path,
         local_package_set_path=local_package_set_path,
-        remote_package_set_path=remote_package_set_path,
+        cached_package_set_path=cached_package_set_path,
         cache_bin_path=cache_bin_path,
         cache_lib_path=cache_lib_path,
         cache_ext_path=cache_ext_path,
@@ -174,13 +178,59 @@ def load_local_package_set(paths):
         return json.load(f)
 
 
+def has_cached_package_set(paths):
+    return os.path.isfile(paths.cached_package_set_path)
+
+
+def load_cached_package_set(paths):
+    with open(paths.cached_package_set_path, 'r') as f:
+        return json.load(f)
+
+
 # TODO support remote package sets
-def resolve_package_set(paths):
-    if not has_local_package_set(paths):
+def resolve_package_set(paths, context):
+    has_remote = 'packageset' in context.project
+    has_cached = has_cached_package_set(paths)
+    has_local = has_local_package_set(paths)
+
+    if has_local and (has_cached or has_remote):
+        _LOGGER.warn('found local and remote packageset - using remote')
+
+    if not has_cached and has_remote:
+        conf = context.project['packageset']
+        # Could be path to local file
+        if 'path' in conf and 'repo' not in conf:
+            assert 'version' not in conf
+            _LOGGER.debug('copying packageset from %s', conf['path'])
+            shutil.copyfile(conf['path'], paths.cached_package_set_path)
+        else:
+            assert 'repo' in conf
+            assert 'version' in conf
+            path = conf.get('path', _IDR_PACKAGE_SET_JSON)
+
+            if conf['repo'].startswith(_GITHUB_PREFIX):
+                assert conf['repo'].endswith('.git')
+                pair = conf['repo'][len(_GITHUB_PREFIX):-4]
+                exe = 'wget http://raw.githubusercontent.com/{}/{}/{} -O {}'.format(
+                    pair, conf['version'], path, paths.cached_package_set_path)
+                _LOGGER.debug('fetching packageset from github')
+                system(exe)
+            else:
+                exe = 'git archive --remote={} {} {} | tar -xO {}'.format(
+                    conf['repo'], conf['version'], path, paths.cached_package_set_path)
+                _LOGGER.debug('fetching packageset from git')
+                system(exe)
+
+    if has_cached or has_remote:
+        package_set = load_cached_package_set(paths)
+        _LOGGER.debug('loaded remote package set %s', package_set)
+        return package_set
+    elif has_local:
+        package_set = load_local_package_set(paths)
+        _LOGGER.debug('loaded local package set %s', package_set)
+        return package_set
+    else:
         return None
-    package_set = load_local_package_set(paths)
-    _LOGGER.debug('loaded local package set %s', package_set)
-    return package_set
 
 
 def assert_can_find_packages(all_names, name, pkgs):
@@ -205,7 +255,7 @@ def validate(paths, context):
         jsonschema.validate(package_pair.package, schemas[_IDR_PACKAGE_JSON])
     all_names = set(context.packages.keys())
 
-    package_set = resolve_package_set(paths)
+    package_set = resolve_package_set(paths, context)
     if package_set is not None:
         jsonschema.validate(package_set, schemas[_IDR_PACKAGE_SET_JSON])
         all_names.update(package_set.keys())
@@ -225,7 +275,7 @@ def make_project_ext_path(paths, name):
 
 
 def fetch(paths, context, name, force_fetch):
-    package_set = resolve_package_set(paths)
+    package_set = resolve_package_set(paths, context)
     if package_set is None:
         raise Exception('No package set to fetch', name)
     package = package_set[name]
@@ -278,7 +328,7 @@ def resolve_package_root(paths, context, name, no_generate, no_fetch, force_fetc
         return context.packages[name].package_root
     else:
         _LOGGER.debug('resolving remote package %s', name)
-        package_set = resolve_package_set(paths)
+        package_set = resolve_package_set(paths, context)
         if package_set is None:
             raise Exception('No package set to resolve', name)
         if name not in package_set:
@@ -360,6 +410,8 @@ def main():
     _LOGGER.addHandler(handler)
     if args.log_level is not None:
         _LOGGER.setLevel(args.log_level)
+    else:
+        _LOGGER.setLevel(_DEFAULT_LOG_LEVEL)
     paths = make_paths(args.project, args.cache)
     _LOGGER.info('loaded paths %s', paths)
     if args.op == 'nuke':
