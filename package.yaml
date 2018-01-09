@@ -16,6 +16,7 @@ dependencies:
   - containers >= 0.5.10.2 && < 0.6
   - text >= 1.2.2.2 && < 1.3
   - aeson >= 1.2.3.0 && < 1.3
+  - optparse-applicative >= 0.14.0.0 && < 0.15
 
 executables:
   idream:
