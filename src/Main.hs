@@ -1,16 +1,20 @@
 
-{-# LANGUAGE OverloadedStrings#-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 module Main where
 
 -- Imports
 
+import Control.Monad.Reader
+import Control.Monad.Logger
 import Data.Default (def)
 import Data.Aeson (eitherDecode)
 import Idream.OptionParser
 import Idream.Types
 import System.IO.Error
-import qualified Data.ByteString.Lazy as B
+import System.Directory
+import System.FilePath ((</>))
+import qualified Data.ByteString.Lazy as BSL
 
 
 -- Data types
@@ -28,15 +32,42 @@ buildSettingsFile = ".idream"
 
 -- Functions
 
-
-readBuildSettings :: IO BuildSettings
-readBuildSettings = flip catchIOError (const def) $ do
-  jsonContents <- B.readFile buildSettingsFile
-  either (const def) (return) $ eitherDecode jsonContents
-
+-- | Main function.
 main :: IO ()
 main = do
   settings <- readBuildSettings
   cmdLineArgs <- parseCmdLineArgs
   let config = Config cmdLineArgs settings
-  putStrLn $ show config
+      getLogThreshold Info = LevelInfo
+      getLogThreshold _ = LevelDebug
+      logThreshold = getLogThreshold $ logLevel cmdLineArgs
+  runStdoutLoggingT $ filterLogger (\_ lvl -> lvl >= logThreshold)
+                    $ flip runReaderT config $ do
+    command <- asks $ cmd . args
+    processCommand command
+
+
+-- | Helper function to read build settings from ".idream file in a package."
+readBuildSettings :: IO BuildSettings
+readBuildSettings =
+  let defaultSettings = const def
+  in flip catchIOError defaultSettings $ do
+    cwd <- getCurrentDirectory
+    jsonContents <- BSL.readFile $ cwd </> buildSettingsFile
+    either defaultSettings return $ eitherDecode jsonContents
+
+-- Function that processes the given command.
+processCommand :: (MonadReader Config m,
+                   MonadLogger m,
+                   MonadIO m)
+               => Command
+               -> m ()
+processCommand Fetch = return ()
+processCommand Compile = return ()
+processCommand (Run runArgs) = return ()
+processCommand Repl = return ()
+processCommand (New pkgName pkgType) = return ()
+processCommand Validate = return ()
+processCommand MkDoc = return ()
+processCommand GenerateIpkg = return ()
+processCommand Test = return ()

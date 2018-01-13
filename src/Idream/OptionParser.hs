@@ -49,7 +49,8 @@ data Command = Fetch                 -- ^ Fetches all dependencies as described 
              deriving (Eq, Show)
 
 -- | Data structure representing the arguments passed in to the program.
-data Args = Args LogLevel Command deriving (Eq, Show)
+data Args = Args { logLevel :: LogLevel
+                 , cmd :: Command } deriving (Eq, Show)
 
 
 -- Functions
