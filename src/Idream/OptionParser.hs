@@ -56,7 +56,7 @@ data Args = Args LogLevel Command deriving (Eq, Show)
 
 -- | Helper function for parsing the log level the build tool should use.
 logLevelParser :: Parser LogLevel
-logLevelParser = option (eitherReader f) desc where
+logLevelParser = maybe Info id <$> (optional $ option (eitherReader f) desc) where
   desc = long "log-level" <> help "Logging level to be used."
   f "info" = Right Info
   f "debug" = Right Debug
