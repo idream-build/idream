@@ -1,7 +1,8 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Idream.Types ( PackageName(..)
+module Idream.Types ( BuildSettings(..)
+                    , PackageName(..)
                     , SourceDir(..)
                     , Repo(..)
                     , Version(..)
@@ -14,14 +15,21 @@ module Idream.Types ( PackageName(..)
 
 -- Imports
 
+import Data.Default
 import Data.Aeson
 import Data.Map (Map)
 import Data.Text (Text)
 import Data.Maybe (maybe)
 import Control.Monad (mzero)
+import System.Directory
 
 
 -- Data types
+
+type Directory = FilePath
+data BuildSettings = BuildSettings { cacheDir :: Directory
+                                   , projectFile :: FilePath
+                                   } deriving (Eq, Show)
 
 newtype PackageName = PackageName Text deriving (Eq, Show)
 newtype SourceDir = SourceDir Text deriving (Eq, Show)
@@ -36,6 +44,15 @@ newtype PackageSet = PackageSet (Map Text PackageDescr)
 
 
 -- Instances
+
+instance Default BuildSettings where
+  def = BuildSettings ".idream-work/" "idr-project.json"
+
+instance FromJSON BuildSettings where
+  parseJSON (Object o) = BuildSettings
+                      <$> o .: "cache-dir"
+                      <*> o .: "project-file"
+  parseJSON _ = mzero
 
 instance FromJSON PackageName where
   parseJSON v = PackageName <$> parseJSON v
