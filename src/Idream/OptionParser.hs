@@ -1,56 +1,16 @@
 
 
-module Idream.OptionParser ( PkgName
-                           , Argument
-                           , CodeType(..)
-                           , LogLevel(..)
-                           , Command(..)
-                           , Args(..)
-                           , parseCmdLineArgs
-                           ) where
+module Idream.OptionParser ( parseCmdLineArgs ) where
 
 -- Imports
 
 import Options.Applicative
 import Data.Text (Text)
 import Data.Semigroup ((<>))
-
-
--- Data types
-
--- | Type alias for name of a package.
-type PkgName = Text
-
--- | Type alias for command line arguments passed to the run command.
-type Argument = Text
-
--- | Helper type for indicating the type of a package.
-data CodeType = Library
-              | Executable
-              deriving (Eq, Show)
-
--- | Log level to be used while using idream.
-data LogLevel = Info
-              | Debug
-              deriving (Eq, Show)
-
--- | Type describing the various commands that can be passed in via the commandline interface.
-data Command = Fetch                 -- ^ Fetches all dependencies as described in json file
-             | Compile               -- ^ Compiles all code (fetch needs to be done first to get dependencies code?)
-             | Clean                 -- ^ Cleans up build artifacts, fetched code?
-             | Run [Argument]        -- ^ Runs the executable defined in idr-project.json
-             | Repl                  -- ^ Opens up the repl
-             -- following are more 'optional', maybe for later?
-             | New PkgName CodeType  -- ^ Initializes a new project built on the idream structure
-             | Validate              -- ^ Validates the JSON files used by idream
-             | MkDoc                 -- ^ Generates the documentation
-             | GenerateIpkg          -- ^ Generates a ipkg file from the idream JSON files
-             | Test                  -- ^ Runs unit tests for this project
-             deriving (Eq, Show)
-
--- | Data structure representing the arguments passed in to the program.
-data Args = Args { logLevel :: LogLevel
-                 , cmd :: Command } deriving (Eq, Show)
+import Idream.Types ( LogLevel(..)
+                    , Command(..)
+                    , CodeType(..)
+                    , Args(..))
 
 
 -- Functions

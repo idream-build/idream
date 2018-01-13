@@ -9,25 +9,22 @@ import Control.Monad.Reader
 import Control.Monad.Logger
 import Data.Default (def)
 import Data.Aeson (eitherDecode)
-import Idream.OptionParser
-import Idream.Types
 import System.IO.Error
 import System.Directory
 import System.FilePath ((</>))
 import qualified Data.ByteString.Lazy as BSL
-
-
--- Data types
-
-data Config = Config { args :: Args
-                     , buildSettings :: BuildSettings
-                     } deriving (Eq, Show)
-
-
--- Constants
-
-buildSettingsFile :: String
-buildSettingsFile = ".idream"
+import Idream.OptionParser
+import Idream.Types
+import Idream.Command.Fetch (fetchDeps)
+import Idream.Command.Compile (compileCode)
+import Idream.Command.Clean (cleanCode)
+import Idream.Command.Run (runCode)
+import Idream.Command.Repl (startRepl)
+import Idream.Command.New (startNewProject)
+import Idream.Command.Validate (validateConfig)
+import Idream.Command.MkDoc (generateDocs)
+import Idream.Command.GenerateIpkg (generateIpkgFile)
+import Idream.Command.Test (runTests)
 
 
 -- Functions
@@ -46,28 +43,28 @@ main = do
     command <- asks $ cmd . args
     processCommand command
 
-
--- | Helper function to read build settings from ".idream file in a package."
+-- | Helper function to read build settings from ".idream" file in a package.
 readBuildSettings :: IO BuildSettings
 readBuildSettings =
   let defaultSettings = const def
   in flip catchIOError defaultSettings $ do
     cwd <- getCurrentDirectory
-    jsonContents <- BSL.readFile $ cwd </> buildSettingsFile
+    jsonContents <- BSL.readFile $ cwd </> ".idream"
     either defaultSettings return $ eitherDecode jsonContents
 
--- Function that processes the given command.
+-- | Function that processes the given command.
 processCommand :: (MonadReader Config m,
                    MonadLogger m,
                    MonadIO m)
                => Command
                -> m ()
-processCommand Fetch = return ()
-processCommand Compile = return ()
-processCommand (Run runArgs) = return ()
-processCommand Repl = return ()
-processCommand (New pkgName pkgType) = return ()
-processCommand Validate = return ()
-processCommand MkDoc = return ()
-processCommand GenerateIpkg = return ()
-processCommand Test = return ()
+processCommand Fetch = fetchDeps
+processCommand Compile = compileCode
+processCommand Clean = cleanCode
+processCommand (Run runArgs) = runCode runArgs
+processCommand Repl = startRepl
+processCommand (New pkgName pkgType) = startNewProject pkgName pkgType
+processCommand Validate = validateConfig
+processCommand MkDoc = generateDocs
+processCommand GenerateIpkg = generateIpkgFile
+processCommand Test = runTests
