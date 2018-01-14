@@ -5,11 +5,11 @@ module Idream.OptionParser ( parseCmdLineArgs ) where
 -- Imports
 
 import Options.Applicative
-import Data.Text (Text)
 import Data.Semigroup ((<>))
 import Idream.Types ( LogLevel(..)
                     , Command(..)
-                    , CodeType(..)
+                    , PackageName(..)
+                    , PackageType(..)
                     , Args(..))
 
 
@@ -38,7 +38,8 @@ commandParser = hsubparser commands where
           <> mkCmd "test" (pure Test) "Runs unit tests for this project."
   mkCmd name parser desc = command name (info parser (progDesc desc))
   runParser = Run <$> many (strArgument (metavar ""))
-  newCmdParser = New <$> (strArgument (metavar "")) <*> codeTypeParser
+  newCmdParser = New <$> (PackageName <$> strArgument (metavar ""))
+                     <*> codeTypeParser
   codeTypeParser =  flag' Library (long "--lib")
                 <|> flag' Executable (long "--exe")
 
