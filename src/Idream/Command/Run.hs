@@ -9,4 +9,4 @@ import Idream.Types (Config, Argument)
 
 runCode :: (MonadReader Config m, MonadLogger m, MonadIO m)
         => [Argument] -> m ()
-runCode runArgs = $(logDebug) "runCode not implemented yet!"
+runCode _ = $(logDebug) "runCode not implemented yet!"
