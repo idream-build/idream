@@ -6,6 +6,7 @@ module Idream.OptionParser ( parseCmdLineArgs ) where
 
 import Options.Applicative
 import Data.Semigroup ((<>))
+import Data.Maybe (fromMaybe)
 import Idream.Types ( LogLevel(..)
                     , Command(..)
                     , PackageName(..)
@@ -17,7 +18,7 @@ import Idream.Types ( LogLevel(..)
 
 -- | Helper function for parsing the log level the build tool should use.
 logLevelParser :: Parser LogLevel
-logLevelParser = maybe Info id <$> (optional $ option (eitherReader f) desc) where
+logLevelParser = fromMaybe Info <$> optional (option (eitherReader f) desc) where
   desc = long "log-level" <> help "Logging level to be used."
   f "info" = Right Info
   f "debug" = Right Debug
