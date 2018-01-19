@@ -19,3 +19,5 @@ idream/dist/
 .stack-work/
 result
 idream.cabal
+
+.idream-work/
