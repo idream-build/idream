@@ -34,10 +34,14 @@ import Control.Monad (mzero)
 type Directory = FilePath
 
 -- | Type used for representing package names.
-newtype PackageName = PackageName Text deriving (Eq, Show)
+newtype PackageName = PackageName { unName :: Text }
+                    deriving (Eq, Show)
+
+-- | Type representing name of a dependency.
+type DepName = PackageName
 
 -- | Type containing project data (coming from idr-project.json).
-newtype Project = Project [PackageName] deriving (Eq, Show)
+data Project = Project PackageName [DepName] deriving (Eq, Show)
 
 -- | Type used for representing the source directory of a package.
 newtype SourceDir = SourceDir Directory deriving (Eq, Show)
@@ -88,8 +92,9 @@ data Args = Args { logLevel :: LogLevel
                  , cmd :: Command } deriving (Eq, Show)
 
 -- | Type containing build settings not passing via commandline args.
-data BuildSettings = BuildSettings { cacheDir :: Directory
+data BuildSettings = BuildSettings { buildDir :: Directory
                                    , projectFile :: FilePath
+                                   , pkgSetFile :: FilePath
                                    } deriving (Eq, Show)
 
 -- | Type grouping all settings together into 1 big structure.
@@ -101,15 +106,16 @@ data Config = Config { args :: Args
 -- Instances
 
 instance Default BuildSettings where
-  def = BuildSettings ".idream-work" "idr-project.json"
+  def = BuildSettings ".idream-work" "idr-project.json" "idr-package-set.json"
 
 instance Default SourceDir where
   def = SourceDir "src"
 
 instance FromJSON BuildSettings where
   parseJSON (Object o) = BuildSettings
-                      <$> o .: "cache-dir"
+                      <$> o .: "build-dir"
                       <*> o .: "project-file"
+                      <*> o .: "package-set-file"
   parseJSON _ = mzero
 
 instance FromJSON PackageName where
@@ -125,7 +131,9 @@ instance FromJSON Version where
   parseJSON v = Version <$> parseJSON v
 
 instance FromJSON Project where
-  parseJSON (Object o) = Project <$> o .: "packages"
+  parseJSON (Object o) =
+    Project <$> o .: "package_name"
+            <*> o .: "packages"
   parseJSON _ = mzero
 
 instance FromJSON Package where
