@@ -19,11 +19,13 @@ import System.FilePath ( (</>) )
 import Idream.Types ( Config(..)
                     , PackageName(..)
                     , PackageType(..) )
+import Idream.Command.Common ( tryAction )
 
 
 -- Data types
 
 type Directory = FilePath
+-- | Custom error type for when creating a project template.
 data MkProjectError = MkDirError IOException
                     | MkFileError IOException
                     deriving (Eq, Show)
@@ -75,16 +77,18 @@ mainIdr =
             , "main = putStrLn \"Hello, Idris!\""
             ]
 
-
+-- | Creates a new project template.
 startNewProject :: (MonadReader Config m, MonadLogger m, MonadIO m)
                 => PackageName -> PackageType -> m ()
 startNewProject pkgName pkgType =
   either showError return =<< (runExceptT $ startNewProject' pkgName pkgType)
 
+-- | Displays the error if one occurred during project template creation.
 showError :: MonadLogger m => MkProjectError -> m ()
 showError (MkDirError e) = $(logError) ("Failed to initialize project: " <> (T.pack $ show e))
 showError (MkFileError e) = $(logError) ("Failed to initialize project: " <> (T.pack $ show e))
 
+-- | Does the actual creation of the project template.
 startNewProject' :: (MonadError MkProjectError m, MonadIO m)
                  => PackageName -> PackageType -> m ()
 startNewProject' (PackageName pkgName) pkgType = do
@@ -106,17 +110,15 @@ startNewProject' (PackageName pkgName) pkgType = do
         mainContents Library = libIdr
         mainContents Executable = mainIdr
 
+-- | Safely creates a directory, while handling possible exceptions.
 safeCreateDir :: (MonadError MkProjectError m,
                   MonadIO m)
               => Directory -> m ()
 safeCreateDir dir =
   tryAction MkDirError $ createDirectory dir
 
+-- | Safely writes to a file, while handling possible exceptions.
 safeWriteFile :: (MonadError MkProjectError m, MonadIO m)
               => Text -> FilePath -> m ()
 safeWriteFile txt path =
   tryAction MkFileError $ TIO.writeFile path txt
-
-tryAction :: (MonadError e' m, MonadIO m, Exception e)
-          => (e -> e') -> IO a -> m a
-tryAction f = (>>= either (throwError . f) return) <$> liftIO . try
