@@ -16,6 +16,7 @@ module Idream.Types ( BuildSettings(..)
                     , Command(..)
                     , Args(..)
                     , Config(..)
+                    , Directory
                     ) where
 
 
@@ -35,13 +36,15 @@ type Directory = FilePath
 
 -- | Type used for representing package names.
 newtype PackageName = PackageName { unName :: Text }
-                    deriving (Eq, Show)
+                    deriving (Eq, Ord, Show)
 
 -- | Type representing name of a dependency.
 type DepName = PackageName
 
 -- | Type containing project data (coming from idr-project.json).
-data Project = Project PackageName [DepName] deriving (Eq, Show)
+data Project = Project { projPkgName :: PackageName
+                       , projDeps :: [DepName]
+                       } deriving (Eq, Show)
 
 -- | Type used for representing the source directory of a package.
 newtype SourceDir = SourceDir Directory deriving (Eq, Show)
@@ -120,6 +123,9 @@ instance FromJSON BuildSettings where
 
 instance FromJSON PackageName where
   parseJSON v = PackageName <$> parseJSON v
+
+instance ToJSON PackageName where
+  toJSON (PackageName v) = toJSON v
 
 instance FromJSON SourceDir where
   parseJSON v = SourceDir <$> parseJSON v
