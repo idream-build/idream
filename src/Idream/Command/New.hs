@@ -9,7 +9,7 @@ module Idream.Command.New ( startNewProject ) where
 import Control.Monad.Reader
 import Control.Monad.Logger
 import Control.Monad.Except
-import Control.Exception ( try, IOException, Exception )
+import Control.Exception ( IOException )
 import Data.Monoid ( (<>) )
 import Data.Text ( Text )
 import qualified Data.Text as T
@@ -81,12 +81,12 @@ mainIdr =
 startNewProject :: (MonadReader Config m, MonadLogger m, MonadIO m)
                 => PackageName -> PackageType -> m ()
 startNewProject pkgName pkgType =
-  either showError return =<< (runExceptT $ startNewProject' pkgName pkgType)
+  either showError return =<< runExceptT (startNewProject' pkgName pkgType)
 
 -- | Displays the error if one occurred during project template creation.
 showError :: MonadLogger m => MkProjectError -> m ()
-showError (MkDirError e) = $(logError) ("Failed to initialize project: " <> (T.pack $ show e))
-showError (MkFileError e) = $(logError) ("Failed to initialize project: " <> (T.pack $ show e))
+showError (MkDirError e) = $(logError) ("Failed to initialize project: " <> T.pack (show e))
+showError (MkFileError e) = $(logError) ("Failed to initialize project: " <> T.pack (show e))
 
 -- | Does the actual creation of the project template.
 startNewProject' :: (MonadError MkProjectError m, MonadIO m)

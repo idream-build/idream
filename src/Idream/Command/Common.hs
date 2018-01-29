@@ -1,5 +1,5 @@
 
-{-# LANGUAGE TemplateHaskell, FlexibleContexts, OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Idream.Command.Common ( setupBuildDir
                              , tryAction

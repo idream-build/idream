@@ -31,4 +31,4 @@ cleanCode = do
 
 -- | Displays the error if something went wrong during project cleanup.
 showError :: MonadLogger m => IOException -> m ()
-showError e = $(logError) ("Failed to clean project: " <> (T.pack $ show e))
+showError e = $(logError) ("Failed to clean project: " <> T.pack (show e))

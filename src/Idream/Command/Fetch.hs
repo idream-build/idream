@@ -106,7 +106,7 @@ fetchDepsForProject pkgSet (Project pkgName deps) = do
   let notYetFetchedPkgs = filter (`notElem` alreadyFetchedPkgs) deps
   subProjects <- mapM (fetchPkg pkgSet) notYetFetchedPkgs
   modify $ \s -> s { depGraph = updateGraph subProjects (depGraph s)
-                   , fetchedPkgs = (fmap projPkgName subProjects) ++ (fetchedPkgs s) }
+                   , fetchedPkgs = fmap projPkgName subProjects ++ fetchedPkgs s }
   mapM_ (fetchDepsForProject pkgSet) subProjects
 
 -- | Fetches a package as specified in the top level package set file.
@@ -115,13 +115,13 @@ fetchPkg :: ( MonadError FetchPkgErr m
             , MonadLogger m
             , MonadIO m )
          => PackageSet -> PackageName -> m Project
-fetchPkg (PackageSet pkgs) pkgName@(PackageName name) = do
+fetchPkg (PackageSet pkgs) pkgName@(PackageName name) =
   case Map.lookup name pkgs of
     Nothing -> throwError $ FPPkgMissingInPkgSet pkgName
     Just (PackageDescr repo version) -> do
       workDir <- asks $ buildDir . buildSettings
       projectFilePath <- asks $ projectFile . buildSettings
-      let repoDir = workDir </> "src" </> (T.unpack name)
+      let repoDir = workDir </> "src" </> T.unpack name
           projFile = repoDir </> projectFilePath
       cloneResult <- runExceptT $ gitClone repo version repoDir
       either (throwError . FPGitCloneErr) return cloneResult
@@ -212,16 +212,16 @@ handleFetchPkgErr (FPGitCloneErr err) = handleGitCloneErr err
 -- | Helper function for handling errors when cloning git repositories.
 handleGitCloneErr :: MonadLogger m => GitCloneErr -> m ()
 handleGitCloneErr (CloneFailError (Repo repo) err) =
-  $(logError) ("Error occurred during cloning of git repo (" <> repo <> "): " <> (T.pack $ show err) <> ".")
+  $(logError) ("Error occurred during cloning of git repo (" <> repo <> "): " <> T.pack (show err) <> ".")
 handleGitCloneErr (CloneFailExitCode (Repo repo) code) =
   $(logError) ("Cloning of git repo (" <> repo <> ") returned non-zero exit code: "
-               <> (T.pack $ show code) <> ".")
+               <> T.pack (show code) <> ".")
 handleGitCloneErr (CheckoutFailError (Repo repo) (Version vsn) err) =
   $(logError) ("Error occurred during checkout of repo (" <> repo
-               <> "), version = " <> vsn <> ":" <> (T.pack $ show err))
+               <> "), version = " <> vsn <> ":" <> T.pack (show err))
 handleGitCloneErr (CheckoutFailExitCode (Repo repo) (Version vsn) code) =
   $(logError) ("Checkout of repo (" <> repo <> "), version = " <> vsn
-               <> " returned non-zero exit code: " <> (T.pack $ show code))
+               <> " returned non-zero exit code: " <> T.pack (show code))
 
 -- | Helper function for handling errors related to saving
 --   of the dependency graph to a file.
