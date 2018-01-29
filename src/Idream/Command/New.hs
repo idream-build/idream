@@ -17,6 +17,7 @@ import qualified Data.Text.IO as TIO
 import System.Directory ( createDirectory )
 import System.FilePath ( (</>) )
 import Idream.Types ( Config(..)
+                    , BuildSettings(..)
                     , PackageName(..)
                     , PackageType(..) )
 import Idream.Command.Common ( tryAction )
@@ -42,6 +43,8 @@ idreamJson =
   T.unlines [ "{"
             , "    \"cache-dir\": \".idream-work/\","
             , "    \"project-file\": \"idr-project.json\""
+            , "    \"package-set-file\": \"idr-package-set.json\""
+            , "    \"package-file\": \"idr-package.json\""
             , "}"
             ]
 idrPkgJson pkgName pkgType =
@@ -89,17 +92,20 @@ showError (MkDirError e) = $(logError) ("Failed to initialize project: " <> T.pa
 showError (MkFileError e) = $(logError) ("Failed to initialize project: " <> T.pack (show e))
 
 -- | Does the actual creation of the project template.
-startNewProject' :: (MonadError MkProjectError m, MonadIO m)
+startNewProject' :: ( MonadError MkProjectError m
+                    , MonadReader Config m
+                    , MonadIO m)
                  => PackageName -> PackageType -> m ()
 startNewProject' (PackageName pkgName) pkgType = do
+  buildCfg <- asks buildSettings
   safeCreateDir projectDir
-  safeCreateDir $ relDir ".idream-work"
+  safeCreateDir $ relDir $ buildDir buildCfg
   safeWriteFile gitignore $ relPath ".gitignore"
   safeWriteFile idreamJson $ relPath ".idream.json"
-  safeWriteFile (idrProjectJson pkgName) (relPath "idr-project.json")
-  safeWriteFile idrPkgSetJson $ relPath "idr-package-set.json"
+  safeWriteFile (idrProjectJson pkgName) (relPath $ projectFile buildCfg)
+  safeWriteFile idrPkgSetJson $ relPath (pkgSetFile buildCfg)
   safeCreateDir $ relDir projectDir
-  safeWriteFile (idrPkgJson pkgName pkgType) (relPath $ projectDir </> "idr-package.json")
+  safeWriteFile (idrPkgJson pkgName pkgType) (relPath $ projectDir </> pkgFile buildCfg)
   safeCreateDir (relDir $ projectDir </> "src")
   safeWriteFile (mainContents pkgType) (relPath $ projectDir </> "src" </> mainFile pkgType)
   where projectDir = T.unpack pkgName

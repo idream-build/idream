@@ -98,6 +98,7 @@ data Args = Args { logLevel :: LogLevel
 data BuildSettings = BuildSettings { buildDir :: Directory
                                    , projectFile :: FilePath
                                    , pkgSetFile :: FilePath
+                                   , pkgFile :: FilePath
                                    } deriving (Eq, Show)
 
 -- | Type grouping all settings together into 1 big structure.
@@ -109,7 +110,8 @@ data Config = Config { args :: Args
 -- Instances
 
 instance Default BuildSettings where
-  def = BuildSettings ".idream-work" "idr-project.json" "idr-package-set.json"
+  def = BuildSettings ".idream-work" "idr-project.json"
+                      "idr-package-set.json" "idr-package.json"
 
 instance Default SourceDir where
   def = SourceDir "src"
@@ -119,6 +121,7 @@ instance FromJSON BuildSettings where
                       <$> o .: "build-dir"
                       <*> o .: "project-file"
                       <*> o .: "package-set-file"
+                      <*> o .: "package-file"
   parseJSON _ = mzero
 
 instance FromJSON PackageName where

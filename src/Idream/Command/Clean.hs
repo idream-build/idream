@@ -7,7 +7,7 @@ module Idream.Command.Clean (cleanCode) where
 
 import Control.Monad.Reader
 import Control.Monad.Logger
-import Idream.Types (Config)
+import Idream.Types (Config(..), BuildSettings(..))
 import System.Directory ( getCurrentDirectory
                         , listDirectory
                         , removePathForcibly )
@@ -23,9 +23,10 @@ import Data.Monoid ( (<>) )
 cleanCode :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
 cleanCode = do
   $(logInfo) "Cleaning project."
+  workDir <- asks $ buildDir . buildSettings
   result <- liftIO . try $ do
     cwd <- getCurrentDirectory
-    files <- listDirectory $ cwd </> ".idream-work"
+    files <- listDirectory $ cwd </> workDir
     mapM_ removePathForcibly files
   either showError return result
 
