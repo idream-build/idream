@@ -116,14 +116,6 @@ instance Default BuildSettings where
 instance Default SourceDir where
   def = SourceDir "src"
 
-instance FromJSON BuildSettings where
-  parseJSON (Object o) = BuildSettings
-                      <$> o .: "build-dir"
-                      <*> o .: "project-file"
-                      <*> o .: "package-set-file"
-                      <*> o .: "package-file"
-  parseJSON _ = mzero
-
 instance FromJSON PackageName where
   parseJSON v = PackageName <$> parseJSON v
 

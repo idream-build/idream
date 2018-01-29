@@ -8,11 +8,6 @@ module Main where
 import Control.Monad.Reader
 import Control.Monad.Logger
 import Data.Default (def)
-import Data.Aeson (eitherDecode)
-import System.IO.Error
-import System.Directory
-import System.FilePath ((</>))
-import qualified Data.ByteString.Lazy as BSL
 import Idream.OptionParser
 import Idream.Types
 import Idream.Command.Fetch (fetchDeps)
@@ -32,9 +27,8 @@ import Idream.Command.Test (runTests)
 -- | Main function.
 main :: IO ()
 main = do
-  settings <- readBuildSettings
   cmdLineArgs <- parseCmdLineArgs
-  let config = Config cmdLineArgs settings
+  let config = Config cmdLineArgs def
       getLogThreshold Info = LevelInfo
       getLogThreshold _ = LevelDebug
       logThreshold = getLogThreshold $ logLevel cmdLineArgs
@@ -42,15 +36,6 @@ main = do
                     $ flip runReaderT config $ do
     command <- asks $ cmd . args
     processCommand command
-
--- | Helper function to read build settings from ".idream" file in a package.
-readBuildSettings :: IO BuildSettings
-readBuildSettings =
-  let defaultSettings = const def
-  in flip catchIOError defaultSettings $ do
-    cwd <- getCurrentDirectory
-    jsonContents <- BSL.readFile $ cwd </> ".idream"
-    either defaultSettings return $ eitherDecode jsonContents
 
 -- | Function that processes the given command.
 processCommand :: (MonadReader Config m,

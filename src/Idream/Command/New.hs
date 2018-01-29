@@ -34,19 +34,11 @@ data MkProjectError = MkDirError IOException
 
 -- Functions
 
-gitignore, idreamJson, idrPkgSetJson, libIdr, mainIdr :: Text
+gitignore, idrPkgSetJson, libIdr, mainIdr :: Text
 idrProjectJson :: Text -> Text
 idrPkgJson :: Text -> PackageType -> Text
 
 gitignore = ".idream-work/"
-idreamJson =
-  T.unlines [ "{"
-            , "    \"cache-dir\": \".idream-work/\","
-            , "    \"project-file\": \"idr-project.json\""
-            , "    \"package-set-file\": \"idr-package-set.json\""
-            , "    \"package-file\": \"idr-package.json\""
-            , "}"
-            ]
 idrPkgJson pkgName pkgType =
   T.unlines [ "{"
             , "    \"name\": \"" <> pkgName <> "\","
@@ -101,7 +93,6 @@ startNewProject' (PackageName pkgName) pkgType = do
   safeCreateDir projectDir
   safeCreateDir $ relDir $ buildDir buildCfg
   safeWriteFile gitignore $ relPath ".gitignore"
-  safeWriteFile idreamJson $ relPath ".idream.json"
   safeWriteFile (idrProjectJson pkgName) (relPath $ projectFile buildCfg)
   safeWriteFile idrPkgSetJson $ relPath (pkgSetFile buildCfg)
   safeCreateDir $ relDir projectDir
