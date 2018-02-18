@@ -3,8 +3,14 @@
 
 module Idream.Graph ( DepGraph
                     , GraphErr(..)
+                    , Max(..)
+                    , MonoidMap(..)
+                    , Depth
+                    , BuildPlan
                     , emptyGraph
                     , updateGraph
+                    , getLeafNodes
+                    , createBuildPlan
                     , saveGraphToJSON
                     , loadGraphFromJSON
                     ) where
@@ -13,24 +19,54 @@ module Idream.Graph ( DepGraph
 
 import Idream.Types ( Project(..), PackageName(..) )
 import Idream.Command.Common ( tryAction )
+import qualified Data.Map as Map
+import Data.Map ( Map )
+import Data.Set ( Set )
+import Data.Monoid
 import Data.Aeson
 import Data.Aeson.Text ( encodeToLazyText )
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import qualified Data.Text.Lazy.IO as TIO
 import qualified Algebra.Graph as Graph
+import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Monad.Except
+import Control.Monad.State
 import Control.Exception ( IOException )
 
 
 -- Data types
 
+-- | Type representing the dependency graph.
 type DepGraph = Graph.Graph PackageName
+
+-- | Type containing possible errors that can occur while working with graphs.
 data GraphErr = SaveGraphErr IOException
               | LoadGraphErr IOException
               | ParseGraphErr String
               deriving (Eq, Show)
+
+-- | Data type used for (de-)serializing graphs.
 data GraphInfo = GraphInfo [PackageName] [(PackageName, PackageName)]
                deriving (Eq, Show)
+
+-- | Type representing how deep a node is located in a graph.
+type Depth = Int
+
+-- | Type representing an adjacency map of a graph.
+type AdjacencyMap a = Map a (Set a)
+
+-- | Monoid used for finding the maximum.
+newtype Max a = Max a deriving (Eq, Ord, Show)
+
+-- | Wrapper type around map that combines values using monoidal appends.
+newtype MonoidMap k v = MonoidMap (Map k v) deriving (Eq, Show)
+
+-- | Type used for describing the build plan idream uses.
+type BuildPlan a = MonoidMap a (Max Depth)
+
+-- | Helper data type for finding the depth of each node in a graph.
+data TraverseState a = TraverseState Depth (BuildPlan a)
+                     deriving (Eq, Show)
 
 
 -- Instances
@@ -46,6 +82,14 @@ instance ToJSON GraphInfo where
     object [ "vertices" .= vs
            , "edges" .= es
            ]
+
+instance (Ord a, Num a) => Monoid (Max a) where
+  mempty = Max 0
+  mappend (Max a) (Max b) = if a > b then Max a else Max b
+
+instance (Ord k, Monoid v) => Monoid (MonoidMap k v) where
+  mempty = MonoidMap Map.empty
+  mappend (MonoidMap a) (MonoidMap b) = MonoidMap (Map.unionWith mappend a b)
 
 
 -- Functions
@@ -64,6 +108,63 @@ updateGraph xs g = mergedGraph where
   projectGraphs = fmap mkProjectGraph xs
   mergedGraph :: DepGraph
   mergedGraph = Graph.simplify . Graph.overlays $ g:projectGraphs
+
+-- | Converts a graph to an adjacency map.
+--   Each key (node in a graph) maps onto a set of direct neighbours.
+--   NOTE: the neighbours are only in the direction of the arrows in the graph.
+toAdjacencyMap :: Ord a => Graph.Graph a -> AdjacencyMap a
+toAdjacencyMap g =
+  let vs = Graph.vertexList g
+      es = Graph.edgeList g
+  in AM.adjacencyMap $ AM.graph vs es
+
+-- | Traverses a graph starting from a specific node
+--   and constructs a build plan along the way.
+traverseGraphWithDepth :: Ord a
+                       => Graph.Graph a
+                       -> a
+                       -> BuildPlan a
+traverseGraphWithDepth g v =
+  let am = toAdjacencyMap g
+      beginState = TraverseState 0 mempty
+      traverseAMWithDepth' = traverseAMWithDepth am v
+      (TraverseState _ endState) = execState traverseAMWithDepth' beginState
+  in endState
+
+-- | Traverse an adjacency map in order to find the max depth of each node
+--   in a graph, starting from a specific node.
+traverseAMWithDepth :: Ord a
+                    => AdjacencyMap a
+                    -> a
+                    -> State (TraverseState a) ()
+traverseAMWithDepth am v =
+  let singleton key val = MonoidMap (Map.singleton key (Max val))
+  in case Map.lookup v am of
+    Nothing -> return ()  -- node not located in this graph
+    Just vs -> do
+      -- first increase depth by 1 level, adding current node,
+      -- then go recursively through each of the neighbours
+      -- and reset depth back to current level
+      modify $ \(TraverseState d m) -> TraverseState (d + 1) (m <> singleton v d)
+      mapM_ (traverseAMWithDepth am) vs
+      modify $ \(TraverseState d m) -> TraverseState (d - 1) m
+
+-- | Finds all nodes in the graph that have no outgoing arrows.
+getLeafNodes :: Ord a => Graph.Graph a -> [a]
+getLeafNodes g =
+  let am = toAdjacencyMap g
+      vs = Graph.vertexList g
+      isLeafNode Nothing = False  -- not located in graph
+      isLeafNode (Just set) = set == mempty
+  in [v | v <- vs, isLeafNode $ Map.lookup v am]
+
+-- | Creates a build plan, given a graph.
+createBuildPlan :: Ord a => Graph.Graph a -> BuildPlan a
+createBuildPlan g =
+  let leafs = getLeafNodes g
+      g' = Graph.transpose g
+      buildPlans = map (traverseGraphWithDepth g') leafs
+  in mconcat buildPlans
 
 -- | Converts the graph to a different representation.
 toGraphInfo :: DepGraph -> GraphInfo
