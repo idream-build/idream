@@ -6,10 +6,12 @@ module Idream.Graph ( DepGraph
                     , Max(..)
                     , MonoidMap(..)
                     , Depth
-                    , BuildPlan
+                    , Phase
+                    , BuildPlan(..)
                     , emptyGraph
                     , updateGraph
                     , getLeafNodes
+                    , mkBuildPlan
                     , createBuildPlan
                     , saveGraphToJSON
                     , loadGraphFromJSON
@@ -20,6 +22,7 @@ module Idream.Graph ( DepGraph
 import Idream.Types ( Project(..), PackageName(..) )
 import Idream.Command.Common ( tryAction )
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Data.Map ( Map )
 import Data.Set ( Set )
 import Data.Monoid
@@ -61,11 +64,16 @@ newtype Max a = Max a deriving (Eq, Ord, Show)
 -- | Wrapper type around map that combines values using monoidal appends.
 newtype MonoidMap k v = MonoidMap (Map k v) deriving (Eq, Show)
 
+-- | Type alias for a phase in the build plan.
+type Phase = Int
+
 -- | Type used for describing the build plan idream uses.
-type BuildPlan a = MonoidMap a (Max Depth)
+data BuildPlan a = BuildPlan { numPhases :: Phase
+                             , phaseMap :: Map Phase (Set a)
+                             } deriving (Eq, Show)
 
 -- | Helper data type for finding the depth of each node in a graph.
-data TraverseState a = TraverseState Depth (BuildPlan a)
+data TraverseState a = TraverseState Depth (MonoidMap a (Max Depth))
                      deriving (Eq, Show)
 
 
@@ -119,11 +127,11 @@ toAdjacencyMap g =
   in AM.adjacencyMap $ AM.graph vs es
 
 -- | Traverses a graph starting from a specific node
---   and constructs a build plan along the way.
+--   and keeps a track of max depth for each node along the way.
 traverseGraphWithDepth :: Ord a
                        => Graph.Graph a
                        -> a
-                       -> BuildPlan a
+                       -> MonoidMap a (Max Depth)
 traverseGraphWithDepth g v =
   let am = toAdjacencyMap g
       beginState = TraverseState 0 mempty
@@ -158,13 +166,22 @@ getLeafNodes g =
       isLeafNode (Just set) = set == mempty
   in [v | v <- vs, isLeafNode $ Map.lookup v am]
 
--- | Creates a build plan, given a graph.
+mkBuildPlan :: Ord a => MonoidMap a (Max Depth) -> BuildPlan a
+mkBuildPlan (MonoidMap depthMap) =
+  let mapList = Map.toList $ fmap (\(Max x) -> x) depthMap
+      mapList' = [(d, Set.singleton a) | (a, d) <- mapList]
+      mapSet = Map.fromListWith Set.union mapList'
+      phases = length mapSet
+  in BuildPlan phases mapSet
+
+  -- | Creates a build plan, given a graph.
 createBuildPlan :: Ord a => Graph.Graph a -> BuildPlan a
 createBuildPlan g =
   let leafs = getLeafNodes g
       g' = Graph.transpose g
-      buildPlans = map (traverseGraphWithDepth g') leafs
-  in mconcat buildPlans
+      depthMaps = map (traverseGraphWithDepth g') leafs
+      depthMap = mconcat depthMaps
+  in mkBuildPlan depthMap
 
 -- | Converts the graph to a different representation.
 toGraphInfo :: DepGraph -> GraphInfo
