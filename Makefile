@@ -5,13 +5,13 @@
 # TODO add targets for building demo, ...
 
 build:
-	@stack build
+	@stack build -j 8
 
 clean:
 	@stack clean
 
 test:
-	@stack test
+	@stack test -j 8
 
 lint:
 	@hlint .
