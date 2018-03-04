@@ -1,25 +1,27 @@
 
-{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell, FlexibleContexts, OverloadedStrings, DeriveFoldable #-}
 
 module Idream.Graph ( DepGraph
+                    , DepNode(..)
                     , GraphErr(..)
                     , Max(..)
                     , MonoidMap(..)
                     , Depth
                     , Phase
                     , BuildPlan(..)
-                    , emptyGraph
+                    , mkGraphFromProject
                     , updateGraph
                     , getLeafNodes
                     , mkBuildPlan
                     , createBuildPlan
                     , saveGraphToJSON
                     , loadGraphFromJSON
+                    , handleGraphErr
                     ) where
 
 -- Imports
 
-import Idream.Types ( Project(..), PackageName(..) )
+import Idream.Types ( Project(..), ProjectName(..), PackageName(..) )
 import Idream.Command.Common ( tryAction )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -29,18 +31,25 @@ import Data.Monoid
 import Data.Aeson
 import Data.Aeson.Text ( encodeToLazyText )
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
+import qualified Data.Text as T
 import qualified Data.Text.Lazy.IO as TIO
 import qualified Algebra.Graph as Graph
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Monad.Except
+import Control.Monad.Logger
 import Control.Monad.State
 import Control.Exception ( IOException )
 
 
 -- Data types
 
+-- | Type used in each node of the graph, it combines the package name
+--   together with the project in which it belongs.
+data DepNode = DepNode PackageName ProjectName
+             deriving (Eq, Ord, Show)
+
 -- | Type representing the dependency graph.
-type DepGraph = Graph.Graph PackageName
+type DepGraph = Graph.Graph DepNode
 
 -- | Type containing possible errors that can occur while working with graphs.
 data GraphErr = SaveGraphErr IOException
@@ -49,7 +58,7 @@ data GraphErr = SaveGraphErr IOException
               deriving (Eq, Show)
 
 -- | Data type used for (de-)serializing graphs.
-data GraphInfo = GraphInfo [PackageName] [(PackageName, PackageName)]
+data GraphInfo = GraphInfo [DepNode] [(DepNode, DepNode)]
                deriving (Eq, Show)
 
 -- | Type representing how deep a node is located in a graph.
@@ -70,7 +79,7 @@ type Phase = Int
 -- | Type used for describing the build plan idream uses.
 data BuildPlan a = BuildPlan { numPhases :: Phase
                              , phaseMap :: Map Phase (Set a)
-                             } deriving (Eq, Show)
+                             } deriving (Eq, Show, Foldable)
 
 -- | Helper data type for finding the depth of each node in a graph.
 data TraverseState a = TraverseState Depth (MonoidMap a (Max Depth))
@@ -78,6 +87,18 @@ data TraverseState a = TraverseState Depth (MonoidMap a (Max Depth))
 
 
 -- Instances
+
+instance FromJSON DepNode where
+  parseJSON (Object o) = DepNode
+                      <$> o .: "package_name"
+                      <*> o .: "project_name"
+  parseJSON _ = mzero
+
+instance ToJSON DepNode where
+  toJSON (DepNode pkgName projName) =
+    object [ "package_name" .= pkgName
+           , "project_name" .= projName
+           ]
 
 instance FromJSON GraphInfo where
   parseJSON (Object o) = GraphInfo
@@ -102,20 +123,24 @@ instance (Ord k, Monoid v) => Monoid (MonoidMap k v) where
 
 -- Functions
 
--- | Constructs an empty graph.
-emptyGraph :: DepGraph
-emptyGraph = Graph.empty
+-- | Constructs an initial graph from a top level project.
+mkGraphFromProject :: Project -> DepGraph
+mkGraphFromProject p = Graph.overlays (Graph.vertex <$> nodesFromProject p)
 
--- | Updates the dependency graph by adding a new list of projects to it.
+-- | Updates the dependency graph by adding a new list of projects to a package.
 --   Each project can itself contain further dependencies.
-updateGraph :: [Project] -> DepGraph -> DepGraph
-updateGraph xs g = mergedGraph where
-  mkProjectGraph :: Project -> DepGraph
-  mkProjectGraph (Project pkgName deps) = Graph.star pkgName deps
-  projectGraphs :: [DepGraph]
-  projectGraphs = fmap mkProjectGraph xs
+updateGraph :: DepNode -> [Project] -> DepGraph -> DepGraph
+updateGraph node projects g = mergedGraph where
   mergedGraph :: DepGraph
   mergedGraph = Graph.simplify . Graph.overlays $ g:projectGraphs
+  projectGraphs :: [DepGraph]
+  projectGraphs = connectProjectToGraph <$> projects
+  connectProjectToGraph :: Project -> DepGraph
+  connectProjectToGraph p = Graph.star node (nodesFromProject p)
+
+-- | Creates a list of nodes to be inserted into a dependency graph.
+nodesFromProject :: Project -> [DepNode]
+nodesFromProject (Project projName deps) = flip DepNode projName <$> deps
 
 -- | Converts a graph to an adjacency map.
 --   Each key (node in a graph) maps onto a set of direct neighbours.
@@ -205,3 +230,13 @@ loadGraphFromJSON file = do
   case eitherDecode' $ encodeUtf8 contents of
     Left err -> throwError $ ParseGraphErr err
     Right graphInfo -> return $ fromGraphInfo graphInfo
+
+-- | Helper function for handling errors related to saving
+--   of the dependency graph to a file.
+handleGraphErr :: MonadLogger m => GraphErr -> m ()
+handleGraphErr (LoadGraphErr err) =
+  $(logError) (T.pack $ "Failed to load graph from a file: " <> show err <> ".")
+handleGraphErr (SaveGraphErr err) =
+  $(logError) (T.pack $ "Failed to save graph to a file: " <> show err <> ".")
+handleGraphErr (ParseGraphErr err) =
+  $(logError) (T.pack $ "Failed to parse graph from file: " <> show err <> ".")

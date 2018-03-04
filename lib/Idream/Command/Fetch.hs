@@ -11,30 +11,29 @@ import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Logger
 import Control.Exception ( IOException )
-import System.Directory ( getCurrentDirectory )
+import System.Directory ( getCurrentDirectory, doesDirectoryExist, doesFileExist  )
 import System.FilePath ( FilePath, (</>) )
+import System.Process ( createProcess, waitForProcess, cwd, proc )
+import System.Exit ( ExitCode(..) )
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Map as Map
 import Data.Monoid ( (<>) )
 import Data.Aeson ( eitherDecode )
+import Data.List ( partition )
 import qualified Data.Text as T
-import System.Process ( createProcess, waitForProcess, cwd, proc )
-import System.Exit ( ExitCode(..) )
-import Idream.Command.Common ( setupBuildDir, tryAction )
-import Idream.Types ( Config(..), Project(..), PackageSet(..), PackageName(..)
-                    , PackageDescr(..), Repo(..), Version(..), Directory
-                    , buildSettings, buildDir, projectFile, pkgSetFile )
+import Idream.Command.Common ( setupBuildDir, tryAction, readPkgFile
+                             , handleReadPkgErr, ReadPkgErr(..) )
+import Idream.Types
 import Idream.Graph
 
 
 -- Types
 
--- | State used to keep track of already fetched dependencies.
---   Note: during retrieval of dependencies, a dependency graph
---         is also built along the way.
-data FetchState = FetchState { depGraph :: DepGraph
-                             , fetchedPkgs :: [PackageName]
-                             } deriving (Eq, Show)
+-- | Helper data type used for marking if a project was already fetched or not.
+--   This helps detecting/breaking a cycle in the dependency graph.
+data FetchInfo = AlreadyFetched Project
+               | NewlyFetched Project
+               deriving (Eq, Show)
 
 -- | Top level error type, models all errors that can occur
 --   during fetching of dependencies.
@@ -62,7 +61,8 @@ data GitCloneErr = CloneFailError Repo IOException
                  deriving (Eq, Show)
 
 -- | Error type used for describing errors when fetching packages.
-data FetchPkgErr = FPPkgMissingInPkgSet PackageName
+data FetchPkgErr = FPPkgMissingInPkgSet ProjectName
+                 | FPReadPkgDepsErr ReadPkgErr
                  | FPReadProjectErr ReadProjectErr
                  | FPGitCloneErr GitCloneErr
                  deriving (Eq, Show)
@@ -79,54 +79,77 @@ fetchDeps = do
   setupBuildDir
   workDir <- asks $ buildDir . buildSettings
   result <- runExceptT $ do
-    rootProj@(Project pkgName _) <- withExceptT FReadProjectErr readRootProjFile
+    rootProj@(Project projName _) <- withExceptT FReadProjectErr readRootProjFile
     pkgSet <- withExceptT FReadPkgSetErr readPkgSetFile
-    $(logInfo) ("Fetching dependencies for " <> unName pkgName <> ".")
-    let initialGraph = updateGraph [rootProj] emptyGraph
-        initialState = FetchState initialGraph [pkgName]
+    $(logInfo) ("Fetching dependencies for " <> unProjName projName <> ".")
+    let initialGraph = mkGraphFromProject rootProj
         graphFile = workDir </> "dependency-graph.json"
         fetchDepsForProj = fetchDepsForProject pkgSet rootProj
-    graph <- withExceptT FFetchPkgErr $ depGraph <$> execStateT fetchDepsForProj initialState
+    graph <- withExceptT FFetchPkgErr $ execStateT fetchDepsForProj initialGraph
     withExceptT FGraphErr $ saveGraphToJSON graphFile graph
   case result of
     Left err -> handleFetchErr err
     Right _ -> $(logInfo) "Successfully fetched dependencies!"
 
 -- | Recursively fetches all dependencies for a project.
---   This function avoids potential cycles in dependencies by marking already fetched packages.
 fetchDepsForProject :: ( MonadError FetchPkgErr m
-                       , MonadState FetchState m
+                       , MonadState DepGraph m
                        , MonadReader Config m
                        , MonadLogger m
                        , MonadIO m )
                     => PackageSet -> Project -> m ()
-fetchDepsForProject pkgSet (Project pkgName deps) = do
-  $(logDebug) ("Fetching dependencies for package: " <> unName pkgName <> ".")
-  alreadyFetchedPkgs <- gets fetchedPkgs
-  let notYetFetchedPkgs = filter (`notElem` alreadyFetchedPkgs) deps
-  subProjects <- mapM (fetchPkg pkgSet) notYetFetchedPkgs
-  modify $ \s -> s { depGraph = updateGraph subProjects (depGraph s)
-                   , fetchedPkgs = fmap projPkgName subProjects ++ fetchedPkgs s }
-  mapM_ (fetchDepsForProject pkgSet) subProjects
+fetchDepsForProject pkgSet (Project projName pkgs) = do
+  $(logDebug) ("Fetching dependencies for project: " <> unProjName projName <> ".")
+  mapM_ (fetchDepsForPackage pkgSet projName) pkgs
+
+-- | Recursively fetch all dependencies for a package
+fetchDepsForPackage :: ( MonadError FetchPkgErr m
+                       , MonadState DepGraph m
+                       , MonadReader Config m
+                       , MonadLogger m
+                       , MonadIO m )
+                    => PackageSet -> ProjectName -> PackageName -> m ()
+fetchDepsForPackage pkgSet projName pkgName = do
+  $(logDebug) ("Fetching dependencies for package: " <> unPkgName pkgName <> ".")
+  pkgDepsResult <- runExceptT $ readPkgDeps projName pkgName
+  case pkgDepsResult of
+    Left err -> throwError $ FPReadPkgDepsErr err
+    Right pkgDeps -> do
+      let isOld (AlreadyFetched _) = True
+          isOld _ = False
+      (oldSubProjects, newSubProjects) <- partition isOld <$> mapM (fetchProj pkgSet) pkgDeps
+      let unwrap (AlreadyFetched proj) = proj
+          unwrap (NewlyFetched proj) = proj
+          oldSubProjects' = unwrap <$> oldSubProjects
+          newSubProjects' = unwrap <$> newSubProjects
+          subProjects = oldSubProjects' ++ newSubProjects'
+      modify $ updateGraph (DepNode pkgName projName) subProjects
+      mapM_ (fetchDepsForProject pkgSet) newSubProjects'
 
 -- | Fetches a package as specified in the top level package set file.
-fetchPkg :: ( MonadError FetchPkgErr m
-            , MonadReader Config m
-            , MonadLogger m
-            , MonadIO m )
-         => PackageSet -> PackageName -> m Project
-fetchPkg (PackageSet pkgs) pkgName@(PackageName name) =
+fetchProj :: ( MonadError FetchPkgErr m
+             , MonadReader Config m
+             , MonadLogger m
+             , MonadIO m )
+          => PackageSet -> ProjectName -> m FetchInfo
+fetchProj (PackageSet pkgs) projName@(ProjectName name) =
   case Map.lookup name pkgs of
-    Nothing -> throwError $ FPPkgMissingInPkgSet pkgName
+    Nothing -> throwError $ FPPkgMissingInPkgSet projName
     Just (PackageDescr repo version) -> do
       workDir <- asks $ buildDir . buildSettings
       projectFilePath <- asks $ projectFile . buildSettings
       let repoDir = workDir </> "src" </> T.unpack name
           projFile = repoDir </> projectFilePath
-      cloneResult <- runExceptT $ gitClone repo version repoDir
-      either (throwError . FPGitCloneErr) return cloneResult
-      result <- runExceptT $ readProjFile projFile
-      either (throwError . FPReadProjectErr) return result
+      (dirExists, fileExists) <- liftIO $ liftM2 (,) (doesDirectoryExist repoDir) (doesFileExist projFile)
+      case (dirExists, fileExists) of
+        (True, True) -> do
+          projInfo <- runExceptT $ readProjFile projFile
+          either (throwError . FPReadProjectErr) (return . AlreadyFetched) projInfo
+        _ -> do
+          cloneResult <- runExceptT $ gitClone repo version repoDir
+          either (throwError . FPGitCloneErr) return cloneResult
+          result <- runExceptT $ readProjFile projFile
+          either (throwError . FPReadProjectErr) (return . NewlyFetched) result
 
 -- | Reads out the top level project file (idr-project.json).
 readRootProjFile :: ( MonadError ReadProjectErr m
@@ -146,6 +169,20 @@ readProjFile file = do
     dir <- getCurrentDirectory
     BSL.readFile $ dir </> file
   either (throwError . ProjectParseErr) return $ eitherDecode projectJSON
+
+-- | Reads the package file to determine the project dependencies.
+readPkgDeps :: ( MonadError ReadPkgErr m
+               , MonadReader Config m
+               , MonadLogger m
+               , MonadIO m )
+            => ProjectName -> PackageName -> m [ProjectName]
+readPkgDeps (ProjectName projName) (PackageName pkgName) = do
+  workDir <- asks $ buildDir . buildSettings
+  pkgFileName <- asks $ pkgFile . buildSettings
+  let pkgDir = workDir </> "src" </> T.unpack projName </> T.unpack pkgName
+      pkgFilePath = pkgDir </> pkgFileName
+  (Package _ _ _ deps) <- readPkgFile pkgFilePath
+  return deps
 
 -- | Reads out the package set file (idr-package-set.json).
 readPkgSetFile :: ( MonadError ReadPkgSetErr m
@@ -168,8 +205,8 @@ gitClone :: ( MonadError GitCloneErr m
 gitClone r@(Repo repo) v@(Version vsn) repoDir =
   let cloneArgs = ["clone", "--quiet", "--recurse-submodules", T.unpack repo, repoDir]
       checkoutArgs = ["checkout", "--quiet", T.unpack vsn]
-      execProcess cmd cmdArgs maybeDir = do
-        (_, _, _, procHandle) <- createProcess (proc cmd cmdArgs) { cwd = maybeDir }
+      execProcess command cmdArgs maybeDir = do
+        (_, _, _, procHandle) <- createProcess (proc command cmdArgs) { cwd = maybeDir }
         waitForProcess procHandle
   in do
     cloneResult <- tryAction (CloneFailError r) $ execProcess "git" cloneArgs Nothing
@@ -198,14 +235,15 @@ handleReadProjectErr (ProjectParseErr err) =
 --   readout of package set file.
 handleReadPkgSetErr :: MonadLogger m => ReadPkgSetErr -> m ()
 handleReadPkgSetErr (PkgSetFileNotFound err) =
-  $(logError) (T.pack $ "Failed to read package set file" <> show err <> ".")
+  $(logError) (T.pack $ "Failed to read package set file: " <> show err <> ".")
 handleReadPkgSetErr (PkgSetParseErr err) =
-  $(logError) (T.pack $ "Failed to parse package set file" <> err <> ".")
+  $(logError) (T.pack $ "Failed to parse package set file: " <> err <> ".")
 
 -- | Helper function for handling erros when fetching dependencies.
 handleFetchPkgErr :: MonadLogger m => FetchPkgErr -> m ()
-handleFetchPkgErr (FPPkgMissingInPkgSet pkgName) =
-  $(logError) ("Package missing in idr-package-set.json: " <> unName pkgName <> ".")
+handleFetchPkgErr (FPPkgMissingInPkgSet projName) =
+  $(logError) ("Package missing in idr-package-set.json: " <> unProjName projName <> ".")
+handleFetchPkgErr (FPReadPkgDepsErr err) = handleReadPkgErr err
 handleFetchPkgErr (FPReadProjectErr err) = handleReadProjectErr err
 handleFetchPkgErr (FPGitCloneErr err) = handleGitCloneErr err
 
@@ -222,13 +260,3 @@ handleGitCloneErr (CheckoutFailError (Repo repo) (Version vsn) err) =
 handleGitCloneErr (CheckoutFailExitCode (Repo repo) (Version vsn) code) =
   $(logError) ("Checkout of repo (" <> repo <> "), version = " <> vsn
                <> " returned non-zero exit code: " <> T.pack (show code))
-
--- | Helper function for handling errors related to saving
---   of the dependency graph to a file.
-handleGraphErr :: MonadLogger m => GraphErr -> m ()
-handleGraphErr (LoadGraphErr err) =
-  $(logError) (T.pack $ "Failed to load graph from a file: " <> show err <> ".")
-handleGraphErr (SaveGraphErr err) =
-  $(logError) (T.pack $ "Failed to save graph to a file: " <> show err <> ".")
-handleGraphErr (ParseGraphErr err) =
-  $(logError) (T.pack $ "Failed to parse graph from file: " <> show err <> ".")

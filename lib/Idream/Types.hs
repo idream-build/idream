@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Idream.Types ( BuildSettings(..)
+                    , ProjectName(..)
                     , PackageName(..)
                     , Argument
                     , SourceDir(..)
@@ -34,17 +35,13 @@ import Control.Monad (mzero)
 -- | Type alias for directories.
 type Directory = FilePath
 
--- | Type used for representing package names.
-newtype PackageName = PackageName { unName :: Text }
+-- | Type used for representing project names.
+newtype ProjectName = ProjectName { unProjName :: Text }
                     deriving (Eq, Ord, Show)
 
--- | Type representing name of a dependency.
-type DepName = PackageName
-
--- | Type containing project data (coming from idr-project.json).
-data Project = Project { projPkgName :: PackageName
-                       , projDeps :: [DepName]
-                       } deriving (Eq, Show)
+-- | Type used for representing package names.
+newtype PackageName = PackageName { unPkgName :: Text }
+                    deriving (Eq, Ord, Show)
 
 -- | Type used for representing the source directory of a package.
 newtype SourceDir = SourceDir Directory deriving (Eq, Show)
@@ -52,8 +49,19 @@ newtype SourceDir = SourceDir Directory deriving (Eq, Show)
 -- | Helper type for indicating the type of a package.
 data PackageType = Library | Executable deriving (Eq, Show)
 
+-- | Type containing project data (coming from idr-project.json).
+--   A project consists of 1 or more packages that are closely related to
+--   each other. This can for example be a binary, library, tests, ...
+data Project = Project { projProjName :: ProjectName
+                       , projDeps :: [PackageName]
+                       } deriving (Eq, Show)
+
 -- | Type containing package data (coming from idr-package.json).
-data Package = Package PackageName PackageType SourceDir [PackageName]
+--   A package can depend on 1 or more projects (which can possibly contain
+--   multiple closely related binaries or libraries).
+--   If a package does depend on a project, it will depend on each of the
+--   packages in that project.
+data Package = Package PackageName PackageType SourceDir [ProjectName]
              deriving (Eq, Show)
 
 -- | Type used for representing repository location of a package.
@@ -68,6 +76,8 @@ data PackageDescr = PackageDescr Repo Version
 
 -- | Type containing information about a package set
 --   (as described in idr-package-set.json).
+--   A package set is a collection of git repositories used for finding
+--   projects (which contain packages).
 newtype PackageSet = PackageSet (Map Text PackageDescr)
                    deriving (Eq, Show)
 
@@ -121,6 +131,12 @@ instance FromJSON PackageName where
 
 instance ToJSON PackageName where
   toJSON (PackageName v) = toJSON v
+
+instance FromJSON ProjectName where
+  parseJSON v = ProjectName <$> parseJSON v
+
+instance ToJSON ProjectName where
+  toJSON (ProjectName v) = toJSON v
 
 instance FromJSON SourceDir where
   parseJSON v = SourceDir <$> parseJSON v
