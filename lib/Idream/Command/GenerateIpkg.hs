@@ -27,11 +27,14 @@ import qualified Data.Text.IO as TIO
 
 -- Data types
 
+-- | Type alias for modules inside an ipkg file.
 type Module = FilePath
 
+-- | Data type containing all info needed to generate an ipkg file.
 data IpkgMetadata = IpkgMetadata Package [Module]
                   deriving (Eq, Show)
 
+-- | Error type used for storing all errors when generating .ipkg files.
 data GenerateIpkgErr = GLoadGraphErr GraphErr
                      | GCopyFilesErr PackageName IOException
                      | GFindPkgFilesErr PackageName IOException
@@ -42,6 +45,7 @@ data GenerateIpkgErr = GLoadGraphErr GraphErr
 
 -- Functions
 
+-- | Top level function used for generating .ipkg files.
 generateIpkgFile :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
 generateIpkgFile = do
   $(logInfo) "Generating .ipkg files..."
@@ -54,6 +58,7 @@ generateIpkgFile = do
     Left err -> handleGenerateIpkgErr err
     Right _ -> $(logInfo) "Successfully generated .ipkg files!"
 
+-- | Generates an ipkg file for 1 package in a project.
 generateIpkg :: ( MonadError GenerateIpkgErr m
                 , MonadReader Config m
                 , MonadLogger m
@@ -71,6 +76,7 @@ generateIpkg node@(DepNode pkgName@(PackageName name) (ProjectName projName)) = 
     shelly $ silently $ cp_r (toFilePath pkgSrcDir) (toFilePath pkgBuildDir)
   generateIpkgHelper node pkgBuildDir
 
+-- | Helper function that does the actual generation of the .ipkg file.
 generateIpkgHelper :: ( MonadError GenerateIpkgErr m
                       , MonadReader Config m
                       , MonadLogger m
@@ -89,6 +95,7 @@ generateIpkgHelper (DepNode pkgName@(PackageName name) _) pkgDir = do
           contents = ipkgMetadataToText pkgMetadata
       tryAction (GGenerateIpkgErr pkgName) $ TIO.writeFile ipkgFile contents
 
+-- | Helper function that returns all idris files (ending in .idr) in a directory.
 findIdrisFiles :: ( MonadError GenerateIpkgErr m
                   , MonadIO m )
                => PackageName -> Directory -> m [Module]
@@ -101,6 +108,7 @@ findIdrisFiles pkgName dir =
     idrisFiles <- shelly $ silently $ findWhen isIdrisFile dir'
     return $ fromFilePath <$> idrisFiles
 
+-- | Converts the ipkg metadata to a text representation.
 ipkgMetadataToText :: IpkgMetadata -> Text
 ipkgMetadataToText (IpkgMetadata pkg modules) =
   let (Package pkgName pkgType (SourceDir srcDir) subProjects) = pkg
@@ -117,6 +125,7 @@ ipkgMetadataToText (IpkgMetadata pkg modules) =
                , if pkgType == Executable then "main = Main" else ""
                ]
 
+-- | Helper function for handling errors when generating ipkg files.
 handleGenerateIpkgErr :: MonadLogger m => GenerateIpkgErr -> m ()
 handleGenerateIpkgErr (GLoadGraphErr err) = handleGraphErr err
 handleGenerateIpkgErr (GCopyFilesErr pkgName err) =
