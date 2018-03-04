@@ -14,6 +14,6 @@ test:
 	@stack test -j 8
 
 lint:
-	@hlint .
+	@hlint src/ lib/
 
 .PHONY: build clean test lint

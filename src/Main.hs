@@ -1,5 +1,5 @@
 
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Main where
 
