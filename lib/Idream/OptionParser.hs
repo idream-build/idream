@@ -33,7 +33,6 @@ commandParser = hsubparser commands where
           <> mkCmd "run" runParser "Runs the executable (only valid for executable packages)."
           <> mkCmd "repl" (pure Repl) "Starts the Idris repl."
           <> mkCmd "new" newCmdParser "Initializes a new project."
-          <> mkCmd "validate" (pure Validate) "Validates the JSON config files used by idream."
           <> mkCmd "docs" (pure MkDoc) "Generates the documentation."
           <> mkCmd "generate-ipkg" (pure GenerateIpkg) "Generates an ipkg file from the Idream JSON files."
           <> mkCmd "test" (pure Test) "Runs unit tests for this project."

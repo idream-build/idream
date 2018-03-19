@@ -94,7 +94,6 @@ data Command = Fetch                        -- ^ Fetches all dependencies as des
              | Run [Argument]               -- ^ Runs the executable defined in idr-project.json
              | Repl                         -- ^ Opens up the repl
              | New PackageName PackageType  -- ^ Initializes a new project built on the idream structure
-             | Validate                     -- ^ Validates the JSON files used by idream
              | MkDoc                        -- ^ Generates the documentation
              | GenerateIpkg                 -- ^ Generates a ipkg file from the idream JSON files
              | Test                         -- ^ Runs unit tests for this project
