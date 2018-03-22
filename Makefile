@@ -16,4 +16,8 @@ test:
 lint:
 	@hlint src/ lib/
 
-.PHONY: build clean test lint
+integration_test:
+	@docker build -t idream_tester .
+	@docker run -v $(shell pwd)/test/integration_tests:/test -it idream_tester
+
+.PHONY: build clean lint test integration_test
