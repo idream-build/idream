@@ -56,7 +56,7 @@ idrProjectJson pkgName =
             , "    ]"
             , "}"
             ]
-idrPkgSetJson = "{}"
+idrPkgSetJson = "{}\n"
 libIdr =
   T.unlines [ "module Lib"
             , ""

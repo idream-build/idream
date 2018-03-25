@@ -40,8 +40,8 @@ commandParser = hsubparser commands where
   runParser = Run <$> many (strArgument (metavar ""))
   newCmdParser = New <$> (PackageName <$> strArgument (metavar ""))
                      <*> codeTypeParser
-  codeTypeParser =  flag' Library (long "--lib")
-                <|> flag' Executable (long "--exe")
+  codeTypeParser =  flag' Library (long "lib")
+                <|> flag' Executable (long "exe")
 
 -- | Helper function for parsing the command line arguments.
 argsParser :: Parser Args
