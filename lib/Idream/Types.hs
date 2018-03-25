@@ -93,7 +93,8 @@ data Command = Fetch                        -- ^ Fetches all dependencies as des
              | Clean                        -- ^ Cleans up build artifacts, fetched code?
              | Run [Argument]               -- ^ Runs the executable defined in idr-project.json
              | Repl                         -- ^ Opens up the repl
-             | New PackageName PackageType  -- ^ Initializes a new project built on the idream structure
+             | New ProjectName              -- ^ Initializes a new project for use with idream
+             | Add PackageName PackageType  -- ^ Adds a package to an existing idream project
              | MkDoc                        -- ^ Generates the documentation
              | GenerateIpkg                 -- ^ Generates a ipkg file from the idream JSON files
              | Test                         -- ^ Runs unit tests for this project
@@ -148,14 +149,19 @@ instance FromJSON Version where
 
 instance FromJSON Project where
   parseJSON (Object o) =
-    Project <$> o .: "package_name"
+    Project <$> o .: "project_name"
             <*> o .: "packages"
   parseJSON _ = mzero
+
+instance ToJSON Project where
+  toJSON (Project projName deps) =
+    object [ "project_name" .= toJSON projName
+           , "packages" .= toJSON deps ]
 
 instance FromJSON Package where
   parseJSON (Object o) = do
     name <- o .: "name"
-    srcDir <- o .:? "sourcedir" .!= def
+    srcDir <- o .:? "source_dir" .!= def
     pkgs <- o .:? "packages" .!= def
     isExecutable <- o .:? "executable" .!= False
     let pkgType = if isExecutable then Executable else Library
@@ -170,3 +176,4 @@ instance FromJSON PackageDescr where
 
 instance FromJSON PackageSet where
   parseJSON v = PackageSet <$> parseJSON v
+

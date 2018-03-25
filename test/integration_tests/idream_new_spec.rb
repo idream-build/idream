@@ -1,7 +1,6 @@
 describe 'idream new command' do
-  # TODO split up into init/new?
 
-  before(:each) do
+  before do
     @idream = idream_exe
     @idream_dir = Dir.pwd
     Dir.mkdir test_dir
@@ -13,36 +12,42 @@ describe 'idream new command' do
     `rm -rf #{test_dir}`
   end
 
-  it "throws an error when --lib or --exe missing" do
-    expect(idream "new").to eq args_missing
-    expect(idream "new test_project").to eq args_missing
+  it "fails when no args are provided" do
+    output = idream "new"
+    expect(output).to include('Missing: PROJECT_NAME')
+    expect(output).to include('Usage: idream new PROJECT_NAME')
+  end
+
+  it "fails when multiple args provided" do
+    expect(idream "new test test2").to include("Invalid argument `test2'")
+  end
+
+  it "fails when invalid flag is passed in" do
     expect(idream "new --invalid").to include("Invalid option `--invalid'")
   end
 
-  it "can generate a project template for a library" do
-    lib_name = 'test_lib'
-    expect(idream "new --lib #{lib_name}").to eq ""  # TODO should output text!
+  it "gives an informational message on success." do
+    output = idream "new #{proj_name}"
+    expect(output).to include("Successfully initialized project: #{proj_name}.")
+  end
 
-    expect(File.directory? "./#{lib_name}").to be(true)
-    expect(File.directory? "./#{lib_name}/#{lib_name}").to be(true)
-    expect(File.directory? "./#{lib_name}/#{lib_name}/src").to be(true)
-    ["./#{lib_name}/idr-package-set.json",
-     "./#{lib_name}/idr-project.json",
-     "./#{lib_name}/#{lib_name}/idr-package.json",
-     "./#{lib_name}/#{lib_name}/src/Lib.idr"
+  it "generates the expected directory structure for projects" do
+    idream "new #{proj_name}"
+
+    expect(File.directory? "./#{proj_name}").to be(true)
+    expect(File.directory? "./#{proj_name}/.idream-work").to be(true)
+    ["./#{proj_name}/.gitignore",
+     "./#{proj_name}/idr-package-set.json",
+     "./#{proj_name}/idr-project.json",
     ].zip([
+      gitignore_contents,
       idr_package_set_contents,
-      idr_project_contents(lib_name),
-      idr_package_contents(lib_name),
-      lib_idr_contents
+      idr_project_contents(proj_name)
     ]).each do |f, contents|
       expect(File.read f).to include(contents)
     end
   end
 
-  it "can generate a project template for an executable" do
-    expect(false).to be_truthy
-  end
 
   # Helper functions
 
@@ -59,47 +64,26 @@ describe 'idream new command' do
     '/tmp/idream_integration_tests'
   end
 
-  def args_missing
-    <<~END
-    Missing: (--lib | --exe)
-
-    Usage: idream new (--lib | --exe)
-      Initializes a new project.
-    END
+  def proj_name
+    'test_project'
   end
 
   def idr_package_set_contents
     "{}\n"  # empty by default
   end
 
-  def idr_project_contents lib_name
+  def idr_project_contents project_name
     <<~END
     {
+        "project_name": "#{project_name}",
         "packages": [
-            "#{lib_name}"
+
         ]
     }
     END
   end
 
-  def idr_package_contents lib_name
-    <<~END
-    {
-        "name": "#{lib_name}",
-        "sourcedir": "src",
-        "executable": false,
-        "dependencies": []
-    }
-    END
-  end
-
-  def lib_idr_contents
-    <<~END
-    module Lib
-
-    ||| Library function, to be replaced with actual code.
-    libFunction : String
-    libFunction = "Hello, Idris!"
-    END
+  def gitignore_contents
+    ".idream-work/\n"
   end
 end

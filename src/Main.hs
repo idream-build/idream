@@ -16,6 +16,7 @@ import Idream.Command.Clean (cleanCode)
 import Idream.Command.Run (runCode)
 import Idream.Command.Repl (startRepl)
 import Idream.Command.New (startNewProject)
+import Idream.Command.Add (addPackageToProject)
 import Idream.Command.MkDoc (generateDocs)
 import Idream.Command.GenerateIpkg (generateIpkgFile)
 import Idream.Command.Test (runTests)
@@ -47,7 +48,8 @@ processCommand Compile = compileCode
 processCommand Clean = cleanCode
 processCommand (Run runArgs) = runCode runArgs
 processCommand Repl = startRepl
-processCommand (New pkgName pkgType) = startNewProject pkgName pkgType
+processCommand (New projName) = startNewProject projName
+processCommand (Add pkgName pkgType) = addPackageToProject pkgName pkgType
 processCommand MkDoc = generateDocs
 processCommand GenerateIpkg = generateIpkgFile
 processCommand Test = runTests

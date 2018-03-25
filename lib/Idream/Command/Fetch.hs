@@ -12,7 +12,7 @@ import Control.Monad.State
 import Control.Monad.Logger
 import Control.Exception ( IOException )
 import System.Directory ( getCurrentDirectory, doesDirectoryExist, doesFileExist  )
-import System.FilePath ( FilePath, (</>) )
+import System.FilePath ( (</>) )
 import System.Process ( createProcess, waitForProcess, cwd, proc )
 import System.Exit ( ExitCode(..) )
 import qualified Data.ByteString.Lazy as BSL
@@ -21,8 +21,9 @@ import Data.Monoid ( (<>) )
 import Data.Aeson ( eitherDecode )
 import Data.List ( partition )
 import qualified Data.Text as T
-import Idream.Command.Common ( setupBuildDir, tryAction, readPkgFile
-                             , handleReadPkgErr, ReadPkgErr(..) )
+import Idream.Command.Common ( setupBuildDir, tryAction, readProjFile, readPkgFile
+                             , handleReadProjectErr, handleReadPkgErr
+                             , ReadProjectErr(..), ReadPkgErr(..) )
 import Idream.Types
 import Idream.Graph
 
@@ -42,11 +43,6 @@ data FetchErr = FReadProjectErr ReadProjectErr
               | FFetchPkgErr FetchPkgErr
               | FGraphErr GraphErr
               deriving (Eq, Show)
-
--- | Error type used for describing errors that can occur while reading out the project file.
-data ReadProjectErr = ProjectFileNotFound IOException
-                    | ProjectParseErr String
-                    deriving (Eq, Show)
 
 -- | Error type used for describing errors that can occur while reading out package set file.
 data ReadPkgSetErr = PkgSetFileNotFound IOException
@@ -160,16 +156,6 @@ readRootProjFile = do
   projectFilePath <- asks $ projectFile . buildSettings
   readProjFile projectFilePath
 
--- | Reads out a project file (idr-project.json).
-readProjFile :: ( MonadError ReadProjectErr m
-                , MonadIO m )
-             => FilePath -> m Project
-readProjFile file = do
-  projectJSON <- tryAction ProjectFileNotFound $ do
-    dir <- getCurrentDirectory
-    BSL.readFile $ dir </> file
-  either (throwError . ProjectParseErr) return $ eitherDecode projectJSON
-
 -- | Reads the package file to determine the project dependencies.
 readPkgDeps :: ( MonadError ReadPkgErr m
                , MonadReader Config m
@@ -224,14 +210,6 @@ handleFetchErr (FFetchPkgErr err) = handleFetchPkgErr err
 handleFetchErr (FGraphErr err) = handleGraphErr err
 
 -- | Helper function for handling errors related to
---   readout of project file.
-handleReadProjectErr :: MonadLogger m => ReadProjectErr -> m ()
-handleReadProjectErr (ProjectFileNotFound err) =
-  $(logError) (T.pack $ "Did not find project file: " <> show err <> ".")
-handleReadProjectErr (ProjectParseErr err) =
-  $(logError) (T.pack $ "Failed to parse project file: " <> err <> ".")
-
--- | Helper function for handling errors related to
 --   readout of package set file.
 handleReadPkgSetErr :: MonadLogger m => ReadPkgSetErr -> m ()
 handleReadPkgSetErr (PkgSetFileNotFound err) =
@@ -260,3 +238,4 @@ handleGitCloneErr (CheckoutFailError (Repo repo) (Version vsn) err) =
 handleGitCloneErr (CheckoutFailExitCode (Repo repo) (Version vsn) code) =
   $(logError) ("Checkout of repo (" <> repo <> "), version = " <> vsn
                <> " returned non-zero exit code: " <> T.pack (show code))
+

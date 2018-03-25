@@ -9,6 +9,7 @@ import Data.Semigroup ((<>))
 import Data.Maybe (fromMaybe)
 import Idream.Types ( LogLevel(..)
                     , Command(..)
+                    , ProjectName(..)
                     , PackageName(..)
                     , PackageType(..)
                     , Args(..))
@@ -33,12 +34,14 @@ commandParser = hsubparser commands where
           <> mkCmd "run" runParser "Runs the executable (only valid for executable packages)."
           <> mkCmd "repl" (pure Repl) "Starts the Idris repl."
           <> mkCmd "new" newCmdParser "Initializes a new project."
+          <> mkCmd "add" addCmdParser "Adds a package to an existing idream project."
           <> mkCmd "docs" (pure MkDoc) "Generates the documentation."
           <> mkCmd "generate-ipkg" (pure GenerateIpkg) "Generates an ipkg file from the Idream JSON files."
           <> mkCmd "test" (pure Test) "Runs unit tests for this project."
   mkCmd name parser desc = command name (info parser (progDesc desc))
-  runParser = Run <$> many (strArgument (metavar ""))
-  newCmdParser = New <$> (PackageName <$> strArgument (metavar ""))
+  runParser = Run <$> many (strArgument (metavar "ARGS"))
+  newCmdParser = New <$> (ProjectName <$> strArgument (metavar "PROJECT_NAME"))
+  addCmdParser = Add <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
                      <*> codeTypeParser
   codeTypeParser =  flag' Library (long "lib")
                 <|> flag' Executable (long "exe")

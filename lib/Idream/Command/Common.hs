@@ -2,14 +2,19 @@
 {-# LANGUAGE TemplateHaskell, FlexibleContexts #-}
 
 module Idream.Command.Common ( setupBuildDir
+                             , readProjFile
                              , readPkgFile
                              , tryAction
+                             , safeCreateDir
+                             , safeWriteFile
                              , invokeCmdWithEnv
+                             , handleReadProjectErr
                              , handleReadPkgErr
                              , Command
                              , Arg
                              , Environment
                              , ReadPkgErr(..)
+                             , ReadProjectErr(..)
                              ) where
 
 -- TODO move to Idream.Helpers?
@@ -19,13 +24,16 @@ import Control.Monad.Reader
 import Control.Monad.Logger
 import Control.Monad.Except
 import Control.Exception ( Exception, IOException, try )
-import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
+import System.Directory ( createDirectory
+                        , createDirectoryIfMissing
+                        , getCurrentDirectory )
 import System.FilePath ( FilePath, (</>) )
 import System.Process ( createProcess, waitForProcess, proc, env )
 import System.Exit ( ExitCode(..) )
-import Idream.Types ( Config(..), Package(..), buildDir )
+import Idream.Types ( Config(..), Project(..), Package(..), Directory, buildDir )
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import Data.Aeson ( eitherDecode )
 import Data.Monoid ( (<>) )
 
@@ -43,10 +51,16 @@ type Arg = String
 --   expressed as a list of key value pairs.
 type Environment = [(String, String)]
 
+-- | Error type used for describing errors that can occur while reading out the project file.
+data ReadProjectErr = ProjectFileNotFound IOException
+                    | ProjectParseErr String
+                    deriving (Eq, Show)
+
 -- | Error type used for describing errors that can occur while reading out a package file.
 data ReadPkgErr = PkgFileNotFound IOException
                 | PkgParseErr String
                 deriving (Eq, Show)
+
 
 -- Functions
 
@@ -55,6 +69,16 @@ setupBuildDir :: ( MonadReader Config m, MonadIO m ) => m ()
 setupBuildDir = do
   buildDirectory <- asks $ buildDir . buildSettings
   liftIO $ createDirectoryIfMissing True buildDirectory
+
+-- | Reads out a project file (idr-project.json).
+readProjFile :: ( MonadError ReadProjectErr m
+                , MonadIO m )
+             => FilePath -> m Project
+readProjFile file = do
+  projectJSON <- tryAction ProjectFileNotFound $ do
+    dir <- getCurrentDirectory
+    BSL.readFile $ dir </> file
+  either (throwError . ProjectParseErr) return $ eitherDecode projectJSON
 
 -- | Reads out a package file (idr-package.json)
 readPkgFile :: ( MonadError ReadPkgErr m
@@ -73,6 +97,18 @@ tryAction :: ( MonadError e' m, MonadIO m, Exception e )
           => (e -> e') -> IO a -> m a
 tryAction f = (>>= either (throwError . f) return) <$> liftIO . try
 
+-- | Safely creates a directory while handling possible exceptions.
+safeCreateDir :: ( MonadError e m, MonadIO m )
+              => (IOException -> e) -> Directory -> m ()
+safeCreateDir f dir =
+  tryAction f $ createDirectory dir
+
+-- | Safely writes to a file, while handling possible exceptions.
+safeWriteFile :: (MonadError e m, MonadIO m)
+              => (IOException -> e) -> T.Text -> FilePath -> m ()
+safeWriteFile f txt path =
+  tryAction f $ TIO.writeFile path txt
+
 -- | Invokes a command as a separate operating system process.
 --   Allows passing additional environment variables to the external process.
 invokeCmdWithEnv :: MonadIO m => Command -> [Arg] -> Environment -> m ExitCode
@@ -83,9 +119,18 @@ invokeCmdWithEnv cmd cmdArgs environ =
     waitForProcess procHandle
 
 -- | Helper function for handling errors related to
+--   readout of project file.
+handleReadProjectErr :: MonadLogger m => ReadProjectErr -> m ()
+handleReadProjectErr (ProjectFileNotFound err) =
+  $(logError) (T.pack $ "Did not find project file: " <> show err <> ".")
+handleReadProjectErr (ProjectParseErr err) =
+  $(logError) (T.pack $ "Failed to parse project file: " <> err <> ".")
+
+-- | Helper function for handling errors related to
 --   readout of package file.
 handleReadPkgErr :: MonadLogger m => ReadPkgErr -> m ()
 handleReadPkgErr (PkgFileNotFound err) =
   $(logError) (T.pack $ "Failed to read package file: " <> show err <> ".")
 handleReadPkgErr (PkgParseErr err) =
   $(logError) (T.pack $ "Failed to parse package file: " <> err <> ".")
+
