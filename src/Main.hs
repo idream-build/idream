@@ -6,8 +6,9 @@ module Main where
 -- Imports
 
 import Control.Monad.Reader
-import Control.Monad.Logger
 import Data.Default (def)
+import qualified Idream.Log as Log
+import Idream.Log ( MonadLogger )
 import Idream.OptionParser
 import Idream.Types
 import Idream.Command.Fetch (fetchDeps)
@@ -29,18 +30,19 @@ main :: IO ()
 main = do
   cmdLineArgs <- parseCmdLineArgs
   let config = Config cmdLineArgs def
-      getLogThreshold Info = LevelInfo
-      getLogThreshold _ = LevelDebug
+      getLogThreshold Info = Log.Info
+      getLogThreshold _ = Log.Debug
       logThreshold = getLogThreshold $ logLevel cmdLineArgs
-  runStdoutLoggingT $ filterLogger (\_ lvl -> lvl >= logThreshold)
-                    $ flip runReaderT config $ do
+  flip runReaderT logThreshold
+    $ Log.runLoggingT
+    $ flip runReaderT config $ do
     command <- asks $ cmd . args
     processCommand command
 
 -- | Function that processes the given command.
-processCommand :: (MonadReader Config m,
-                   MonadLogger m,
-                   MonadIO m)
+processCommand :: ( MonadReader Config m
+                  , MonadLogger m
+                  , MonadIO m )
                => Command
                -> m ()
 processCommand Fetch = fetchDeps

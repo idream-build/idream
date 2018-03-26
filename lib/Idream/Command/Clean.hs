@@ -1,12 +1,13 @@
 
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 module Idream.Command.Clean (cleanCode) where
 
 -- Imports
 
 import Control.Monad.Reader
-import Control.Monad.Logger
+import Idream.Log ( MonadLogger )
+import qualified Idream.Log as Log
 import Idream.Types (Config(..), BuildSettings(..))
 import System.Directory ( getCurrentDirectory
                         , listDirectory
@@ -22,7 +23,7 @@ import Data.Monoid ( (<>) )
 -- | Cleans up the working directory of a project.
 cleanCode :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
 cleanCode = do
-  $(logInfo) "Cleaning project."
+  Log.info "Cleaning project."
   workDir <- asks $ buildDir . buildSettings
   result <- liftIO . try $ do
     cwd <- getCurrentDirectory
@@ -32,4 +33,4 @@ cleanCode = do
 
 -- | Displays the error if something went wrong during project cleanup.
 showError :: MonadLogger m => IOException -> m ()
-showError e = $(logError) ("Failed to clean project: " <> T.pack (show e))
+showError e = Log.err ("Failed to clean project: " <> T.pack (show e))

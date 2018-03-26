@@ -1,5 +1,5 @@
 
-{-# LANGUAGE TemplateHaskell, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Idream.Command.Common ( setupBuildDir
                              , readProjFile
@@ -21,8 +21,9 @@ module Idream.Command.Common ( setupBuildDir
 -- Imports
 
 import Control.Monad.Reader
-import Control.Monad.Logger
 import Control.Monad.Except
+import Idream.Log ( MonadLogger )
+import qualified Idream.Log as Log
 import Control.Exception ( Exception, IOException, try )
 import System.Directory ( createDirectory
                         , createDirectoryIfMissing
@@ -122,15 +123,15 @@ invokeCmdWithEnv cmd cmdArgs environ =
 --   readout of project file.
 handleReadProjectErr :: MonadLogger m => ReadProjectErr -> m ()
 handleReadProjectErr (ProjectFileNotFound err) =
-  $(logError) (T.pack $ "Did not find project file: " <> show err <> ".")
+  Log.err (T.pack $ "Did not find project file: " <> show err <> ".")
 handleReadProjectErr (ProjectParseErr err) =
-  $(logError) (T.pack $ "Failed to parse project file: " <> err <> ".")
+  Log.err (T.pack $ "Failed to parse project file: " <> err <> ".")
 
 -- | Helper function for handling errors related to
 --   readout of package file.
 handleReadPkgErr :: MonadLogger m => ReadPkgErr -> m ()
 handleReadPkgErr (PkgFileNotFound err) =
-  $(logError) (T.pack $ "Failed to read package file: " <> show err <> ".")
+  Log.err (T.pack $ "Failed to read package file: " <> show err <> ".")
 handleReadPkgErr (PkgParseErr err) =
-  $(logError) (T.pack $ "Failed to parse package file: " <> err <> ".")
+  Log.err (T.pack $ "Failed to parse package file: " <> err <> ".")
 

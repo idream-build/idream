@@ -1,5 +1,5 @@
 
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 module Idream.Command.GenerateIpkg ( generateIpkgFile ) where
 
@@ -8,7 +8,8 @@ module Idream.Command.GenerateIpkg ( generateIpkgFile ) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
-import Control.Monad.Logger
+import Idream.Log ( MonadLogger )
+import qualified Idream.Log as Log
 import Control.Exception ( IOException )
 import Idream.Types
 import Idream.Graph
@@ -48,7 +49,7 @@ data GenerateIpkgErr = GLoadGraphErr GraphErr
 -- | Top level function used for generating .ipkg files.
 generateIpkgFile :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
 generateIpkgFile = do
-  $(logInfo) "Generating .ipkg files..."
+  Log.info "Generating .ipkg files..."
   workDir <- asks $ buildDir . buildSettings
   let graphFile = workDir </> "dependency-graph.json"
   result <- runExceptT $ do
@@ -56,7 +57,7 @@ generateIpkgFile = do
     mapM_ generateIpkg graph
   case result of
     Left err -> handleGenerateIpkgErr err
-    Right _ -> $(logInfo) "Successfully generated .ipkg files!"
+    Right _ -> Log.info "Successfully generated .ipkg files!"
 
 -- | Generates an ipkg file for 1 package in a project.
 generateIpkg :: ( MonadError GenerateIpkgErr m
@@ -65,7 +66,7 @@ generateIpkg :: ( MonadError GenerateIpkgErr m
                 , MonadIO m )
              => DepNode -> m ()
 generateIpkg node@(DepNode pkgName@(PackageName name) (ProjectName projName)) = do
-  $(logDebug) ("Generating ipkg file for package: " <> name <> ".")
+  Log.debug ("Generating ipkg file for package: " <> name <> ".")
   workDir <- asks $ buildDir . buildSettings
   let pkgSrcDir = workDir </> "src" </> T.unpack projName </> T.unpack name
       pkgBuildDir = workDir </> "build" </> T.unpack projName </> T.unpack name
@@ -129,15 +130,16 @@ ipkgMetadataToText (IpkgMetadata pkg modules) =
 handleGenerateIpkgErr :: MonadLogger m => GenerateIpkgErr -> m ()
 handleGenerateIpkgErr (GLoadGraphErr err) = handleGraphErr err
 handleGenerateIpkgErr (GCopyFilesErr pkgName err) =
-  $(logError) ("Failed to copy files into build directory for package "
-               <> unPkgName pkgName <> ", reason: "
-               <> T.pack (show err) <> ".")
+  Log.err ("Failed to copy files into build directory for package "
+           <> unPkgName pkgName <> ", reason: "
+           <> T.pack (show err) <> ".")
 handleGenerateIpkgErr (GFindPkgFilesErr pkgName err) =
-  $(logError) ("Failed to find Idris files for package "
-               <> unPkgName pkgName <> ", reason: "
-               <> T.pack (show err) <> ".")
+  Log.err ("Failed to find Idris files for package "
+           <> unPkgName pkgName <> ", reason: "
+           <> T.pack (show err) <> ".")
 handleGenerateIpkgErr (GReadPkgFileErr err) = handleReadPkgErr err
 handleGenerateIpkgErr (GGenerateIpkgErr pkgName err) =
-  $(logError) ("Failed to generate .ipkg file for package"
-              <> unPkgName pkgName <> ", reason: "
-              <> T.pack (show err) <> ".")
+  Log.err ("Failed to generate .ipkg file for package"
+           <> unPkgName pkgName <> ", reason: "
+           <> T.pack (show err) <> ".")
+

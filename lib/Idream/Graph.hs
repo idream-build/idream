@@ -1,5 +1,5 @@
 
-{-# LANGUAGE TemplateHaskell, FlexibleContexts, OverloadedStrings, DeriveFoldable #-}
+{-# LANGUAGE FlexibleContexts, OverloadedStrings, DeriveFoldable #-}
 
 module Idream.Graph ( DepGraph
                     , DepNode(..)
@@ -36,7 +36,8 @@ import qualified Data.Text.Lazy.IO as TIO
 import qualified Algebra.Graph as Graph
 import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Monad.Except
-import Control.Monad.Logger
+import Idream.Log ( MonadLogger )
+import qualified Idream.Log as Log
 import Control.Monad.State
 import Control.Exception ( IOException )
 
@@ -235,8 +236,8 @@ loadGraphFromJSON file = do
 --   of the dependency graph to a file.
 handleGraphErr :: MonadLogger m => GraphErr -> m ()
 handleGraphErr (LoadGraphErr err) =
-  $(logError) (T.pack $ "Failed to load graph from a file: " <> show err <> ".")
+  Log.err (T.pack $ "Failed to load graph from a file: " <> show err <> ".")
 handleGraphErr (SaveGraphErr err) =
-  $(logError) (T.pack $ "Failed to save graph to a file: " <> show err <> ".")
+  Log.err (T.pack $ "Failed to save graph to a file: " <> show err <> ".")
 handleGraphErr (ParseGraphErr err) =
-  $(logError) (T.pack $ "Failed to parse graph from file: " <> show err <> ".")
+  Log.err (T.pack $ "Failed to parse graph from file: " <> show err <> ".")

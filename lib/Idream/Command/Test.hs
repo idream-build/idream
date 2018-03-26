@@ -1,12 +1,13 @@
 
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 module Idream.Command.Test ( runTests ) where
 
 import Control.Monad.Reader
-import Control.Monad.Logger
+import Idream.Log ( MonadLogger )
+import qualified Idream.Log as Log
 import Idream.Types (Config)
 
 
 runTests :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
-runTests = $(logDebug) "runTests not implemented yet!"
+runTests = Log.debug "runTests not implemented yet!"

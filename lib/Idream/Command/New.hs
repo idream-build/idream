@@ -1,5 +1,5 @@
 
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 module Idream.Command.New ( startNewProject ) where
 
@@ -7,8 +7,9 @@ module Idream.Command.New ( startNewProject ) where
 -- Imports
 
 import Control.Monad.Reader
-import Control.Monad.Logger
 import Control.Monad.Except
+import Idream.Log ( MonadLogger )
+import qualified Idream.Log as Log
 import Control.Exception ( IOException )
 import Data.Monoid ( (<>) )
 import Data.Text ( Text )
@@ -69,8 +70,8 @@ startNewProject' (ProjectName projName) = do
 
 -- | Displays the error if one occurred during project template creation.
 showError :: MonadLogger m => MkProjectError -> m ()
-showError (MkDirError e) = $(logError) ("Failed to initialize project: " <> T.pack (show e))
-showError (MkFileError e) = $(logError) ("Failed to initialize project: " <> T.pack (show e))
+showError (MkDirError e) = Log.err ("Failed to initialize project: " <> T.pack (show e))
+showError (MkFileError e) = Log.err ("Failed to initialize project: " <> T.pack (show e))
 
 -- | Safely creates a directory, while handling possible exceptions.
 safeCreateDir' :: ( MonadError MkProjectError m

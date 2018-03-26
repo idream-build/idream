@@ -1,5 +1,5 @@
 
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 module Idream.Command.Fetch ( fetchDeps ) where
 
@@ -9,7 +9,8 @@ module Idream.Command.Fetch ( fetchDeps ) where
 import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad.State
-import Control.Monad.Logger
+import Idream.Log ( MonadLogger )
+import qualified Idream.Log as Log
 import Control.Exception ( IOException )
 import System.Directory ( getCurrentDirectory, doesDirectoryExist, doesFileExist  )
 import System.FilePath ( (</>) )
@@ -77,7 +78,7 @@ fetchDeps = do
   result <- runExceptT $ do
     rootProj@(Project projName _) <- withExceptT FReadProjectErr readRootProjFile
     pkgSet <- withExceptT FReadPkgSetErr readPkgSetFile
-    $(logInfo) ("Fetching dependencies for " <> unProjName projName <> ".")
+    Log.info ("Fetching dependencies for " <> unProjName projName <> ".")
     let initialGraph = mkGraphFromProject rootProj
         graphFile = workDir </> "dependency-graph.json"
         fetchDepsForProj = fetchDepsForProject pkgSet rootProj
@@ -85,7 +86,7 @@ fetchDeps = do
     withExceptT FGraphErr $ saveGraphToJSON graphFile graph
   case result of
     Left err -> handleFetchErr err
-    Right _ -> $(logInfo) "Successfully fetched dependencies!"
+    Right _ -> Log.info "Successfully fetched dependencies!"
 
 -- | Recursively fetches all dependencies for a project.
 fetchDepsForProject :: ( MonadError FetchPkgErr m
@@ -95,7 +96,7 @@ fetchDepsForProject :: ( MonadError FetchPkgErr m
                        , MonadIO m )
                     => PackageSet -> Project -> m ()
 fetchDepsForProject pkgSet (Project projName pkgs) = do
-  $(logDebug) ("Fetching dependencies for project: " <> unProjName projName <> ".")
+  Log.debug ("Fetching dependencies for project: " <> unProjName projName <> ".")
   mapM_ (fetchDepsForPackage pkgSet projName) pkgs
 
 -- | Recursively fetch all dependencies for a package
@@ -106,7 +107,7 @@ fetchDepsForPackage :: ( MonadError FetchPkgErr m
                        , MonadIO m )
                     => PackageSet -> ProjectName -> PackageName -> m ()
 fetchDepsForPackage pkgSet projName pkgName = do
-  $(logDebug) ("Fetching dependencies for package: " <> unPkgName pkgName <> ".")
+  Log.debug ("Fetching dependencies for package: " <> unPkgName pkgName <> ".")
   pkgDepsResult <- runExceptT $ readPkgDeps projName pkgName
   case pkgDepsResult of
     Left err -> throwError $ FPReadPkgDepsErr err
@@ -213,14 +214,14 @@ handleFetchErr (FGraphErr err) = handleGraphErr err
 --   readout of package set file.
 handleReadPkgSetErr :: MonadLogger m => ReadPkgSetErr -> m ()
 handleReadPkgSetErr (PkgSetFileNotFound err) =
-  $(logError) (T.pack $ "Failed to read package set file: " <> show err <> ".")
+  Log.err (T.pack $ "Failed to read package set file: " <> show err <> ".")
 handleReadPkgSetErr (PkgSetParseErr err) =
-  $(logError) (T.pack $ "Failed to parse package set file: " <> err <> ".")
+  Log.err (T.pack $ "Failed to parse package set file: " <> err <> ".")
 
 -- | Helper function for handling erros when fetching dependencies.
 handleFetchPkgErr :: MonadLogger m => FetchPkgErr -> m ()
 handleFetchPkgErr (FPPkgMissingInPkgSet projName) =
-  $(logError) ("Package missing in idr-package-set.json: " <> unProjName projName <> ".")
+  Log.err ("Package missing in idr-package-set.json: " <> unProjName projName <> ".")
 handleFetchPkgErr (FPReadPkgDepsErr err) = handleReadPkgErr err
 handleFetchPkgErr (FPReadProjectErr err) = handleReadProjectErr err
 handleFetchPkgErr (FPGitCloneErr err) = handleGitCloneErr err
@@ -228,14 +229,14 @@ handleFetchPkgErr (FPGitCloneErr err) = handleGitCloneErr err
 -- | Helper function for handling errors when cloning git repositories.
 handleGitCloneErr :: MonadLogger m => GitCloneErr -> m ()
 handleGitCloneErr (CloneFailError (Repo repo) err) =
-  $(logError) ("Error occurred during cloning of git repo (" <> repo <> "): " <> T.pack (show err) <> ".")
+  Log.err ("Error occurred during cloning of git repo (" <> repo <> "): " <> T.pack (show err) <> ".")
 handleGitCloneErr (CloneFailExitCode (Repo repo) code) =
-  $(logError) ("Cloning of git repo (" <> repo <> ") returned non-zero exit code: "
-               <> T.pack (show code) <> ".")
+  Log.err ("Cloning of git repo (" <> repo <> ") returned non-zero exit code: "
+          <> T.pack (show code) <> ".")
 handleGitCloneErr (CheckoutFailError (Repo repo) (Version vsn) err) =
-  $(logError) ("Error occurred during checkout of repo (" <> repo
-               <> "), version = " <> vsn <> ":" <> T.pack (show err))
+  Log.err ("Error occurred during checkout of repo (" <> repo
+          <> "), version = " <> vsn <> ":" <> T.pack (show err))
 handleGitCloneErr (CheckoutFailExitCode (Repo repo) (Version vsn) code) =
-  $(logError) ("Checkout of repo (" <> repo <> "), version = " <> vsn
-               <> " returned non-zero exit code: " <> T.pack (show code))
+  Log.err ("Checkout of repo (" <> repo <> "), version = " <> vsn
+          <> " returned non-zero exit code: " <> T.pack (show code))
 

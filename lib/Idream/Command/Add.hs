@@ -1,5 +1,5 @@
 
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 module Idream.Command.Add ( addPackageToProject ) where
 
@@ -7,8 +7,9 @@ module Idream.Command.Add ( addPackageToProject ) where
 -- Imports
 
 import Control.Monad.Reader
-import Control.Monad.Logger
 import Control.Monad.Except
+import Idream.Log ( MonadLogger )
+import qualified Idream.Log as Log
 import Control.Exception ( IOException )
 import Data.Monoid ( (<>) )
 import Data.Text ( Text )
@@ -130,12 +131,12 @@ displayStatusUpdate (PackageName pkgName) =
 showError :: MonadLogger m => AddPackageError -> m ()
 showError (ReadProjFileErr err) = handleReadProjectErr err
 showError (PackageAlreadyExistsErr (PackageName pkgName)) =
-  $(logError) ("Failed to add package to project, package "
-              <> pkgName <> " already exists")
+  Log.err ("Failed to add package to project, package "
+          <> pkgName <> " already exists")
 showError (MkDirError e) =
-  $(logError) ("Failed to add package to project: " <> T.pack (show e))
+  Log.err ("Failed to add package to project: " <> T.pack (show e))
 showError (MkFileError e) =
-  $(logError) ("Failed to add package to project: " <> T.pack (show e))
+  Log.err ("Failed to add package to project: " <> T.pack (show e))
 
 
 -- | Safely creates a directory while handling possible exceptions.

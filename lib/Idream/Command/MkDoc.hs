@@ -1,12 +1,13 @@
 
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 module Idream.Command.MkDoc ( generateDocs ) where
 
 import Control.Monad.Reader
-import Control.Monad.Logger
+import Idream.Log ( MonadLogger )
+import qualified Idream.Log as Log
 import Idream.Types (Config)
 
 
 generateDocs :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
-generateDocs = $(logDebug) "generateDocs not implemented yet!"
+generateDocs = Log.debug "generateDocs not implemented yet!"
