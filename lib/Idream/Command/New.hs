@@ -7,9 +7,9 @@ module Idream.Command.New ( startNewProject ) where
 -- Imports
 
 import Control.Monad.Reader
-import Control.Monad.Except
 import Idream.Log ( MonadLogger )
 import qualified Idream.Log as Log
+import Idream.SafeIO ( MonadSafeIO, runSafeIO )
 import Control.Exception ( IOException )
 import Data.Monoid ( (<>) )
 import Data.Text ( Text )
@@ -49,13 +49,15 @@ idrProjectJson projName =
 -- | Creates a new project template.
 startNewProject :: ( MonadReader Config m, MonadLogger m, MonadIO m )
                 => ProjectName -> m ()
-startNewProject projName =
-  either showError return =<< runExceptT (startNewProject' projName)
+startNewProject projName = do
+  result <- runSafeIO (startNewProject' projName)
+  either showError return result
+
 
 -- | Does the actual creation of the project template.
-startNewProject' :: ( MonadError MkProjectError m
-                    , MonadReader Config m
-                    , MonadIO m)
+startNewProject' :: ( MonadReader Config m
+                    , MonadLogger m
+                    , MonadSafeIO MkProjectError m)
                  => ProjectName -> m ()
 startNewProject' (ProjectName projName) = do
   buildCfg <- asks buildSettings
@@ -64,7 +66,7 @@ startNewProject' (ProjectName projName) = do
   safeWriteFile' gitignore $ relPath ".gitignore"
   safeWriteFile' (idrProjectJson projName) (relPath $ projectFile buildCfg)
   safeWriteFile' idrPkgSetJson $ relPath (pkgSetFile buildCfg)
-  liftIO $ print ("Successfully initialized project: " <> projName <> ".")
+  Log.info ("Successfully initialized project: " <> projName <> ".")
   where projectDir = T.unpack projName
         relPath path = projectDir </> path
 
@@ -74,13 +76,10 @@ showError (MkDirError e) = Log.err ("Failed to initialize project: " <> T.pack (
 showError (MkFileError e) = Log.err ("Failed to initialize project: " <> T.pack (show e))
 
 -- | Safely creates a directory, while handling possible exceptions.
-safeCreateDir' :: ( MonadError MkProjectError m
-                  , MonadIO m)
-               => Directory -> m ()
+safeCreateDir' :: MonadSafeIO MkProjectError m => Directory -> m ()
 safeCreateDir' = safeCreateDir MkDirError
 
 -- | Safely writes to a file, while handling possible exceptions.
-safeWriteFile' :: (MonadError MkProjectError m, MonadIO m)
-               => Text -> FilePath -> m ()
+safeWriteFile' :: MonadSafeIO MkProjectError m => Text -> FilePath -> m ()
 safeWriteFile' = safeWriteFile MkFileError
 

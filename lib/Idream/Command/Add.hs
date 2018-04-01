@@ -7,9 +7,9 @@ module Idream.Command.Add ( addPackageToProject ) where
 -- Imports
 
 import Control.Monad.Reader
-import Control.Monad.Except
-import Idream.Log ( MonadLogger )
 import qualified Idream.Log as Log
+import Idream.Log ( MonadLogger )
+import Idream.SafeIO
 import Control.Exception ( IOException )
 import Data.Monoid ( (<>) )
 import Data.Text ( Text )
@@ -18,7 +18,7 @@ import Data.Aeson.Encode.Pretty ( encodePretty )
 import Data.Aeson.Types ( ToJSON(..) )
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text as T
-import System.Directory ( doesDirectoryExist, removePathForcibly )
+import System.Directory ( doesDirectoryExist )
 import System.FilePath ( (</>) )
 import Idream.Types ( Config(..), Directory, BuildSettings(..)
                     , Project(..), PackageName(..), PackageType(..) )
@@ -34,7 +34,7 @@ data AddPackageError = PackageAlreadyExistsErr PackageName
                      | ReadProjFileErr ReadProjectErr
                      | MkDirError IOException
                      | MkFileError IOException
-                    deriving (Eq, Show)
+                     deriving (Eq, Show)
 
 
 -- Functions
@@ -69,36 +69,30 @@ idrPkgJson pkgName pkgType =
 
 
 -- | Creates a new project template.
-addPackageToProject :: (MonadReader Config m, MonadLogger m, MonadIO m)
+addPackageToProject :: ( MonadReader Config m, MonadLogger m, MonadIO m )
                     => PackageName -> PackageType -> m ()
 addPackageToProject pkgName@(PackageName name) pkgType = do
   pkgDirExists <- liftIO $ doesDirectoryExist (T.unpack name)
   if pkgDirExists
     then showError $ PackageAlreadyExistsErr pkgName
     else do
-      result <- runExceptT (addPackageToProject' pkgName pkgType)
+      result <- runSafeIO $ addPackageToProject' pkgName pkgType
       either showError return result
 
 -- | Does the actual creation of the project template.
-addPackageToProject' :: ( MonadError AddPackageError m
-                        , MonadReader Config m
-                        , MonadIO m )
+addPackageToProject' :: ( MonadReader Config m
+                        , MonadLogger m
+                        , MonadSafeIO AddPackageError m )
                      => PackageName -> PackageType -> m ()
 addPackageToProject' pkgName@(PackageName name) pkgType = do
   buildCfg <- asks buildSettings
   projInfo <- readProjInfo buildCfg
-  result <- runExceptT $ do
-    safeCreateDir' pkgDir
-    safeCreateDir' srcDir
-    safeWriteFile' (idrPkgJson name pkgType) (pkgDir </> pkgFile buildCfg)
-    safeWriteFile' (mainContents pkgType) (srcDir </> mainFile pkgType)
-  case result of
-    Left err -> do
-      liftIO $ removePathForcibly pkgDir
-      throwError err
-    Right () -> do
-      updateProjInfo buildCfg projInfo pkgName
-      displayStatusUpdate pkgName
+  safeCreateDir' pkgDir
+  safeCreateDir' srcDir
+  safeWriteFile' (idrPkgJson name pkgType) (pkgDir </> pkgFile buildCfg)
+  safeWriteFile' (mainContents pkgType) (srcDir </> mainFile pkgType)
+  updateProjInfo buildCfg projInfo pkgName
+  displayStatusUpdate pkgName
   where pkgDir = T.unpack name
         srcDir = pkgDir </> "src"
         mainFile Library = "Lib.idr"
@@ -108,14 +102,11 @@ addPackageToProject' pkgName@(PackageName name) pkgType = do
 
 
 -- | Tries to read the project file.
-readProjInfo :: ( MonadError AddPackageError m, MonadIO m )
-             => BuildSettings -> m Project
-readProjInfo buildCfg = do
-  projInfo <- runExceptT $ readProjFile $ projectFile buildCfg
-  either (throwError . ReadProjFileErr) return projInfo
+readProjInfo :: MonadSafeIO AddPackageError m => BuildSettings -> m Project
+readProjInfo buildCfg = readProjFile ReadProjFileErr $ projectFile buildCfg
 
 -- | Updates the project file with a new package entry.
-updateProjInfo :: ( MonadError AddPackageError m, MonadIO m)
+updateProjInfo :: MonadSafeIO AddPackageError m
                => BuildSettings -> Project -> PackageName -> m ()
 updateProjInfo buildCfg projInfo pkgName =
   let projFilePath = projectFile buildCfg
@@ -123,9 +114,9 @@ updateProjInfo buildCfg projInfo pkgName =
       projInfo' = projInfo { projDeps = updatedDeps }
    in safeWriteFile' (encodeJSON projInfo') projFilePath
 
-displayStatusUpdate :: MonadIO m => PackageName -> m ()
+displayStatusUpdate :: MonadLogger m => PackageName -> m ()
 displayStatusUpdate (PackageName pkgName) =
-  liftIO . print . T.unpack $ "Successfully added package " <> pkgName <> " to project."
+  Log.info ("Successfully added package " <> pkgName <> " to project.")
 
 -- | Displays the error if one occurred during project template creation.
 showError :: MonadLogger m => AddPackageError -> m ()
@@ -140,13 +131,11 @@ showError (MkFileError e) =
 
 
 -- | Safely creates a directory while handling possible exceptions.
-safeCreateDir' :: ( MonadError AddPackageError m, MonadIO m )
-               => Directory -> m ()
+safeCreateDir' :: MonadSafeIO AddPackageError m => Directory -> m ()
 safeCreateDir' = safeCreateDir MkDirError
 
 -- | Safely writes to a file, while handling possible exceptions.
-safeWriteFile' :: ( MonadError AddPackageError m, MonadIO m)
-               => Text -> FilePath -> m ()
+safeWriteFile' :: MonadSafeIO AddPackageError m => Text -> FilePath -> m ()
 safeWriteFile' = safeWriteFile MkFileError
 
 encodeJSON :: ToJSON a => a -> Text

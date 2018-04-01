@@ -9,12 +9,12 @@ module Idream.Command.GenerateIpkg ( generateIpkgFile ) where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Idream.Log ( MonadLogger )
+import Idream.SafeIO
 import qualified Idream.Log as Log
 import Control.Exception ( IOException )
 import Idream.Types
 import Idream.Graph
-import Idream.Command.Common ( tryAction, readPkgFile
-                             , handleReadPkgErr, ReadPkgErr(..) )
+import Idream.Command.Common ( readPkgFile, handleReadPkgErr, ReadPkgErr(..) )
 import System.FilePath ( (</>) )
 import System.Directory ( removePathForcibly, createDirectory )
 import Shelly ( shelly, silently, hasExt, cp_r, findWhen
@@ -52,18 +52,17 @@ generateIpkgFile = do
   Log.info "Generating .ipkg files..."
   workDir <- asks $ buildDir . buildSettings
   let graphFile = workDir </> "dependency-graph.json"
-  result <- runExceptT $ do
-    graph <- withExceptT GLoadGraphErr $ loadGraphFromJSON graphFile
+  result <- runSafeIO $ do
+    graph <- loadGraphFromJSON GLoadGraphErr graphFile
     mapM_ generateIpkg graph
   case result of
     Left err -> handleGenerateIpkgErr err
     Right _ -> Log.info "Successfully generated .ipkg files!"
 
 -- | Generates an ipkg file for 1 package in a project.
-generateIpkg :: ( MonadError GenerateIpkgErr m
-                , MonadReader Config m
+generateIpkg :: ( MonadReader Config m
                 , MonadLogger m
-                , MonadIO m )
+                , MonadSafeIO GenerateIpkgErr m )
              => DepNode -> m ()
 generateIpkg node@(DepNode pkgName@(PackageName name) (ProjectName projName)) = do
   Log.debug ("Generating ipkg file for package: " <> name <> ".")
@@ -71,41 +70,37 @@ generateIpkg node@(DepNode pkgName@(PackageName name) (ProjectName projName)) = 
   let pkgSrcDir = workDir </> "src" </> T.unpack projName </> T.unpack name
       pkgBuildDir = workDir </> "build" </> T.unpack projName </> T.unpack name
       toFilePath = fromText . T.pack
-  tryAction (GCopyFilesErr pkgName) $ do
+  liftSafeIO (GCopyFilesErr pkgName) $ do
     removePathForcibly pkgBuildDir
     createDirectory pkgBuildDir
     shelly $ silently $ cp_r (toFilePath pkgSrcDir) (toFilePath pkgBuildDir)
   generateIpkgHelper node pkgBuildDir
 
 -- | Helper function that does the actual generation of the .ipkg file.
-generateIpkgHelper :: ( MonadError GenerateIpkgErr m
-                      , MonadReader Config m
+generateIpkgHelper :: ( MonadReader Config m
                       , MonadLogger m
-                      , MonadIO m )
+                      , MonadSafeIO GenerateIpkgErr m )
                    => DepNode -> Directory -> m ()
 generateIpkgHelper (DepNode pkgName@(PackageName name) _) pkgDir = do
   pkgFilePath <- asks $ pkgFile . buildSettings
   let pkgFileName = pkgDir </> pkgFilePath
       ipkgFile = pkgDir </> T.unpack name <> ".ipkg"
-  packageResult <- runExceptT $ readPkgFile pkgFileName
-  case packageResult of
-    Left err -> throwError $ GReadPkgFileErr err
-    Right package@(Package _ _ (SourceDir srcDir) _) -> do
-      idrisFiles <- findIdrisFiles pkgName $ pkgDir </> srcDir
-      let pkgMetadata = IpkgMetadata package idrisFiles
-          contents = ipkgMetadataToText pkgMetadata
-      tryAction (GGenerateIpkgErr pkgName) $ TIO.writeFile ipkgFile contents
+  package@(Package _ _ (SourceDir srcDir) _) <- readPkgFile GReadPkgFileErr pkgFileName
+  idrisFiles <- findIdrisFiles pkgName $ pkgDir </> srcDir
+  let pkgMetadata = IpkgMetadata package idrisFiles
+      contents = ipkgMetadataToText pkgMetadata
+  liftSafeIO (GGenerateIpkgErr pkgName) $ TIO.writeFile ipkgFile contents
+
 
 -- | Helper function that returns all idris files (ending in .idr) in a directory.
-findIdrisFiles :: ( MonadError GenerateIpkgErr m
-                  , MonadIO m )
+findIdrisFiles :: MonadSafeIO GenerateIpkgErr m
                => PackageName -> Directory -> m [Module]
 findIdrisFiles pkgName dir =
   let toFilePath = fromText . T.pack
       fromFilePath = T.unpack . toTextIgnore
       dir' = toFilePath dir
       isIdrisFile = pure . hasExt ".idr"
-  in tryAction (GFindPkgFilesErr pkgName) $ do
+  in liftSafeIO (GFindPkgFilesErr pkgName) $ do
     idrisFiles <- shelly $ silently $ findWhen isIdrisFile dir'
     return $ fromFilePath <$> idrisFiles
 

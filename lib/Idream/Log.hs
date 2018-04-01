@@ -11,6 +11,7 @@ module Idream.Log ( Level(..), LoggingT(..), MonadLogger(..)
 import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad.State
+import Idream.SafeIO ( SafeIO )
 import Data.Text ( Text )
 import Data.Monoid ( (<>) )
 
@@ -44,6 +45,9 @@ instance MonadLogger m => MonadLogger (ExceptT e m) where
   logGeneric lvl = lift . logGeneric lvl
 
 instance MonadLogger m => MonadLogger (StateT s m) where
+  logGeneric lvl = lift . logGeneric lvl
+
+instance MonadLogger m => MonadLogger (SafeIO e m) where
   logGeneric lvl = lift . logGeneric lvl
 
 

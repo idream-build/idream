@@ -22,7 +22,6 @@ module Idream.Graph ( DepGraph
 -- Imports
 
 import Idream.Types ( Project(..), ProjectName(..), PackageName(..) )
-import Idream.Command.Common ( tryAction )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Map ( Map )
@@ -38,6 +37,7 @@ import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Monad.Except
 import Idream.Log ( MonadLogger )
 import qualified Idream.Log as Log
+import Idream.SafeIO
 import Control.Monad.State
 import Control.Exception ( IOException )
 
@@ -218,18 +218,16 @@ fromGraphInfo :: GraphInfo -> DepGraph
 fromGraphInfo (GraphInfo vs es) = Graph.graph vs es
 
 -- | Saves a graph to a JSON file.
-saveGraphToJSON :: (MonadError GraphErr m, MonadIO m)
-                => FilePath -> DepGraph -> m ()
-saveGraphToJSON file =
-  tryAction SaveGraphErr . TIO.writeFile file . encodeToLazyText . toGraphInfo
+saveGraphToJSON :: MonadSafeIO e m => (GraphErr -> e) -> FilePath -> DepGraph -> m ()
+saveGraphToJSON f file g = liftSafeIO (f . SaveGraphErr) $
+  TIO.writeFile file . encodeToLazyText . toGraphInfo $ g
 
 -- | Loads a graph from JSON.
-loadGraphFromJSON :: (MonadError GraphErr m, MonadIO m)
-                  => FilePath -> m DepGraph
-loadGraphFromJSON file = do
-  contents <- tryAction LoadGraphErr $ TIO.readFile file
+loadGraphFromJSON :: MonadSafeIO e m => (GraphErr -> e) -> FilePath -> m DepGraph
+loadGraphFromJSON f file = do
+  contents <- liftSafeIO (f . LoadGraphErr) $ TIO.readFile file
   case eitherDecode' $ encodeUtf8 contents of
-    Left err -> throwError $ ParseGraphErr err
+    Left err -> raiseError $ (f . ParseGraphErr) err
     Right graphInfo -> return $ fromGraphInfo graphInfo
 
 -- | Helper function for handling errors related to saving
@@ -241,3 +239,4 @@ handleGraphErr (SaveGraphErr err) =
   Log.err (T.pack $ "Failed to save graph to a file: " <> show err <> ".")
 handleGraphErr (ParseGraphErr err) =
   Log.err (T.pack $ "Failed to parse graph from file: " <> show err <> ".")
+

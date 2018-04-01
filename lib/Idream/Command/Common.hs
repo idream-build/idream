@@ -4,7 +4,6 @@
 module Idream.Command.Common ( setupBuildDir
                              , readProjFile
                              , readPkgFile
-                             , tryAction
                              , safeCreateDir
                              , safeWriteFile
                              , invokeCmdWithEnv
@@ -21,10 +20,10 @@ module Idream.Command.Common ( setupBuildDir
 -- Imports
 
 import Control.Monad.Reader
-import Control.Monad.Except
-import Idream.Log ( MonadLogger )
 import qualified Idream.Log as Log
-import Control.Exception ( Exception, IOException, try )
+import Idream.Log ( MonadLogger )
+import Idream.SafeIO
+import Control.Exception ( IOException )
 import System.Directory ( createDirectory
                         , createDirectoryIfMissing
                         , getCurrentDirectory )
@@ -66,58 +65,47 @@ data ReadPkgErr = PkgFileNotFound IOException
 -- Functions
 
 -- | Creates a build directory in which idream will store all build artifacts.
-setupBuildDir :: ( MonadReader Config m, MonadIO m ) => m ()
-setupBuildDir = do
+setupBuildDir :: ( MonadReader Config m, MonadSafeIO e m )
+              => (IOException -> e) -> m ()
+setupBuildDir f = do
   buildDirectory <- asks $ buildDir . buildSettings
-  liftIO $ createDirectoryIfMissing True buildDirectory
+  liftSafeIO f $ createDirectoryIfMissing True buildDirectory
 
 -- | Reads out a project file (idr-project.json).
-readProjFile :: ( MonadError ReadProjectErr m
-                , MonadIO m )
-             => FilePath -> m Project
-readProjFile file = do
-  projectJSON <- tryAction ProjectFileNotFound $ do
+readProjFile :: MonadSafeIO e m => (ReadProjectErr -> e) -> FilePath -> m Project
+readProjFile f file = do
+  projectJSON <- liftSafeIO (f . ProjectFileNotFound) $ do
     dir <- getCurrentDirectory
     BSL.readFile $ dir </> file
-  either (throwError . ProjectParseErr) return $ eitherDecode projectJSON
+  either (raiseError . f . ProjectParseErr) return $ eitherDecode projectJSON
 
 -- | Reads out a package file (idr-package.json)
-readPkgFile :: ( MonadError ReadPkgErr m
-               , MonadLogger m
-               , MonadIO m )
-            => FilePath -> m Package
-readPkgFile file = do
-  pkgJSON <- tryAction PkgFileNotFound $ do
+readPkgFile :: ( MonadLogger m,  MonadSafeIO e m )
+            => (ReadPkgErr -> e) -> FilePath -> m Package
+readPkgFile f file = do
+  pkgJSON <- liftSafeIO (f . PkgFileNotFound) $ do
     dir <- getCurrentDirectory
     BSL.readFile $ dir </> file
-  either (throwError . PkgParseErr) return $ eitherDecode pkgJSON
-
--- | Helper function for running an IO action in a monad transformer stack,
---   while catching possible exceptions and wrapping them in a custom error type.
-tryAction :: ( MonadError e' m, MonadIO m, Exception e )
-          => (e -> e') -> IO a -> m a
-tryAction f = (>>= either (throwError . f) return) <$> liftIO . try
+  either (raiseError . f .PkgParseErr) return $ eitherDecode pkgJSON
 
 -- | Safely creates a directory while handling possible exceptions.
-safeCreateDir :: ( MonadError e m, MonadIO m )
-              => (IOException -> e) -> Directory -> m ()
-safeCreateDir f dir =
-  tryAction f $ createDirectory dir
+safeCreateDir :: MonadSafeIO e m => (IOException -> e) -> Directory -> m ()
+safeCreateDir f dir = liftSafeIO f $ createDirectory dir
 
 -- | Safely writes to a file, while handling possible exceptions.
-safeWriteFile :: (MonadError e m, MonadIO m)
-              => (IOException -> e) -> T.Text -> FilePath -> m ()
-safeWriteFile f txt path =
-  tryAction f $ TIO.writeFile path txt
+safeWriteFile :: MonadSafeIO e m => (IOException -> e) -> T.Text -> FilePath -> m ()
+safeWriteFile f txt path = liftSafeIO f $ TIO.writeFile path txt
 
 -- | Invokes a command as a separate operating system process.
 --   Allows passing additional environment variables to the external process.
-invokeCmdWithEnv :: MonadIO m => Command -> [Arg] -> Environment -> m ExitCode
-invokeCmdWithEnv cmd cmdArgs environ =
-  liftIO $ do
-    let process = (proc cmd cmdArgs) { env = Just environ }
-    (_, _, _, procHandle) <- createProcess process
-    waitForProcess procHandle
+invokeCmdWithEnv :: MonadSafeIO e m
+                 => (IOException -> e)
+                 -> Command -> [Arg] -> Environment
+                 -> m ExitCode
+invokeCmdWithEnv f cmd cmdArgs environ = liftSafeIO f $ do
+  let process = (proc cmd cmdArgs) { env = Just environ }
+  (_, _, _, procHandle) <- createProcess process
+  waitForProcess procHandle
 
 -- | Helper function for handling errors related to
 --   readout of project file.
