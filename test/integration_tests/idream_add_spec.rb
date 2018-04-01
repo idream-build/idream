@@ -1,3 +1,5 @@
+require_relative 'idream_common'
+
 describe 'idream add command' do
 
   before do
@@ -96,17 +98,8 @@ describe 'idream add command' do
 
   # Helper functions
 
-  def idream_exe
-    rel_path = `find . | grep dist | grep idream$ | grep -v idream-tmp`.strip
-    File.absolute_path rel_path
-  end
-
   def idream args
     `#{@idream} #{args} 2>&1`
-  end
-
-  def test_dir
-    '/tmp/idream_integration_tests'
   end
 
   def proj_name

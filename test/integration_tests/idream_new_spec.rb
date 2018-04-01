@@ -1,5 +1,6 @@
-describe 'idream new command' do
+require_relative 'idream_common'
 
+describe 'idream new command' do
   before do
     @idream = idream_exe
     @idream_dir = Dir.pwd
@@ -51,17 +52,8 @@ describe 'idream new command' do
 
   # Helper functions
 
-  def idream_exe
-    rel_path = `find . | grep dist | grep idream$ | grep -v idream-tmp`.strip
-    File.absolute_path rel_path
-  end
-
   def idream args
     `#{@idream} #{args} 2>&1`
-  end
-
-  def test_dir
-    '/tmp/idream_integration_tests'
   end
 
   def proj_name
