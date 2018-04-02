@@ -162,7 +162,7 @@ instance FromJSON Package where
   parseJSON (Object o) = do
     name <- o .: "name"
     srcDir <- o .:? "source_dir" .!= def
-    pkgs <- o .:? "packages" .!= def
+    pkgs <- o .:? "dependencies" .!= def
     isExecutable <- o .:? "executable" .!= False
     let pkgType = if isExecutable then Executable else Library
     return $ Package name pkgType srcDir pkgs
