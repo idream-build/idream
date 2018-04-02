@@ -8,12 +8,14 @@ module Idream.Log ( Level(..), LoggingT(..), MonadLogger(..)
 
 -- Imports
 
+import Prelude hiding ( putStrLn )
 import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad.State
 import Idream.SafeIO ( SafeIO )
-import Data.Text ( Text )
 import Data.Monoid ( (<>) )
+import Data.Text ( Text )
+import Data.Text.IO ( putStrLn )
 
 
 -- Data types
@@ -64,7 +66,7 @@ err = logGeneric Err
 logGeneric' :: Level -> Text -> LoggingT ()
 logGeneric' lvl txt = do
   logThreshold <- ask
-  when (lvl >= logThreshold) (liftIO . print $ lvlToTxt lvl <> txt)
+  when (lvl >= logThreshold) (liftIO . putStrLn $ lvlToTxt lvl <> txt)
 
 -- | Conversion function from logging level to text.
 lvlToTxt :: Level -> Text
