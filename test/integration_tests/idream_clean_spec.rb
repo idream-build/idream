@@ -45,23 +45,4 @@ describe 'idream clean command' do
     expect(output_before).to include('.idream-work')
     expect(output_after).not_to include('.idream-work')
   end
-
-
-  # Helper functions
-
-  def idream args
-    `#{@idream} #{args} 2>&1`
-  end
-
-  def proj_name
-    'test_project'
-  end
-
-  def lib_name
-    'test_lib'
-  end
-
-  def exe_name
-    'test_exe'
-  end
 end

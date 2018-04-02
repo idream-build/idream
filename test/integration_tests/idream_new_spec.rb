@@ -52,14 +52,6 @@ describe 'idream new command' do
 
   # Helper functions
 
-  def idream args
-    `#{@idream} #{args} 2>&1`
-  end
-
-  def proj_name
-    'test_project'
-  end
-
   def idr_package_set_contents
     "{}\n"  # empty by default
   end
