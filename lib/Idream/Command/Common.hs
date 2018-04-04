@@ -3,9 +3,14 @@
 
 module Idream.Command.Common ( setupBuildDir
                              , readProjFile
+                             , readRootProjFile
                              , readPkgFile
+                             , getPkgDirPath
+                             , getPkgFilePath
                              , safeCreateDir
                              , safeWriteFile
+                             , checkDirExists
+                             , checkFileExists
                              , invokeCmdWithEnv
                              , handleReadProjectErr
                              , handleReadPkgErr
@@ -26,11 +31,15 @@ import Idream.SafeIO
 import Control.Exception ( IOException )
 import System.Directory ( createDirectory
                         , createDirectoryIfMissing
-                        , getCurrentDirectory )
+                        , getCurrentDirectory
+                        , doesDirectoryExist
+                        , doesFileExist )
 import System.FilePath ( FilePath, (</>) )
 import System.Process ( createProcess, waitForProcess, proc, env )
 import System.Exit ( ExitCode(..) )
-import Idream.Types ( Config(..), Project(..), Package(..), Directory, buildDir )
+import Idream.Types ( Config(..), Project(..), ProjectName(..)
+                    , Package(..), PackageName(..)
+                    , Directory, buildDir, pkgFile, projectFile )
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -79,6 +88,13 @@ readProjFile f file = do
     BSL.readFile $ dir </> file
   either (raiseError . f . ProjectParseErr) return $ eitherDecode projectJSON
 
+-- | Reads out the top level project file (idr-project.json).
+readRootProjFile :: ( MonadReader Config m, MonadSafeIO e m )
+                 => (ReadProjectErr -> e) -> m Project
+readRootProjFile f = do
+  projectFilePath <- asks $ projectFile . buildSettings
+  readProjFile f projectFilePath
+
 -- | Reads out a package file (idr-package.json)
 readPkgFile :: ( MonadLogger m,  MonadSafeIO e m )
             => (ReadPkgErr -> e) -> FilePath -> m Package
@@ -86,7 +102,27 @@ readPkgFile f file = do
   pkgJSON <- liftSafeIO (f . PkgFileNotFound) $ do
     dir <- getCurrentDirectory
     BSL.readFile $ dir </> file
-  either (raiseError . f .PkgParseErr) return $ eitherDecode pkgJSON
+  either (raiseError . f . PkgParseErr) return $ eitherDecode pkgJSON
+
+-- Helper function to determine location of package directory.
+getPkgDirPath :: ( MonadReader Config m, MonadSafeIO e m )
+               => (ReadProjectErr -> e)
+               -> PackageName -> ProjectName -> m Directory
+getPkgDirPath f pkg@(PackageName pkgName) (ProjectName projName) = do
+  Project _ rootPkgNames <- readRootProjFile f
+  workDir <- asks $ buildDir . buildSettings
+  let basePath = if pkg `elem` rootPkgNames
+                   then "."
+                   else workDir </> "src" </> T.unpack projName
+  return $ basePath </> T.unpack pkgName
+
+-- Helper function to determine location of package file.
+getPkgFilePath :: ( MonadReader Config m, MonadSafeIO e m )
+               => (ReadProjectErr -> e)
+               -> PackageName -> ProjectName -> m FilePath
+getPkgFilePath f pkgName projName = do
+  pkgFileName <- asks $ pkgFile . buildSettings
+  (</> pkgFileName) <$> getPkgDirPath f pkgName projName
 
 -- | Safely creates a directory while handling possible exceptions.
 safeCreateDir :: MonadSafeIO e m => (IOException -> e) -> Directory -> m ()
@@ -95,6 +131,15 @@ safeCreateDir f dir = liftSafeIO f $ createDirectory dir
 -- | Safely writes to a file, while handling possible exceptions.
 safeWriteFile :: MonadSafeIO e m => (IOException -> e) -> T.Text -> FilePath -> m ()
 safeWriteFile f txt path = liftSafeIO f $ TIO.writeFile path txt
+
+-- | Helper function for checking if a directory exists.
+checkDirExists :: MonadSafeIO e m => (IOException -> e) -> Directory -> m Bool
+checkDirExists f dir = liftSafeIO f $ doesDirectoryExist dir
+
+-- | Helper function for checking if a file exists.
+checkFileExists :: MonadSafeIO e m => (IOException -> e) -> FilePath -> m Bool
+checkFileExists f path = liftSafeIO f $ doesFileExist path
+
 
 -- | Invokes a command as a separate operating system process.
 --   Allows passing additional environment variables to the external process.

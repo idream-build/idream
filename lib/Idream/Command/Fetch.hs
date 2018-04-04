@@ -12,7 +12,7 @@ import qualified Idream.Log as Log
 import Idream.Log ( MonadLogger )
 import Idream.SafeIO
 import Control.Exception ( IOException )
-import System.Directory ( getCurrentDirectory, doesDirectoryExist, doesFileExist  )
+import System.Directory ( getCurrentDirectory )
 import System.FilePath ( (</>) )
 import System.Process ( createProcess, waitForProcess, cwd, proc )
 import System.Exit ( ExitCode(..) )
@@ -22,8 +22,10 @@ import Data.Monoid ( (<>) )
 import Data.Aeson ( eitherDecode )
 import Data.List ( partition )
 import qualified Data.Text as T
-import Idream.Command.Common ( setupBuildDir, readProjFile, readPkgFile
-                             , handleReadProjectErr, handleReadPkgErr
+import Idream.Command.Common ( setupBuildDir, readRootProjFile, readProjFile
+
+                             , readPkgFile, checkDirExists, checkFileExists
+                             , getPkgFilePath, handleReadProjectErr, handleReadPkgErr
                              , ReadProjectErr(..), ReadPkgErr(..) )
 import Idream.Types
 import Idream.Graph
@@ -78,13 +80,13 @@ fetchDeps :: ( MonadReader Config m, MonadLogger m, MonadIO m ) => m ()
 fetchDeps = do
   projFile <- asks $ projectFile . buildSettings
   result <- runSafeIO $ do
-    projFileExists <- checkFileExists FFetchPkgErr projFile
+    projFileExists <- checkFileExists' FFetchPkgErr projFile
     if not projFileExists
       then Log.err "Did not find project file, aborting."
       else fetchDeps'
   case result of
     Left err -> handleFetchErr err
-    Right _ -> Log.info "Successfully fetched dependencies!"
+    Right _ -> Log.info "Finished fetching dependencies."
 
 -- | Helper function that does the actual fetching of dependencies.
 fetchDeps' :: ( MonadReader Config m, MonadLogger m, MonadSafeIO FetchErr m ) => m ()
@@ -100,8 +102,7 @@ fetchDeps' = do
       Log.info ("Fetching dependencies for " <> unProjName projName <> ".")
       let initialGraph = mkGraphFromProject rootProj
           graphFile = workDir </> "dependency-graph.json"
-          getPkgFilePath' = getPkgFilePath rootPkgs
-          fetchDepsForProj = fetchDepsForProject FFetchPkgErr getPkgFilePath' pkgSet rootProj
+          fetchDepsForProj = fetchDepsForProject FFetchPkgErr pkgSet rootProj
       graph <- execStateT fetchDepsForProj initialGraph
       saveGraphToJSON FGraphErr graphFile graph
 
@@ -112,11 +113,10 @@ fetchDepsForProject :: ( MonadState DepGraph m
                        , MonadLogger m
                        , MonadSafeIO e m )
                     => (FetchPkgErr -> e)
-                    -> (PackageName -> ProjectName -> m FilePath)
                     -> PackageSet -> Project -> m ()
-fetchDepsForProject f g pkgSet (Project projName pkgs) = do
+fetchDepsForProject f pkgSet (Project projName pkgs) = do
   Log.debug ("Fetching dependencies for project: " <> unProjName projName <> ".")
-  mapM_ (fetchDepsForPackage f g pkgSet projName) pkgs
+  mapM_ (fetchDepsForPackage f pkgSet projName) pkgs
 
 -- | Recursively fetch all dependencies for a package
 fetchDepsForPackage :: ( MonadState DepGraph m
@@ -124,11 +124,10 @@ fetchDepsForPackage :: ( MonadState DepGraph m
                        , MonadLogger m
                        , MonadSafeIO e m )
                     => (FetchPkgErr -> e)
-                    -> (PackageName -> ProjectName -> m FilePath)
                     -> PackageSet -> ProjectName -> PackageName -> m ()
-fetchDepsForPackage f g pkgSet projName pkgName = do
+fetchDepsForPackage f pkgSet projName pkgName = do
   Log.debug ("Fetching dependencies for package: " <> unPkgName pkgName <> ".")
-  pkgDeps <- readPkgDeps (f . FPReadPkgDepsErr) g projName pkgName
+  pkgDeps <- readPkgDeps f projName pkgName
   let isOld (AlreadyFetched _) = True
       isOld _ = False
   (oldSubProjects, newSubProjects) <- partition isOld <$> mapM (fetchProj f pkgSet) pkgDeps
@@ -138,7 +137,7 @@ fetchDepsForPackage f g pkgSet projName pkgName = do
       newSubProjects' = unwrap <$> newSubProjects
       subProjects = oldSubProjects' ++ newSubProjects'
   modify $ updateGraph (DepNode pkgName projName) subProjects
-  mapM_ (fetchDepsForProject f g pkgSet) newSubProjects'
+  mapM_ (fetchDepsForProject f pkgSet) newSubProjects'
 
 -- | Fetches a project as specified in the top level package set file.
 fetchProj :: ( MonadReader Config m
@@ -154,7 +153,7 @@ fetchProj f (PackageSet pkgs) projName@(ProjectName name) =
       projectFilePath <- asks $ projectFile . buildSettings
       let repoDir = workDir </> "src" </> T.unpack name
           projFile = repoDir </> projectFilePath
-      (dirExists, fileExists) <- liftM2 (,) (checkDirExists f repoDir) (checkFileExists f projFile)
+      (dirExists, fileExists) <- liftM2 (,) (checkDirExists' f repoDir) (checkFileExists' f projFile)
       case (dirExists, fileExists) of
         (True, True) ->
           AlreadyFetched <$> readProjFile (f . FPReadProjectErr) projFile
@@ -163,33 +162,14 @@ fetchProj f (PackageSet pkgs) projName@(ProjectName name) =
           result <- readProjFile (f . FPReadProjectErr) projFile
           return $ NewlyFetched result
 
--- | Reads out the top level project file (idr-project.json).
-readRootProjFile :: ( MonadReader Config m, MonadSafeIO e m )
-                 => (ReadProjectErr -> e) -> m Project
-readRootProjFile f = do
-  projectFilePath <- asks $ projectFile . buildSettings
-  readProjFile f projectFilePath
-
 -- | Reads the package file to determine the project dependencies.
 readPkgDeps :: ( MonadReader Config m, MonadLogger m, MonadSafeIO e m )
-            => (ReadPkgErr -> e)
-            -> (PackageName -> ProjectName -> m FilePath)
+            => (FetchPkgErr -> e)
             -> ProjectName -> PackageName -> m [ProjectName]
-readPkgDeps f g projName pkgName = do
-  pkgFilePath <- g pkgName projName
-  (Package _ _ _ deps) <- readPkgFile f pkgFilePath
+readPkgDeps f projName pkgName = do
+  pkgFilePath <- getPkgFilePath (f . FPReadProjectErr) pkgName projName
+  (Package _ _ _ deps) <- readPkgFile (f . FPReadPkgDepsErr) pkgFilePath
   return deps
-
--- Helper function to determine location of package file.
-getPkgFilePath :: MonadReader Config m
-               => [PackageName] -> PackageName -> ProjectName -> m FilePath
-getPkgFilePath rootPkgNames pkg@(PackageName pkgName) (ProjectName projName) = do
-  workDir <- asks $ buildDir . buildSettings
-  pkgFileName <- asks $ pkgFile . buildSettings
-  let basePath = if pkg `elem` rootPkgNames
-                   then "."
-                   else workDir </> "src" </> T.unpack projName
-  return $ basePath </> T.unpack pkgName </> pkgFileName
 
 -- | Reads out the package set file (idr-package-set.json).
 readPkgSetFile :: ( MonadReader Config m, MonadLogger m, MonadSafeIO e m )
@@ -218,13 +198,11 @@ gitClone f r@(Repo repo) v@(Version vsn) repoDir =
     checkoutResult <- execProcess (f . CheckoutFailError r v) "git" checkoutArgs (Just repoDir)
     when (checkoutResult /= ExitSuccess) $ raiseError . f $ CheckoutFailExitCode r v checkoutResult
 
--- | Helper function for checking if a directory exists.
-checkDirExists :: MonadSafeIO e m => (FetchPkgErr -> e) -> Directory -> m Bool
-checkDirExists f dir = liftSafeIO (f . FPReadDirErr) $ doesDirectoryExist dir
+checkDirExists' :: MonadSafeIO e m => (FetchPkgErr -> e) -> FilePath -> m Bool
+checkDirExists' f = checkDirExists (f . FPReadDirErr)
 
--- | Helper function for checking if a file exists.
-checkFileExists :: MonadSafeIO e m => (FetchPkgErr -> e) -> FilePath -> m Bool
-checkFileExists f path = liftSafeIO (f . FPReadFileErr) $ doesFileExist path
+checkFileExists' :: MonadSafeIO e m => (FetchPkgErr -> e) -> FilePath -> m Bool
+checkFileExists' f = checkFileExists (f . FPReadFileErr)
 
 -- | Helper function for handling errors that can occur during
 --   fetching of dependencies.

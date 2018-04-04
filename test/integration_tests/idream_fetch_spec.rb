@@ -48,7 +48,7 @@ describe 'idream fetch command' do
     expect(output_before).not_to eq(output_after)
     expect(output).to include("Fetching dependencies for #{proj_name}")
     expect(output).to include("Fetching dependencies for package: #{lib_name}")
-    expect(output).to include("Successfully fetched dependencies!")
+    expect(output).to include("Finished fetching dependencies.")
     expect(output_after).to include('dependency-graph.json')
   end
 
@@ -70,7 +70,7 @@ describe 'idream fetch command' do
       output = fetch
       output_after = `ls -a .idream-work/src`
 
-      expect(output).to include("Successfully fetched dependencies!")
+      expect(output).to include("Finished fetching dependencies.")
       expect(output).to include("Fetching dependencies for package: test_lib")
       expect(output).to include("Fetching dependencies for package: package1")
       expect(output).to include("Fetching dependencies for package: package2")
@@ -84,7 +84,7 @@ describe 'idream fetch command' do
       output = fetch
       output_after = `ls -a .idream-work/src`
 
-      expect(output).to include("Successfully fetched dependencies!")
+      expect(output).to include("Finished fetching dependencies.")
       expect(output).to include("Fetching dependencies for package: test_lib")
       expect(output).to include("Fetching dependencies for package: package1")
       expect(output).to include("Fetching dependencies for package: package2")

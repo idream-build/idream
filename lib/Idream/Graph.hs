@@ -234,9 +234,9 @@ loadGraphFromJSON f file = do
 --   of the dependency graph to a file.
 handleGraphErr :: MonadLogger m => GraphErr -> m ()
 handleGraphErr (LoadGraphErr err) =
-  Log.err (T.pack $ "Failed to load graph from a file: " <> show err <> ".")
+  Log.err (T.pack $ "Failed to load dependency graph from file: " <> show err <> ".")
 handleGraphErr (SaveGraphErr err) =
-  Log.err (T.pack $ "Failed to save graph to a file: " <> show err <> ".")
+  Log.err (T.pack $ "Failed to save dependency graph to file: " <> show err <> ".")
 handleGraphErr (ParseGraphErr err) =
-  Log.err (T.pack $ "Failed to parse graph from file: " <> show err <> ".")
+  Log.err (T.pack $ "Failed to parse dependency graph from file: " <> show err <> ".")
 
