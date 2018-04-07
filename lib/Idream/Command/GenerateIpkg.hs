@@ -68,31 +68,31 @@ generateIpkgFile = do
 --   Note that this also cleans the build directory for that project.
 generateIpkg :: ( MonadLogger m, MonadSafeIO GenerateIpkgErr m )
              => DepNode -> m ()
-generateIpkg node@(DepNode pkgName@(PackageName name) prjName@(ProjectName projName)) = do
+generateIpkg node@(DepNode pkgName@(PackageName name) projName) = do
   Log.debug ("Generating ipkg file for package: " <> name <> ".")
-  pkgDirPath <- getPkgDirPath GProjFileReadErr pkgName prjName
-  let pkgName' = T.unpack name
-      pkgBuildDir = buildDir </> "build" </> T.unpack projName
+  pkgDirPath <- getPkgDirPath GProjFileReadErr pkgName projName
+  let projectBuildDir' = projectBuildDir projName
+      pkgBuildDir' = pkgBuildDir projName pkgName
       toFilePath = fromText . T.pack
   liftSafeIO (GCopyFilesErr pkgName) $ do
-    removePathForcibly $ pkgBuildDir </> pkgName'
-    createDirectoryIfMissing True pkgBuildDir
-    shelly $ silently $ cp_r (toFilePath pkgDirPath) (toFilePath pkgBuildDir)
-  generateIpkgHelper node (pkgBuildDir </> T.unpack name)
+    removePathForcibly pkgBuildDir'
+    createDirectoryIfMissing True $ pkgBuildDir projName pkgName
+    shelly $ silently $ cp_r (toFilePath pkgDirPath) (toFilePath projectBuildDir')
+  generateIpkgHelper node
 
 
 -- | Helper function that does the actual generation of the .ipkg file.
 generateIpkgHelper :: ( MonadLogger m, MonadSafeIO GenerateIpkgErr m )
-                   => DepNode -> Directory -> m ()
-generateIpkgHelper (DepNode pkgName@(PackageName name) projName) pkgBuildDir = do
+                   => DepNode -> m ()
+generateIpkgHelper (DepNode pkgName projName) = do
   pkgFilePath <- getPkgFilePath GProjFileReadErr pkgName projName
-  package@(Package _ _ (SourceDir srcDir) _) <- readPkgFile GReadPkgFileErr pkgFilePath
-  idrisFiles <- findIdrisFiles pkgName $ pkgBuildDir </> srcDir
+  package@(Package _ _ srcDir _) <- readPkgFile GReadPkgFileErr pkgFilePath
+  idrisFiles <- findIdrisFiles pkgName $ pkgBuildSrcDir projName pkgName srcDir
   let pkgMetadata = IpkgMetadata package idrisFiles
       contents = ipkgMetadataToText pkgMetadata
-      ipkgFile = pkgBuildDir </> T.unpack name <> ".ipkg"
-  Log.debug ("Writing .ipkg file to: " <> T.pack ipkgFile)
-  liftSafeIO (GGenerateIpkgErr pkgName) $ TIO.writeFile ipkgFile contents
+      ipkg = ipkgFile projName pkgName
+  Log.debug ("Writing .ipkg file to: " <> T.pack ipkg)
+  liftSafeIO (GGenerateIpkgErr pkgName) $ TIO.writeFile ipkg contents
 
 
 -- | Helper function that returns all idris files (ending in .idr) in a directory.

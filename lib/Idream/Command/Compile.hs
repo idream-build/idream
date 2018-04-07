@@ -11,12 +11,11 @@ import Idream.Log ( MonadLogger )
 import qualified Idream.Log as Log
 import Idream.Command.Common ( invokeCmdWithEnv, readRootProjFile
                              , ReadProjectErr(..) )
-import Idream.Types ( PackageName(..), ProjectName(..), Project(..) )
+import Idream.Types ( PackageName(..), Project(..) )
 import Idream.Graph ( DepNode(..), BuildPlan, GraphErr
                     , loadGraphFromJSON, createBuildPlan
                     , handleGraphErr )
 import Idream.FileSystem
-import System.FilePath ( (</>) )
 import System.Directory ( createDirectoryIfMissing )
 import System.Exit ( ExitCode(..) )
 import Control.Exception ( IOException )
@@ -69,28 +68,15 @@ compilePackages = mapM_ compilePackage where
 
 idrisCompile :: ( MonadLogger m, MonadSafeIO CompileErr m )
              => DepNode -> m ExitCode
-idrisCompile node@(DepNode (PackageName pkgName) _) = do
-  let compileDir = compilationDir buildDir node
-      ipkgFile = packageDir buildDir node </> T.unpack (pkgName <> ".ipkg")
-      idrisArgs = [ "--verbose", "--build", ipkgFile]
+idrisCompile (DepNode pkgName projName) = do
+  let compileDir = pkgCompileDir projName pkgName
+      ipkg = ipkgFile projName pkgName
+      idrisArgs = [ "--verbose", "--build", ipkg]
       environ = [ ("IDRIS_LIBRARY_PATH", compileDir)
-                , ("IDRIS_DOC_PATH", documentationDir buildDir node)
+                , ("IDRIS_DOC_PATH", pkgDocsDir projName pkgName)
                 ]
   liftSafeIO CCreateCompileDirErr $ createDirectoryIfMissing True compileDir
   invokeCmdWithEnv CIdrisCommandErr "idris" idrisArgs environ
-
-
-packageDir :: Directory -> DepNode -> Directory
-packageDir dir (DepNode (PackageName pkgName) (ProjectName projName)) =
-  dir </> "build" </> T.unpack projName </> T.unpack pkgName
-
-
-compilationDir :: Directory -> DepNode -> Directory
-compilationDir dir node = packageDir dir node </> "bin"
-
-
-documentationDir :: Directory -> DepNode -> Directory
-documentationDir dir node = packageDir dir node </> "docs"
 
 
 handleCompileErr :: MonadLogger m => CompileErr -> m ()

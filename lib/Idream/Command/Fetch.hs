@@ -13,7 +13,6 @@ import Idream.SafeIO
 import Control.Exception ( IOException )
 import System.Process ( createProcess, waitForProcess, cwd, proc )
 import System.Exit ( ExitCode(..) )
-import System.Directory ( getCurrentDirectory )
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Map as Map
 import Data.Monoid ( (<>) )
@@ -142,7 +141,7 @@ fetchProj f (PackageSet pkgs) projName@(ProjectName name) =
     Nothing -> raiseError . f $ FPPkgMissingInPkgSet projName
     Just (PackageDescr repo version) -> do
       let repoDir' = repoDir projName
-          projFile = repoDir' </> projectFile
+          projFile = repoDirProjFile projName
       (dirExists, fileExists) <- liftM2 (,) (checkDirExists' f $ repoDir') (checkFileExists' f projFile)
       case (dirExists, fileExists) of
         (True, True) ->
@@ -164,9 +163,7 @@ readPkgDeps f projName pkgName = do
 -- | Reads out the package set file (idr-package-set.json).
 readPkgSetFile :: MonadSafeIO e m => (ReadPkgSetErr -> e) -> m PackageSet
 readPkgSetFile f = do
-  pkgSetJSON <- liftSafeIO (f . PkgSetFileNotFound) $ do
-    dir <- getCurrentDirectory
-    BSL.readFile $ dir </> pkgSetFile
+  pkgSetJSON <- liftSafeIO (f . PkgSetFileNotFound) $ BSL.readFile pkgSetFile
   let result = eitherDecode pkgSetJSON
   either (raiseError . f . PkgSetParseErr) return result
 

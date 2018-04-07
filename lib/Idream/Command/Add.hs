@@ -17,11 +17,12 @@ import Data.Aeson.Encode.Pretty ( encodePretty )
 import Data.Aeson.Types ( ToJSON(..) )
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text as T
+import System.FilePath ( (</>) )
 import System.Directory ( doesDirectoryExist )
 import Idream.FileSystem
 import Idream.Types ( Project(..), PackageName(..), PackageType(..) )
 import Idream.Command.Common ( safeWriteFile, safeCreateDir
-                             , readProjFile, handleReadProjectErr
+                             , readRootProjFile, handleReadProjectErr
                              , ReadProjectErr(..) )
 
 
@@ -38,7 +39,7 @@ data AddPackageError = PackageAlreadyExistsErr PackageName
 -- Functions
 
 libIdr, mainIdr :: Text
-idrPkgJson :: Text -> PackageType -> Text
+idrPkgJson :: PackageName -> PackageType -> Text
 
 libIdr =
   T.unlines [ "module Lib"
@@ -54,7 +55,7 @@ mainIdr =
             , "main : IO ()"
             , "main = putStrLn \"Hello, Idris!\""
             ]
-idrPkgJson pkgName pkgType =
+idrPkgJson (PackageName pkgName) pkgType =
   T.unlines [ "{"
             , "    \"name\": \"" <> pkgName <> "\","
             , "    \"source_dir\": \"src\","
@@ -80,24 +81,22 @@ addPackageToProject pkgName@(PackageName name) pkgType = do
 -- | Does the actual creation of the project template.
 addPackageToProject' :: ( MonadLogger m, MonadSafeIO AddPackageError m )
                      => PackageName -> PackageType -> m ()
-addPackageToProject' pkgName@(PackageName name) pkgType = do
-  projInfo <- readProjFile'
-  safeCreateDir' pkgDir
-  safeCreateDir' srcDir
-  safeWriteFile' (idrPkgJson name pkgType) (pkgDir </> pkgFile)
-  safeWriteFile' (mainContents pkgType) (srcDir </> mainFile pkgType)
+addPackageToProject' pkgName pkgType = do
+  projInfo <- readRootProjFile'
+  safeCreateDir' $ pkgDir pkgName
+  safeCreateDir' $ pkgSrcDir pkgName
+  safeWriteFile' (idrPkgJson pkgName pkgType) (pkgDir pkgName </> pkgFile)
+  safeWriteFile' (mainContents pkgType) (pkgSrcDir pkgName </> mainFile pkgType)
   updateProjInfo projInfo pkgName
   displayStatusUpdate pkgName
-  where pkgDir = T.unpack name
-        srcDir = pkgDir </> "src"
-        mainFile Library = "Lib.idr"
+  where mainFile Library = "Lib.idr"
         mainFile Executable = "Main.idr"
         mainContents Library = libIdr
         mainContents Executable = mainIdr
 
 -- | Tries to read the project file.
-readProjFile' :: MonadSafeIO AddPackageError m => m Project
-readProjFile' = readProjFile ReadProjFileErr projectFile
+readRootProjFile' :: MonadSafeIO AddPackageError m => m Project
+readRootProjFile' = readRootProjFile ReadProjFileErr
 
 -- | Updates the project file with a new package entry.
 updateProjInfo :: MonadSafeIO AddPackageError m => Project -> PackageName -> m ()

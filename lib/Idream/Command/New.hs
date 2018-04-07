@@ -16,6 +16,7 @@ import qualified Data.Text as T
 import Idream.Types ( ProjectName(..) )
 import Idream.Command.Common ( safeWriteFile, safeCreateDir )
 import Idream.FileSystem
+import System.FilePath ( (</>) )
 
 
 -- Data types
@@ -57,7 +58,7 @@ startNewProject' :: ( MonadLogger m, MonadSafeIO MkProjectError m )
                  => ProjectName -> m ()
 startNewProject' (ProjectName projName) = do
   safeCreateDir' projectDir
-  safeCreateDir' $ projectDir </> buildDir
+  safeCreateDir' $ relPath buildDir
   safeWriteFile' gitignore $ relPath ".gitignore"
   safeWriteFile' (idrProjectJson projName) (relPath projectFile)
   safeWriteFile' idrPkgSetJson $ relPath pkgSetFile

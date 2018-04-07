@@ -32,7 +32,7 @@ import Idream.FileSystem
 import Control.Exception ( IOException )
 import System.Directory ( createDirectory, createDirectoryIfMissing
                         , doesDirectoryExist, doesFileExist )
-import System.FilePath ( FilePath, (</>) )
+import System.FilePath ( (</>) )
 import System.Process ( createProcess, waitForProcess, proc, env )
 import System.Exit ( ExitCode(..) )
 import qualified Data.ByteString.Lazy as BSL
