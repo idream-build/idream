@@ -6,8 +6,6 @@ module Idream.Command.GenerateIpkg ( generateIpkgFile ) where
 
 -- Imports
 
-import Control.Monad.Except
-import Control.Monad.Reader
 import Idream.Log ( MonadLogger )
 import Idream.SafeIO
 import qualified Idream.Log as Log
@@ -18,7 +16,7 @@ import qualified Algebra.Graph as Graph
 import Idream.Command.Common ( readRootProjFile, readPkgFile
                              , getPkgFilePath, getPkgDirPath, handleReadPkgErr
                              , ReadProjectErr(..), ReadPkgErr(..) )
-import System.FilePath ( (</>) )
+import Idream.FileSystem
 import System.Directory ( removePathForcibly, createDirectoryIfMissing )
 import Shelly ( shelly, silently, hasExt, chdir, cp_r, findWhen
               , fromText, toTextIgnore )
@@ -51,10 +49,8 @@ data GenerateIpkgErr = GProjFileReadErr ReadProjectErr
 -- Functions
 
 -- | Top level function used for generating .ipkg files.
-generateIpkgFile :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
+generateIpkgFile :: ( MonadLogger m, MonadIO m ) => m ()
 generateIpkgFile = do
-  workDir <- asks $ buildDir . buildSettings
-  let graphFile = workDir </> "dependency-graph.json"
   result <- runSafeIO $ do
     Project _ rootPkgs <- readRootProjFile GProjFileReadErr
     if null rootPkgs
@@ -62,7 +58,7 @@ generateIpkgFile = do
                   <> "Use `idream add` to add a package to this project first.")
       else do
         Log.info "Generating .ipkg files..."
-        graph <- loadGraphFromJSON GLoadGraphErr graphFile
+        graph <- loadGraphFromJSON GLoadGraphErr depGraphFile
         mapM_ generateIpkg $ Graph.vertexList graph
   case result of
     Left err -> handleGenerateIpkgErr err
@@ -70,16 +66,13 @@ generateIpkgFile = do
 
 -- | Generates an ipkg file for 1 package in a project.
 --   Note that this also cleans the build directory for that project.
-generateIpkg :: ( MonadReader Config m
-                , MonadLogger m
-                , MonadSafeIO GenerateIpkgErr m )
+generateIpkg :: ( MonadLogger m, MonadSafeIO GenerateIpkgErr m )
              => DepNode -> m ()
 generateIpkg node@(DepNode pkgName@(PackageName name) prjName@(ProjectName projName)) = do
   Log.debug ("Generating ipkg file for package: " <> name <> ".")
   pkgDirPath <- getPkgDirPath GProjFileReadErr pkgName prjName
-  workDir <- asks $ buildDir . buildSettings
   let pkgName' = T.unpack name
-      pkgBuildDir = workDir </> "build" </> T.unpack projName
+      pkgBuildDir = buildDir </> "build" </> T.unpack projName
       toFilePath = fromText . T.pack
   liftSafeIO (GCopyFilesErr pkgName) $ do
     removePathForcibly $ pkgBuildDir </> pkgName'
@@ -89,9 +82,7 @@ generateIpkg node@(DepNode pkgName@(PackageName name) prjName@(ProjectName projN
 
 
 -- | Helper function that does the actual generation of the .ipkg file.
-generateIpkgHelper :: ( MonadReader Config m
-                      , MonadLogger m
-                      , MonadSafeIO GenerateIpkgErr m )
+generateIpkgHelper :: ( MonadLogger m, MonadSafeIO GenerateIpkgErr m )
                    => DepNode -> Directory -> m ()
 generateIpkgHelper (DepNode pkgName@(PackageName name) projName) pkgBuildDir = do
   pkgFilePath <- getPkgFilePath GProjFileReadErr pkgName projName
@@ -124,8 +115,8 @@ ipkgMetadataToText (IpkgMetadata pkg modules) =
       mods = T.pack $ intercalate ", " $ formatFileNames modules
       deps = T.intercalate ", " $ unProjName <$> dependencies
       sourceDir = T.pack srcDir
-  in T.unlines [ "-- NOTE: This is an auto-generated file by idream. Do not edit."
-               , "package " <> name
+  in T.unlines [ "package " <> name
+               , "-- NOTE: This is an auto-generated file by idream. Do not edit."
                , "modules = " <> mods
                , if null dependencies then "" else "pkgs = " <> deps
                , "sourcedir = " <> sourceDir

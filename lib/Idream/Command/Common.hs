@@ -24,22 +24,17 @@ module Idream.Command.Common ( setupBuildDir
 -- TODO move to Idream.Helpers?
 -- Imports
 
-import Control.Monad.Reader
 import qualified Idream.Log as Log
 import Idream.Log ( MonadLogger )
 import Idream.SafeIO
+import Idream.Types ( Project(..), ProjectName(..), Package(..), PackageName(..) )
+import Idream.FileSystem
 import Control.Exception ( IOException )
-import System.Directory ( createDirectory
-                        , createDirectoryIfMissing
-                        , getCurrentDirectory
-                        , doesDirectoryExist
-                        , doesFileExist )
+import System.Directory ( createDirectory, createDirectoryIfMissing
+                        , doesDirectoryExist, doesFileExist )
 import System.FilePath ( FilePath, (</>) )
 import System.Process ( createProcess, waitForProcess, proc, env )
 import System.Exit ( ExitCode(..) )
-import Idream.Types ( Config(..), Project(..), ProjectName(..)
-                    , Package(..), PackageName(..)
-                    , Directory, buildDir, pkgFile, projectFile )
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -74,55 +69,42 @@ data ReadPkgErr = PkgFileNotFound IOException
 -- Functions
 
 -- | Creates a build directory in which idream will store all build artifacts.
-setupBuildDir :: ( MonadReader Config m, MonadSafeIO e m )
-              => (IOException -> e) -> m ()
-setupBuildDir f = do
-  buildDirectory <- asks $ buildDir . buildSettings
-  liftSafeIO f $ createDirectoryIfMissing True buildDirectory
+setupBuildDir :: MonadSafeIO e m => (IOException -> e) -> m ()
+setupBuildDir f = liftSafeIO f $ createDirectoryIfMissing True buildDir
 
 -- | Reads out a project file (idr-project.json).
 readProjFile :: MonadSafeIO e m => (ReadProjectErr -> e) -> FilePath -> m Project
 readProjFile f file = do
-  projectJSON <- liftSafeIO (f . ProjectFileNotFound) $ do
-    dir <- getCurrentDirectory
-    BSL.readFile $ dir </> file
+  projectJSON <- liftSafeIO (f . ProjectFileNotFound) $ BSL.readFile file
   either (raiseError . f . ProjectParseErr) return $ eitherDecode projectJSON
 
 -- | Reads out the top level project file (idr-project.json).
-readRootProjFile :: ( MonadReader Config m, MonadSafeIO e m )
-                 => (ReadProjectErr -> e) -> m Project
-readRootProjFile f = do
-  projectFilePath <- asks $ projectFile . buildSettings
-  readProjFile f projectFilePath
+readRootProjFile :: MonadSafeIO e m => (ReadProjectErr -> e) -> m Project
+readRootProjFile f = readProjFile f projectFile
 
 -- | Reads out a package file (idr-package.json)
-readPkgFile :: ( MonadLogger m,  MonadSafeIO e m )
-            => (ReadPkgErr -> e) -> FilePath -> m Package
+readPkgFile :: MonadSafeIO e m => (ReadPkgErr -> e) -> FilePath -> m Package
 readPkgFile f file = do
-  pkgJSON <- liftSafeIO (f . PkgFileNotFound) $ do
-    dir <- getCurrentDirectory
-    BSL.readFile $ dir </> file
+  pkgJSON <- liftSafeIO (f . PkgFileNotFound) $ BSL.readFile file
   either (raiseError . f . PkgParseErr) return $ eitherDecode pkgJSON
 
 -- Helper function to determine location of package directory.
-getPkgDirPath :: ( MonadReader Config m, MonadSafeIO e m )
-               => (ReadProjectErr -> e)
-               -> PackageName -> ProjectName -> m Directory
+getPkgDirPath :: MonadSafeIO e m
+              => (ReadProjectErr -> e)
+              -> PackageName -> ProjectName -> m Directory
 getPkgDirPath f pkg@(PackageName pkgName) (ProjectName projName) = do
   Project _ rootPkgNames <- readRootProjFile f
-  workDir <- asks $ buildDir . buildSettings
   let basePath = if pkg `elem` rootPkgNames
                    then "."
-                   else workDir </> "src" </> T.unpack projName
+                   else buildDir </> "src" </> T.unpack projName
   return $ basePath </> T.unpack pkgName
 
 -- Helper function to determine location of package file.
-getPkgFilePath :: ( MonadReader Config m, MonadSafeIO e m )
+getPkgFilePath :: MonadSafeIO e m
                => (ReadProjectErr -> e)
                -> PackageName -> ProjectName -> m FilePath
-getPkgFilePath f pkgName projName = do
-  pkgFileName <- asks $ pkgFile . buildSettings
-  (</> pkgFileName) <$> getPkgDirPath f pkgName projName
+getPkgFilePath f pkgName projName =
+  (</> pkgFile) <$> getPkgDirPath f pkgName projName
 
 -- | Safely creates a directory while handling possible exceptions.
 safeCreateDir :: MonadSafeIO e m => (IOException -> e) -> Directory -> m ()

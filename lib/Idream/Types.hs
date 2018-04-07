@@ -1,8 +1,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Idream.Types ( BuildSettings(..)
-                    , ProjectName(..)
+module Idream.Types ( ProjectName(..)
                     , PackageName(..)
                     , Argument
                     , SourceDir(..)
@@ -17,7 +16,6 @@ module Idream.Types ( BuildSettings(..)
                     , Command(..)
                     , Args(..)
                     , Config(..)
-                    , Directory
                     ) where
 
 
@@ -25,15 +23,13 @@ module Idream.Types ( BuildSettings(..)
 
 import Data.Default
 import Data.Aeson
-import Data.Map (Map)
-import Data.Text (Text)
-import Control.Monad (mzero)
+import Data.Map ( Map )
+import Data.Text ( Text )
+import Control.Monad ( mzero )
+import System.FilePath ( FilePath )
 
 
 -- Data types
-
--- | Type alias for directories.
-type Directory = FilePath
 
 -- | Type used for representing project names.
 newtype ProjectName = ProjectName { unProjName :: Text }
@@ -44,7 +40,7 @@ newtype PackageName = PackageName { unPkgName :: Text }
                     deriving (Eq, Ord, Show)
 
 -- | Type used for representing the source directory of a package.
-newtype SourceDir = SourceDir Directory deriving (Eq, Show)
+newtype SourceDir = SourceDir FilePath deriving (Eq, Show)
 
 -- | Helper type for indicating the type of a package.
 data PackageType = Library | Executable deriving (Eq, Show)
@@ -104,24 +100,11 @@ data Command = Fetch                        -- ^ Fetches all dependencies as des
 data Args = Args { logLevel :: LogLevel
                  , cmd :: Command } deriving (Eq, Show)
 
--- | Type containing build settings not passing via commandline args.
-data BuildSettings = BuildSettings { buildDir :: Directory
-                                   , projectFile :: FilePath
-                                   , pkgSetFile :: FilePath
-                                   , pkgFile :: FilePath
-                                   } deriving (Eq, Show)
-
 -- | Type grouping all settings together into 1 big structure.
-data Config = Config { args :: Args
-                     , buildSettings :: BuildSettings
-                     } deriving (Eq, Show)
+newtype Config = Config { args :: Args } deriving (Eq, Show)
 
 
 -- Instances
-
-instance Default BuildSettings where
-  def = BuildSettings ".idream-work" "idr-project.json"
-                      "idr-package-set.json" "idr-package.json"
 
 instance Default SourceDir where
   def = SourceDir "src"

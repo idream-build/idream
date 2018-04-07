@@ -6,7 +6,6 @@ module Main where
 -- Imports
 
 import Control.Monad.Reader
-import Data.Default (def)
 import qualified Idream.Log as Log
 import Idream.Log ( MonadLogger )
 import Idream.OptionParser
@@ -29,7 +28,7 @@ import Idream.Command.Test (runTests)
 main :: IO ()
 main = do
   cmdLineArgs <- parseCmdLineArgs
-  let config = Config cmdLineArgs def
+  let config = Config cmdLineArgs
       getLogThreshold Info = Log.Info
       getLogThreshold _ = Log.Debug
       logThreshold = getLogThreshold $ logLevel cmdLineArgs

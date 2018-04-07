@@ -27,7 +27,7 @@ describe 'idream generate ipkg command' do
     expect(output).to include('Failed to read root project file')
   end
 
-  it "gives an informational message when it can't find the dependency graph file" do
+  it "gives an informational message when no packages yet" do
     output = generate
     expect(output).to include('Project contains no packages yet')
     expect(output).to include('Use `idream add` to add a package to this project first.')
@@ -108,8 +108,8 @@ describe 'idream generate ipkg command' do
 
   def pkg1_ipkg_contents
     <<~END
-    -- NOTE: This is an auto-generated file by idream. Do not edit.
     package package1
+    -- NOTE: This is an auto-generated file by idream. Do not edit.
     modules = Lib, Extras
 
     sourcedir = src
@@ -118,8 +118,8 @@ describe 'idream generate ipkg command' do
 
   def exe_ipkg_contents
     <<~END
-    -- NOTE: This is an auto-generated file by idream. Do not edit.
     package test_exe
+    -- NOTE: This is an auto-generated file by idream. Do not edit.
     modules = Main
     pkgs = test_dependency1, test_dependency2
     sourcedir = src

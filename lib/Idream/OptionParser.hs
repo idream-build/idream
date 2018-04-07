@@ -1,5 +1,4 @@
 
-
 module Idream.OptionParser ( parseCmdLineArgs ) where
 
 -- Imports

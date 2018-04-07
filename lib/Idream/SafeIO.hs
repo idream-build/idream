@@ -5,6 +5,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Idream.SafeIO ( SafeIO
+                     , MonadIO(..)
                      , MonadSafeIO(..)
                      , runSafeIO
                      , mapError

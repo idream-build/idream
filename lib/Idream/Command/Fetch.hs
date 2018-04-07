@@ -6,16 +6,14 @@ module Idream.Command.Fetch ( fetchDeps ) where
 
 -- Imports
 
-import Control.Monad.Reader
 import Control.Monad.State
 import qualified Idream.Log as Log
 import Idream.Log ( MonadLogger )
 import Idream.SafeIO
 import Control.Exception ( IOException )
-import System.Directory ( getCurrentDirectory )
-import System.FilePath ( (</>) )
 import System.Process ( createProcess, waitForProcess, cwd, proc )
 import System.Exit ( ExitCode(..) )
+import System.Directory ( getCurrentDirectory )
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Map as Map
 import Data.Monoid ( (<>) )
@@ -29,6 +27,7 @@ import Idream.Command.Common ( setupBuildDir, readRootProjFile, readProjFile
                              , ReadProjectErr(..), ReadPkgErr(..) )
 import Idream.Types
 import Idream.Graph
+import Idream.FileSystem
 
 
 -- Types
@@ -76,11 +75,10 @@ data FetchPkgErr = FPPkgMissingInPkgSet ProjectName
 
 
 -- | Top level function that tries to fetch all dependencies.
-fetchDeps :: ( MonadReader Config m, MonadLogger m, MonadIO m ) => m ()
+fetchDeps :: ( MonadLogger m, MonadIO m ) => m ()
 fetchDeps = do
-  projFile <- asks $ projectFile . buildSettings
   result <- runSafeIO $ do
-    projFileExists <- checkFileExists' FFetchPkgErr projFile
+    projFileExists <- checkFileExists' FFetchPkgErr projectFile
     if not projFileExists
       then Log.err "Did not find project file, aborting."
       else fetchDeps'
@@ -89,9 +87,8 @@ fetchDeps = do
     Right _ -> Log.info "Finished fetching dependencies."
 
 -- | Helper function that does the actual fetching of dependencies.
-fetchDeps' :: ( MonadReader Config m, MonadLogger m, MonadSafeIO FetchErr m ) => m ()
+fetchDeps' :: ( MonadLogger m, MonadSafeIO FetchErr m ) => m ()
 fetchDeps' = do
-  workDir <- asks $ buildDir . buildSettings
   setupBuildDir FSetupBuildDirErr
   rootProj@(Project projName rootPkgs) <- readRootProjFile FReadProjectErr
   if null rootPkgs
@@ -101,15 +98,13 @@ fetchDeps' = do
       pkgSet <- readPkgSetFile FReadPkgSetErr
       Log.info ("Fetching dependencies for " <> unProjName projName <> ".")
       let initialGraph = mkGraphFromProject rootProj
-          graphFile = workDir </> "dependency-graph.json"
           fetchDepsForProj = fetchDepsForProject FFetchPkgErr pkgSet rootProj
       graph <- execStateT fetchDepsForProj initialGraph
-      saveGraphToJSON FGraphErr graphFile graph
+      saveGraphToJSON FGraphErr depGraphFile graph
 
 
 -- | Recursively fetches all dependencies for a project.
 fetchDepsForProject :: ( MonadState DepGraph m
-                       , MonadReader Config m
                        , MonadLogger m
                        , MonadSafeIO e m )
                     => (FetchPkgErr -> e)
@@ -120,7 +115,6 @@ fetchDepsForProject f pkgSet (Project projName pkgs) = do
 
 -- | Recursively fetch all dependencies for a package
 fetchDepsForPackage :: ( MonadState DepGraph m
-                       , MonadReader Config m
                        , MonadLogger m
                        , MonadSafeIO e m )
                     => (FetchPkgErr -> e)
@@ -140,30 +134,26 @@ fetchDepsForPackage f pkgSet projName pkgName = do
   mapM_ (fetchDepsForProject f pkgSet) newSubProjects'
 
 -- | Fetches a project as specified in the top level package set file.
-fetchProj :: ( MonadReader Config m
-             , MonadLogger m
-             , MonadSafeIO e m )
+fetchProj :: ( MonadLogger m, MonadSafeIO e m )
           => (FetchPkgErr -> e)
           -> PackageSet -> ProjectName -> m FetchInfo
 fetchProj f (PackageSet pkgs) projName@(ProjectName name) =
   case Map.lookup name pkgs of
     Nothing -> raiseError . f $ FPPkgMissingInPkgSet projName
     Just (PackageDescr repo version) -> do
-      workDir <- asks $ buildDir . buildSettings
-      projectFilePath <- asks $ projectFile . buildSettings
-      let repoDir = workDir </> "src" </> T.unpack name
-          projFile = repoDir </> projectFilePath
-      (dirExists, fileExists) <- liftM2 (,) (checkDirExists' f repoDir) (checkFileExists' f projFile)
+      let repoDir' = repoDir projName
+          projFile = repoDir' </> projectFile
+      (dirExists, fileExists) <- liftM2 (,) (checkDirExists' f $ repoDir') (checkFileExists' f projFile)
       case (dirExists, fileExists) of
         (True, True) ->
           AlreadyFetched <$> readProjFile (f . FPReadProjectErr) projFile
         _ -> do
-          gitClone (f . FPGitCloneErr) repo version repoDir
+          gitClone (f . FPGitCloneErr) repo version repoDir'
           result <- readProjFile (f . FPReadProjectErr) projFile
           return $ NewlyFetched result
 
 -- | Reads the package file to determine the project dependencies.
-readPkgDeps :: ( MonadReader Config m, MonadLogger m, MonadSafeIO e m )
+readPkgDeps :: MonadSafeIO e m
             => (FetchPkgErr -> e)
             -> ProjectName -> PackageName -> m [ProjectName]
 readPkgDeps f projName pkgName = do
@@ -172,21 +162,19 @@ readPkgDeps f projName pkgName = do
   return deps
 
 -- | Reads out the package set file (idr-package-set.json).
-readPkgSetFile :: ( MonadReader Config m, MonadLogger m, MonadSafeIO e m )
-               => (ReadPkgSetErr -> e) -> m PackageSet
+readPkgSetFile :: MonadSafeIO e m => (ReadPkgSetErr -> e) -> m PackageSet
 readPkgSetFile f = do
-  pkgSetFilePath <- asks $ pkgSetFile . buildSettings
   pkgSetJSON <- liftSafeIO (f . PkgSetFileNotFound) $ do
     dir <- getCurrentDirectory
-    BSL.readFile $ dir </> pkgSetFilePath
+    BSL.readFile $ dir </> pkgSetFile
   let result = eitherDecode pkgSetJSON
   either (raiseError . f . PkgSetParseErr) return result
 
 -- | Clones a git repo, along with all it's submodules into a directory.
-gitClone :: (MonadLogger m, MonadSafeIO e m)
+gitClone :: ( MonadLogger m, MonadSafeIO e m )
          => (GitCloneErr -> e) -> Repo -> Version -> Directory -> m ()
-gitClone f r@(Repo repo) v@(Version vsn) repoDir =
-  let cloneArgs = ["clone", "--quiet", "--recurse-submodules", T.unpack repo, repoDir]
+gitClone f r@(Repo repo) v@(Version vsn) downloadDir =
+  let cloneArgs = ["clone", "--quiet", "--recurse-submodules", T.unpack repo, downloadDir]
       checkoutArgs = ["checkout", "--quiet", T.unpack vsn]
       execProcess f' command cmdArgs maybeDir = liftSafeIO f' $ do
         (_, _, _, procHandle) <- createProcess (proc command cmdArgs) { cwd = maybeDir }
@@ -195,7 +183,7 @@ gitClone f r@(Repo repo) v@(Version vsn) repoDir =
     Log.debug ("Fetching repo @ " <> repo <> ".")
     cloneResult <- execProcess (f . CloneFailError r) "git" cloneArgs Nothing
     when (cloneResult /= ExitSuccess) $ raiseError . f $ CloneFailExitCode r cloneResult
-    checkoutResult <- execProcess (f . CheckoutFailError r v) "git" checkoutArgs (Just repoDir)
+    checkoutResult <- execProcess (f . CheckoutFailError r v) "git" checkoutArgs (Just downloadDir)
     when (checkoutResult /= ExitSuccess) $ raiseError . f $ CheckoutFailExitCode r v checkoutResult
 
 checkDirExists' :: MonadSafeIO e m => (FetchPkgErr -> e) -> FilePath -> m Bool

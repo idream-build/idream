@@ -6,18 +6,16 @@ module Idream.Command.New ( startNewProject ) where
 
 -- Imports
 
-import Control.Monad.Reader
 import Idream.Log ( MonadLogger )
 import qualified Idream.Log as Log
-import Idream.SafeIO ( MonadSafeIO, runSafeIO )
+import Idream.SafeIO ( MonadSafeIO, MonadIO, runSafeIO )
 import Control.Exception ( IOException )
 import Data.Monoid ( (<>) )
 import Data.Text ( Text )
 import qualified Data.Text as T
-import System.FilePath ( (</>) )
-import Idream.Types ( Config(..), Directory
-                    , BuildSettings(..), ProjectName(..) )
+import Idream.Types ( ProjectName(..) )
 import Idream.Command.Common ( safeWriteFile, safeCreateDir )
+import Idream.FileSystem
 
 
 -- Data types
@@ -47,7 +45,7 @@ idrProjectJson projName =
 
 
 -- | Creates a new project template.
-startNewProject :: ( MonadReader Config m, MonadLogger m, MonadIO m )
+startNewProject :: ( MonadLogger m, MonadIO m )
                 => ProjectName -> m ()
 startNewProject projName = do
   result <- runSafeIO (startNewProject' projName)
@@ -55,17 +53,14 @@ startNewProject projName = do
 
 
 -- | Does the actual creation of the project template.
-startNewProject' :: ( MonadReader Config m
-                    , MonadLogger m
-                    , MonadSafeIO MkProjectError m)
+startNewProject' :: ( MonadLogger m, MonadSafeIO MkProjectError m )
                  => ProjectName -> m ()
 startNewProject' (ProjectName projName) = do
-  buildCfg <- asks buildSettings
   safeCreateDir' projectDir
-  safeCreateDir' $ projectDir </> buildDir buildCfg
+  safeCreateDir' $ projectDir </> buildDir
   safeWriteFile' gitignore $ relPath ".gitignore"
-  safeWriteFile' (idrProjectJson projName) (relPath $ projectFile buildCfg)
-  safeWriteFile' idrPkgSetJson $ relPath (pkgSetFile buildCfg)
+  safeWriteFile' (idrProjectJson projName) (relPath projectFile)
+  safeWriteFile' idrPkgSetJson $ relPath pkgSetFile
   Log.info ("Successfully initialized project: " <> projName <> ".")
   where projectDir = T.unpack projName
         relPath path = projectDir </> path

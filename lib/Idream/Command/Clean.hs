@@ -5,12 +5,11 @@ module Idream.Command.Clean ( cleanCode ) where
 
 -- Imports
 
-import Control.Monad.Reader
 import Control.Exception ( IOException )
 import Idream.Log ( MonadLogger )
 import qualified Idream.Log as Log
 import Idream.SafeIO
-import Idream.Types ( Config(..), BuildSettings(..), Directory )
+import Idream.FileSystem
 import System.Directory ( removePathForcibly )
 import qualified Data.Text as T
 import Data.Monoid ( (<>) )
@@ -24,15 +23,14 @@ newtype CleanErr = CleanErr IOException deriving (Eq, Show)
 -- Functions
 
 -- | Cleans up the working directory of a project.
-cleanCode :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
+cleanCode :: ( MonadLogger m, MonadIO m ) => m ()
 cleanCode = do
   Log.info "Cleaning project."
-  workDir <- asks $ buildDir . buildSettings
-  result <- runSafeIO $ cleanCode' workDir
+  result <- runSafeIO cleanCode'
   either showError return result
 
-cleanCode' :: ( MonadLogger m, MonadSafeIO CleanErr m ) => Directory -> m ()
-cleanCode' workDir = liftSafeIO CleanErr $ removePathForcibly workDir
+cleanCode' :: ( MonadLogger m, MonadSafeIO CleanErr m ) => m ()
+cleanCode' = liftSafeIO CleanErr $ removePathForcibly buildDir
 
 -- | Displays the error if something went wrong during project cleanup.
 showError :: MonadLogger m => CleanErr -> m ()
