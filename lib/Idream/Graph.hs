@@ -1,5 +1,5 @@
 
-{-# LANGUAGE FlexibleContexts, OverloadedStrings, DeriveFoldable #-}
+{-# LANGUAGE DeriveFoldable #-}
 
 module Idream.Graph ( DepGraph
                     , DepNode(..)

@@ -29,6 +29,16 @@ dependencies:
 
 ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path  # -O2
 
+default-extensions:
+  - OverloadedStrings
+  - FlexibleContexts
+  - FlexibleInstances
+  - LambdaCase
+  - GADTs
+  - DataKinds
+  - TypeOperators
+  - ScopedTypeVariables
+
 library:
   source-dirs:    lib
 

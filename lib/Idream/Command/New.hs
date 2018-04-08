@@ -1,6 +1,4 @@
 
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
-
 module Idream.Command.New ( startNewProject ) where
 
 

@@ -1,6 +1,4 @@
 
-{-# LANGUAGE FlexibleContexts #-}
-
 module Main where
 
 -- Imports

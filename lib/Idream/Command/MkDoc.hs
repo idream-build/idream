@@ -1,6 +1,4 @@
 
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
-
 module Idream.Command.MkDoc ( generateDocs ) where
 
 import Control.Monad.Reader

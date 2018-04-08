@@ -1,6 +1,4 @@
 
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
-
 module Idream.Command.Test ( runTests ) where
 
 import Control.Monad.Reader

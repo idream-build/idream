@@ -1,6 +1,4 @@
 
-{-# LANGUAGE OverloadedStrings #-}
-
 module Idream.Types ( ProjectName(..)
                     , PackageName(..)
                     , Argument

@@ -1,5 +1,4 @@
 
-{-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE UndecidableInstances #-}

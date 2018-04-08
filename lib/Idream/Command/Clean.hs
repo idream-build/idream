@@ -1,6 +1,4 @@
 
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
-
 module Idream.Command.Clean ( cleanCode ) where
 
 -- Imports

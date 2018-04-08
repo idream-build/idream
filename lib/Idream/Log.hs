@@ -1,5 +1,4 @@
 
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Idream.Log ( Level(..), LoggingT(..), MonadLogger(..)

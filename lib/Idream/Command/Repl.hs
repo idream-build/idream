@@ -1,6 +1,4 @@
 
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
-
 module Idream.Command.Repl ( startRepl ) where
 
 import Control.Monad.Reader

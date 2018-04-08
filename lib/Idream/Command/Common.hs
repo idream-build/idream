@@ -1,6 +1,4 @@
 
-{-# LANGUAGE FlexibleContexts #-}
-
 module Idream.Command.Common ( setupBuildDir
                              , readProjFile
                              , readRootProjFile
