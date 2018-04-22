@@ -1,11 +1,11 @@
 
 {-# LANGUAGE RankNTypes #-}
 
-module Idream.Git ( Git(..)
-                  , GitError(..), GitCloneError(..), GitCheckoutError(..)
-                  , runGit, gitClone, gitCheckout
-                  , handleGitErr, handleGitCloneErr
-                  ) where
+module Idream.Effects.Git ( Git(..)
+                          , GitError(..), GitCloneError(..), GitCheckoutError(..)
+                          , runGit, gitClone, gitCheckout
+                          , handleGitErr, handleGitCloneErr
+                          ) where
 
 
 -- Imports
@@ -18,7 +18,7 @@ import System.Process ( createProcess, waitForProcess, proc, cwd )
 import qualified Data.Text as T
 import Data.Monoid ( (<>) )
 import Idream.SafeIO
-import Idream.FileSystem
+import Idream.Effects.FileSystem
 import Idream.Types ( Repo(..), Version(..) )
 
 

@@ -12,9 +12,9 @@ import Data.Monoid ( (<>) )
 import Data.Text ( Text )
 import qualified Data.Text as T
 import Idream.Types ( ProjectName(..), Config(..), logLevel, args )
-import Idream.FileSystem
-import Idream.Log ( Logger, LogError, logErr )
-import qualified Idream.Log as Log
+import Idream.Effects.FileSystem
+import Idream.Effects.Log ( Logger, LogError, logErr )
+import qualified Idream.Effects.Log as Log
 import Idream.SafeIO
 
 

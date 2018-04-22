@@ -1,12 +1,12 @@
 
 {-# LANGUAGE RankNTypes #-}
 
-module Idream.Idris ( Idris(..), IdrisError(..)
-                    , Command, Arg, Environment
-                    , idrisCompile
-                    , runIdris
-                    , handleIdrisErr
-                    ) where
+module Idream.Effects.Idris ( Idris(..), IdrisError(..)
+                            , Command, Arg, Environment
+                            , idrisCompile
+                            , runIdris
+                            , handleIdrisErr
+                            ) where
 
 -- Imports
 

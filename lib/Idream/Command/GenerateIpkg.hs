@@ -8,9 +8,9 @@ import Prelude hiding ( writeFile )
 import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Control.Monad.Reader
-import Idream.Log ( Logger, LogError, logErr )
+import Idream.Effects.Log ( Logger, LogError, logErr )
 import Idream.SafeIO
-import qualified Idream.Log as Log
+import qualified Idream.Effects.Log as Log
 import Idream.Types
 import Idream.Graph
 import qualified Algebra.Graph as Graph
@@ -18,7 +18,7 @@ import Idream.Command.Common ( ProjParseErr(..), PkgParseErr(..)
                              , readRootProjFile, readPkgFile
                              , getPkgFilePath, getPkgDirPath
                              , handleReadProjectErr, handleReadPkgErr )
-import Idream.FileSystem
+import Idream.Effects.FileSystem
 import Data.Text ( Text )
 import Data.Monoid ( (<>) )
 import Data.List ( intercalate )

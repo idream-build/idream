@@ -17,7 +17,7 @@ import Prelude hiding ( readFile )
 import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Idream.Types ( Project(..), ProjectName(..), Package(..), PackageName(..) )
-import Idream.FileSystem
+import Idream.Effects.FileSystem
 import System.FilePath ( (</>) )
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL

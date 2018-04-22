@@ -1,10 +1,10 @@
 
 {-# LANGUAGE RankNTypes #-}
 
-module Idream.Log ( LogLevel(..), LogError(..), Logger
-                  , runLogger, logErr, handleLogErr
-                  , debug, info, warn, err
-                  ) where
+module Idream.Effects.Log ( LogLevel(..), LogError(..), Logger
+                          , runLogger, logErr, handleLogErr
+                          , debug, info, warn, err
+                          ) where
 
 -- Imports
 

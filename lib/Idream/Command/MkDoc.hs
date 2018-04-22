@@ -2,7 +2,7 @@
 module Idream.Command.MkDoc ( generateDocs ) where
 
 import Control.Monad.Reader
-import Idream.Log ( logErr )
+import Idream.Effects.Log ( logErr )
 
 
 generateDocs :: MonadIO m => m ()

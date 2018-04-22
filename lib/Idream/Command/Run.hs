@@ -2,7 +2,7 @@
 module Idream.Command.Run ( runCode ) where
 
 import Control.Monad.Reader
-import Idream.Log ( logErr )
+import Idream.Effects.Log ( logErr )
 import Idream.Types (Argument)
 
 

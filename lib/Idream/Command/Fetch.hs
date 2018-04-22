@@ -9,8 +9,8 @@ import Control.Monad.Freer
 import Control.Monad.Freer.State
 import Control.Monad.Freer.Error
 import Control.Monad.Reader
-import qualified Idream.Log as Log
-import Idream.Log ( Logger, logErr )
+import qualified Idream.Effects.Log as Log
+import Idream.Effects.Log ( Logger, logErr )
 import Idream.SafeIO
 import Idream.Command.Common ( ProjParseErr(..), PkgParseErr(..)
                              , setupBuildDir, readRootProjFile, readProjFile
@@ -18,8 +18,8 @@ import Idream.Command.Common ( ProjParseErr(..), PkgParseErr(..)
                              , handleReadProjectErr, handleReadPkgErr )
 import Idream.Types
 import Idream.Graph
-import Idream.FileSystem
-import Idream.Git
+import Idream.Effects.FileSystem
+import Idream.Effects.Git
 import qualified Data.Map as Map
 import Data.Monoid ( (<>) )
 import Data.Aeson ( eitherDecode )

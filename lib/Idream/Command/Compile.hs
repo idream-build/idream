@@ -7,10 +7,10 @@ import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Control.Monad.Reader
 import Idream.SafeIO
-import Idream.FileSystem
-import Idream.Idris
-import Idream.Log ( Logger )
-import qualified Idream.Log as Log
+import Idream.Effects.FileSystem
+import Idream.Effects.Idris
+import Idream.Effects.Log ( Logger )
+import qualified Idream.Effects.Log as Log
 import Idream.Types ( Config(..), PackageName(..), Project(..), logLevel, args )
 import Idream.Graph ( DepNode(..), BuildPlan, ParseGraphErr
                     , loadGraphFromJSON, createBuildPlan

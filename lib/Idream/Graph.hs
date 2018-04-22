@@ -25,7 +25,7 @@ import Prelude hiding ( writeFile, readFile )
 import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Control.Monad.State
-import Idream.FileSystem
+import Idream.Effects.FileSystem
 import Idream.Types ( Project(..), ProjectName(..), PackageName(..) )
 import qualified Data.Map as Map
 import qualified Data.Set as Set

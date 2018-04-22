@@ -9,8 +9,8 @@ import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Control.Monad.Reader
 import Idream.SafeIO
-import qualified Idream.Log as Log
-import Idream.Log ( Logger )
+import qualified Idream.Effects.Log as Log
+import Idream.Effects.Log ( Logger )
 import Data.Monoid ( (<>) )
 import Data.Text ( Text )
 import Data.Text.Lazy.Encoding ( decodeUtf8 )
@@ -19,7 +19,7 @@ import Data.Aeson.Types ( ToJSON(..) )
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text as T
 import System.FilePath ( (</>) )
-import Idream.FileSystem
+import Idream.Effects.FileSystem
 import Idream.Types ( Project(..), PackageName(..), PackageType(..), Config(..)
                     , logLevel, args )
 import Idream.Command.Common ( readRootProjFile, handleReadProjectErr
