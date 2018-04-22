@@ -5,9 +5,9 @@ module Idream.Command.Add ( addPackageToProject ) where
 -- Imports
 
 import Prelude hiding ( writeFile )
-import Control.Monad.Freer
-import Control.Monad.Freer.Error
 import Control.Monad.Reader
+import Control.Monad.Freer
+import Idream.Error
 import Idream.SafeIO
 import qualified Idream.Effects.Log as Log
 import Idream.Effects.Log ( Logger )
@@ -30,7 +30,7 @@ import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
 
 -- | Custom error type for when creating a project template.
 data AddPkgError = PackageAlreadyExistsErr PackageName
-                 | ReadProjFileErr ProjParseErr
+                 | AProjParseErr ProjParseErr
                  | AFSErr FSError
                  | ALogErr Log.LogError
                  deriving (Eq, Show)
@@ -68,14 +68,17 @@ idrPkgJson (PackageName pkgName) pkgType =
 
 
 runProgram :: ( MonadReader Config m, MonadIO m )
-           => Eff '[Logger, Error AddPkgError, FileSystem, SafeIO AddPkgError] ()
+           => Eff '[ Logger
+                   , Error AddPkgError, Error ProjParseErr
+                   , FileSystem, SafeIO AddPkgError] ()
            -> m (Either AddPkgError ())
 runProgram prog = do
   thres <- asks $ logLevel . args
-  liftIO $  fmap join
+  liftIO $  fmap (join . join)
          $  runSafeIO
         <$> runM
          .  runFS AFSErr
+         .  runError' AProjParseErr
          .  runError
          .  Log.runLogger ALogErr thres
          $  prog
@@ -93,11 +96,12 @@ addPackageToProject pkgName@(PackageName name) pkgType = do
 
 -- | Does the actual creation of the project template.
 addPackageToProject' :: ( Member Logger r
+                        , Member (Error ProjParseErr) r
                         , Member (Error AddPkgError) r
                         , Member FileSystem r )
                      => PackageName -> PackageType -> Eff r ()
 addPackageToProject' pkgName pkgType = do
-  projInfo <- readRootProjFile'
+  projInfo <- readRootProjFile
   createDir $ pkgDir pkgName
   createDir $ pkgSrcDir pkgName
   writeFile (idrPkgJson pkgName pkgType) (pkgDir pkgName </> pkgFile)
@@ -108,11 +112,6 @@ addPackageToProject' pkgName pkgType = do
         mainFile Executable = "Main.idr"
         mainContents Library = libIdr
         mainContents Executable = mainIdr
-
--- | Tries to read the project file.
-readRootProjFile' :: ( Member FileSystem r, Member (Error AddPkgError) r )
-                  => Eff r Project
-readRootProjFile' = readRootProjFile ReadProjFileErr
 
 -- | Updates the project file with a new package entry.
 updateProjInfo :: Member FileSystem r => Project -> PackageName -> Eff r ()
@@ -130,7 +129,7 @@ displayStatusUpdate (PackageName pkgName) =
 showError :: AddPkgError -> T.Text
 showError (AFSErr err) = toText err
 showError (ALogErr err) = toText err
-showError (ReadProjFileErr err) = toText err
+showError (AProjParseErr err) = toText err
 showError (PackageAlreadyExistsErr (PackageName pkgName)) =
   "Failed to add package to project, package "
     <> pkgName <> " already exists"

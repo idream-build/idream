@@ -224,11 +224,10 @@ saveGraphToJSON file g =
   writeFile (TL.toStrict . encodeToLazyText . toGraphInfo $ g) file
 
 -- | Loads a graph from JSON.
-loadGraphFromJSON :: ( Member (Error e) r, Member FileSystem r )
-                  => (ParseGraphErr -> e) -> FilePath
-                  -> Eff r DepGraph
-loadGraphFromJSON f file = do
+loadGraphFromJSON :: ( Member (Error ParseGraphErr) r, Member FileSystem r )
+                  => FilePath -> Eff r DepGraph
+loadGraphFromJSON file = do
   contents <- readFile file
   let result = eitherDecode' . encodeUtf8 . TL.fromStrict $ contents
-  either (throwError . f . ParseGraphErr) (return . fromGraphInfo) result
+  either (throwError . ParseGraphErr) (return . fromGraphInfo) result
 

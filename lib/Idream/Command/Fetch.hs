@@ -5,10 +5,10 @@ module Idream.Command.Fetch ( fetchDeps ) where
 -- Imports
 
 import Prelude hiding ( readFile )
+import Control.Monad.Reader
 import Control.Monad.Freer
 import Control.Monad.Freer.State
-import Control.Monad.Freer.Error
-import Control.Monad.Reader
+import Idream.Error
 import qualified Idream.Effects.Log as Log
 import Idream.Effects.Log ( Logger, logErr )
 import Idream.SafeIO
@@ -42,12 +42,10 @@ data FetchInfo = AlreadyFetched Project
 data FetchErr = FFSErr FSError
               | FLogErr Log.LogError
               | FGitErr GitError
-              | FRootProjParseErr ProjParseErr
-              | FProjParseErr ProjectName ProjParseErr
-              | FPkgParseErr ProjectName PackageName PkgParseErr
+              | FProjParseErr ProjParseErr
+              | FPkgParseErr PkgParseErr
               | FPkgSetParseErr String
               | FPkgMissingInPkgSet ProjectName
-              | FGraphErr ParseGraphErr
               deriving (Eq, Show)
 
 
@@ -57,15 +55,19 @@ data FetchErr = FFSErr FSError
 
 
 runProgram :: ( MonadReader Config m, MonadIO m )
-           => Eff '[Logger, Error FetchErr, Git, FileSystem, SafeIO FetchErr] ()
+           => Eff '[ Logger
+                   , Error FetchErr, Error PkgParseErr, Error ProjParseErr
+                   , Git, FileSystem, SafeIO FetchErr] ()
            -> m (Either FetchErr ())
 runProgram prog = do
   thres <- asks $ logLevel . args
-  liftIO $  fmap join
+  liftIO $  fmap (join . join . join)
          $  runSafeIO
         <$> runM
          .  runFS FFSErr
          .  runGit FGitErr
+         .  runError' FProjParseErr
+         .  runError' FPkgParseErr
          .  runError
          .  Log.runLogger FLogErr thres
          $  prog
@@ -85,12 +87,14 @@ fetchDeps = do
 -- | Helper function that does the actual fetching of dependencies.
 fetchDeps' :: ( Member Logger r
               , Member (Error FetchErr) r
+              , Member (Error ProjParseErr) r
+              , Member (Error PkgParseErr) r
               , Member Git r
               , Member FileSystem r )
            => Eff r ()
 fetchDeps' = do
   setupBuildDir
-  rootProj@(Project projName rootPkgs) <- readRootProjFile FRootProjParseErr
+  rootProj@(Project projName rootPkgs) <- readRootProjFile
   if null rootPkgs
     then Log.info ("Project contains no packages yet, skipping fetch step. "
                 <> "Use `idream add` to add a package to this project first.")
@@ -106,6 +110,8 @@ fetchDeps' = do
 -- | Recursively fetches all dependencies for a project.
 fetchDepsForProject :: ( Member (State DepGraph) r
                        , Member (Error FetchErr) r
+                       , Member (Error ProjParseErr) r
+                       , Member (Error PkgParseErr) r
                        , Member FileSystem r
                        , Member Git r
                        , Member Logger r )
@@ -116,6 +122,8 @@ fetchDepsForProject pkgSet (Project projName pkgs) = do
 
 -- | Recursively fetch all dependencies for a package
 fetchDepsForPackage :: ( Member (Error FetchErr) r
+                       , Member (Error ProjParseErr) r
+                       , Member (Error PkgParseErr) r
                        , Member (State DepGraph) r
                        , Member Git r
                        , Member Logger r
@@ -136,7 +144,9 @@ fetchDepsForPackage pkgSet projName pkgName = do
   mapM_ (fetchDepsForProject pkgSet) newSubProjects'
 
 -- | Fetches a project as specified in the top level package set file.
-fetchProj :: ( Member Logger r, Member (Error FetchErr) r
+fetchProj :: ( Member Logger r
+             , Member (Error ProjParseErr) r
+             , Member (Error FetchErr) r
              , Member Git r, Member FileSystem r )
           => PackageSet -> ProjectName -> Eff r FetchInfo
 fetchProj (PackageSet pkgs) projName@(ProjectName name) =
@@ -148,19 +158,21 @@ fetchProj (PackageSet pkgs) projName@(ProjectName name) =
       (dirExists, fileExists) <- liftM2 (,) (doesDirExist repoDir') (doesFileExist projFile)
       case (dirExists, fileExists) of
         (True, True) ->
-          AlreadyFetched <$> readProjFile (FProjParseErr projName) projFile
+          AlreadyFetched <$> readProjFile projFile
         _ -> do
           gitClone repo repoDir'
           gitCheckout repo version repoDir'
-          result <- readProjFile (FProjParseErr projName) projFile
-          return $ NewlyFetched result
+          NewlyFetched <$> readProjFile projFile
 
 -- | Reads the package file to determine the project dependencies.
-readPkgDeps :: ( Member FileSystem r, Member (Error FetchErr) r, Member Logger r )
+readPkgDeps :: ( Member FileSystem r
+               , Member (Error ProjParseErr) r
+               , Member (Error PkgParseErr) r
+               , Member Logger r )
             => ProjectName -> PackageName -> Eff r [ProjectName]
 readPkgDeps projName pkgName = do
-  pkgFilePath <- getPkgFilePath (FProjParseErr projName) pkgName projName
-  (Package _ _ _ deps) <- readPkgFile (FPkgParseErr projName pkgName) pkgFilePath
+  pkgFilePath <- getPkgFilePath pkgName projName
+  (Package _ _ _ deps) <- readPkgFile pkgFilePath
   return deps
 
 -- | Reads out the package set file (idr-package-set.json).
@@ -178,19 +190,10 @@ handleFetchErr :: FetchErr -> T.Text
 handleFetchErr (FFSErr err) = toText err
 handleFetchErr (FLogErr err) = toText err
 handleFetchErr (FGitErr err) = toText err
-handleFetchErr (FRootProjParseErr err) =
-  "Failed to parse root project file: " <> toText err <> "."
-handleFetchErr (FProjParseErr projName err) =
-  "Failed to parse project file (project = "
-    <> unProjName projName <> "), reason: "
-    <> T.pack (show err) <> "."
-handleFetchErr (FPkgParseErr projName pkgName err) =
-  "Failed to parse package set file for project: " <> unProjName projName
-    <> ", package = " <> unPkgName pkgName <> ": "
-    <> toText err <> "."
+handleFetchErr (FPkgParseErr err) = toText err
+handleFetchErr (FProjParseErr err) = toText err
 handleFetchErr (FPkgSetParseErr err) =
   "Failed to parse package set, reason: " <> T.pack (show err) <> "."
 handleFetchErr (FPkgMissingInPkgSet projName) =
   "Package missing in idr-package-set.json: " <> unProjName projName <> "."
-handleFetchErr (FGraphErr err) = toText err
 

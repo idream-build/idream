@@ -55,44 +55,39 @@ setupBuildDir = createDir buildDir
 
 -- | Reads out a project file (idr-project.json).
 
-readProjFile :: ( Member (Error e) r, Member FileSystem r )
-             => (ProjParseErr -> e)
-             -> FilePath -> Eff r Project
-readProjFile f file = do
+readProjFile :: ( Member (Error ProjParseErr) r, Member FileSystem r )
+             => FilePath -> Eff r Project
+readProjFile file = do
   projectJSON <- encodeUtf8 . TL.fromStrict <$> readFile file
-  either (throwError . f . ProjParseErr) return $ eitherDecode projectJSON
+  either (throwError . ProjParseErr) return $ eitherDecode projectJSON
 
 -- | Reads out the top level project file (idr-project.json).
-readRootProjFile :: ( Member (Error e) r, Member FileSystem r )
-                 => (ProjParseErr -> e)
-                 -> Eff r Project
-readRootProjFile f = readProjFile f projectFile
+readRootProjFile :: ( Member (Error ProjParseErr) r, Member FileSystem r )
+                 => Eff r Project
+readRootProjFile = readProjFile projectFile
 
 -- | Reads out a package file (idr-package.json)
-readPkgFile :: ( Member (Error e) r, Member FileSystem r )
-            => (PkgParseErr -> e)
-            -> FilePath -> Eff r Package
-readPkgFile f file = do
+readPkgFile :: ( Member (Error PkgParseErr) r, Member FileSystem r )
+            => FilePath -> Eff r Package
+readPkgFile file = do
   pkgJSON <- encodeUtf8 . TL.fromStrict <$> readFile file
-  either (throwError . f . PkgParseErr) return $ eitherDecode pkgJSON
+  either (throwError . PkgParseErr) return $ eitherDecode pkgJSON
 
 -- Helper function to determine location of package directory.
-getPkgDirPath :: ( Member (Error e) r, Member FileSystem r )
-              => (ProjParseErr -> e)
-              -> PackageName -> ProjectName
+getPkgDirPath :: ( Member (Error ProjParseErr) r, Member FileSystem r )
+              => PackageName -> ProjectName
               -> Eff r Directory
-getPkgDirPath f pkg@(PackageName pkgName) (ProjectName projName) = do
-  (Project _ rootPkgNames) <- readRootProjFile f
+getPkgDirPath pkg@(PackageName pkgName) (ProjectName projName) = do
+  (Project _ rootPkgNames) <- readRootProjFile
   let basePath = if pkg `elem` rootPkgNames
                    then "."
                    else buildDir </> "src" </> T.unpack projName
   return $ basePath </> T.unpack pkgName
 
 -- Helper function to determine location of package file.
-getPkgFilePath :: ( Member (Error e) r, Member FileSystem r )
-               => (ProjParseErr -> e)
-               -> PackageName -> ProjectName
+getPkgFilePath :: ( Member (Error ProjParseErr) r, Member FileSystem r )
+               => PackageName -> ProjectName
                -> Eff r FilePath
-getPkgFilePath f pkgName projName =
-  (</> pkgFile) <$> getPkgDirPath f pkgName projName
+getPkgFilePath pkgName projName =
+  (</> pkgFile) <$> getPkgDirPath pkgName projName
 

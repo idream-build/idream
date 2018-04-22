@@ -3,9 +3,9 @@ module Idream.Command.Compile ( compileCode ) where
 
 -- Imports
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Error
 import Control.Monad.Reader
+import Control.Monad.Freer
+import Idream.Error
 import Idream.SafeIO
 import Idream.Effects.FileSystem
 import Idream.Effects.Idris
@@ -25,8 +25,8 @@ import Data.Monoid
 data CompileErr = CFSErr FSError
                 | CLogErr Log.LogError
                 | CIdrisErr IdrisError
-                | CProjReadFileErr ProjParseErr
-                | CLoadGraphErr ParseGraphErr
+                | CProjParseErr ProjParseErr
+                | CGraphErr ParseGraphErr
                 deriving (Eq, Show)
 
 
@@ -34,15 +34,19 @@ data CompileErr = CFSErr FSError
 
 
 runProgram :: ( MonadReader Config m, MonadIO m )
-           => Eff '[Logger, Error CompileErr, Idris, FileSystem, SafeIO CompileErr] ()
+           => Eff '[ Logger
+                   , Error CompileErr, Error ProjParseErr, Error ParseGraphErr
+                   , Idris, FileSystem, SafeIO CompileErr] ()
            -> m (Either CompileErr ())
 runProgram prog = do
   thres <- asks $ logLevel . args
-  liftIO $  fmap join
+  liftIO $  fmap (join . join . join)
          $  runSafeIO
         <$> runM
          .  runFS CFSErr
          .  runIdris CIdrisErr
+         .  runError' CGraphErr
+         .  runError' CProjParseErr
          .  runError
          .  Log.runLogger CLogErr thres
          $ prog
@@ -50,13 +54,13 @@ runProgram prog = do
 compileCode :: ( MonadReader Config m, MonadIO m ) => m ()
 compileCode = do
   result <- runProgram $ do
-    Project _ rootPkgs <- readRootProjFile CProjReadFileErr
+    Project _ rootPkgs <- readRootProjFile
     if null rootPkgs
       then Log.info ("Project contains no packages yet, skipping compile step. "
                   <> "Use `idream add` to add a package to this project first.")
       else do
         Log.info "Compiling package(s)..."
-        graph <- loadGraphFromJSON CLoadGraphErr depGraphFile
+        graph <- loadGraphFromJSON depGraphFile
         let buildPlan = createBuildPlan graph
         compilePackages buildPlan
         Log.info "Successfully compiled package(s)!"
@@ -91,6 +95,6 @@ handleCompileErr :: CompileErr -> T.Text
 handleCompileErr (CFSErr err) = toText err
 handleCompileErr (CLogErr err) = toText err
 handleCompileErr (CIdrisErr err) = toText err
-handleCompileErr (CProjReadFileErr err) = toText err
-handleCompileErr (CLoadGraphErr err) = toText err
+handleCompileErr (CProjParseErr err) = toText err
+handleCompileErr (CGraphErr err) = toText err
 
