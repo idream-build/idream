@@ -11,6 +11,7 @@ import Control.Monad.Reader
 import Idream.SafeIO
 import qualified Idream.Effects.Log as Log
 import Idream.Effects.Log ( Logger )
+import Idream.ToText
 import Data.Monoid ( (<>) )
 import Data.Text ( Text )
 import Data.Text.Lazy.Encoding ( decodeUtf8 )
@@ -22,8 +23,7 @@ import System.FilePath ( (</>) )
 import Idream.Effects.FileSystem
 import Idream.Types ( Project(..), PackageName(..), PackageType(..), Config(..)
                     , logLevel, args )
-import Idream.Command.Common ( readRootProjFile, handleReadProjectErr
-                             , ProjParseErr(..) )
+import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
 
 
 -- Data types
@@ -128,9 +128,9 @@ displayStatusUpdate (PackageName pkgName) =
 
 -- | Displays the error if one occurred during project template creation.
 showError :: AddPkgError -> T.Text
-showError (AFSErr err) = handleFSErr err
-showError (ALogErr err) = Log.handleLogErr err
-showError (ReadProjFileErr err) = handleReadProjectErr err
+showError (AFSErr err) = toText err
+showError (ALogErr err) = toText err
+showError (ReadProjFileErr err) = toText err
 showError (PackageAlreadyExistsErr (PackageName pkgName)) =
   "Failed to add package to project, package "
     <> pkgName <> " already exists"

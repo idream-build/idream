@@ -2,7 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Idream.Effects.Log ( LogLevel(..), LogError(..), Logger
-                          , runLogger, logErr, handleLogErr
+                          , runLogger, logErr
                           , debug, info, warn, err
                           ) where
 
@@ -10,7 +10,7 @@ module Idream.Effects.Log ( LogLevel(..), LogError(..), Logger
 
 import Prelude hiding ( putStrLn, log )
 import Data.Monoid ( (<>) )
-import Data.Text ( Text, pack )
+import Data.Text ( Text )
 import Data.Text.IO ( putStrLn )
 import Control.Monad.Freer
 import Control.Monad ( when )
@@ -18,18 +18,25 @@ import Control.Monad.Reader
 import Control.Exception ( IOException )
 import Idream.SafeIO
 import Idream.Types ( LogLevel(..) )
+import Idream.ToText
 
 
 -- Data types
 
 -- | Data type for storing errors during logging.
-data LogError = LogError IOException
+newtype LogError = LogError IOException
   deriving (Eq, Show)
 
 -- | Data type for describing a logging effect.
 data Logger a where
   Log :: LogLevel -> Text -> Logger ()
 
+
+-- Instances
+
+instance ToText LogError where
+  toText (LogError e) =
+    "Error occurred while logging information: " <> toText e <> "."
 
 -- Functions
 
@@ -46,10 +53,6 @@ runLogger' :: LogLevel -> Text -> ReaderT LogLevel IO ()
 runLogger' lvl txt = do
   thres <- ask
   when (lvl >= thres) $ log lvl txt
-
-handleLogErr :: LogError -> Text
-handleLogErr (LogError e) =
-  pack $ "Error occurred while logging information: " <> show e <> "."
 
 -- Logs a debug message.
 debug :: Member Logger r => Text -> Eff r ()

@@ -2,7 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Idream.Effects.FileSystem ( FSError(..), FileSystem(..)
-                                 , runFS, handleFSErr
+                                 , runFS
                                  , writeFile, readFile
                                  , doesFileExist, doesDirExist
                                  , createDir, removePath
@@ -16,6 +16,7 @@ import Prelude hiding ( writeFile, readFile )
 import qualified System.Directory as Dir
 import Idream.FilePaths
 import Idream.SafeIO
+import Idream.ToText
 import Data.Monoid ( (<>) )
 import Data.Maybe ( fromMaybe )
 import Control.Monad.Freer
@@ -49,6 +50,29 @@ data FileSystem a where
   DoesDirExist :: Directory -> FileSystem Bool
   CopyDir :: Directory -> Directory -> FileSystem ()
   FindFiles :: (FilePath -> Bool) -> Maybe Directory -> FileSystem [FilePath]
+
+
+-- Instances
+
+instance ToText FSError where
+  toText (WriteFileErr path err) =
+    "Failed to write to file (" <> toText path <> "): " <> toText err <> "."
+  toText (ReadFileErr path err) =
+    "Failed to read from file (" <> toText path <> "): " <> toText err <> "."
+  toText (CheckFileExistsErr path err) =
+    "Failed to check if file exists (" <> toText path <> "): " <> toText err <> "."
+  toText (CreateDirErr dir err) =
+    "Failed to create directory (" <> toText dir <> "): " <> toText err <> "."
+  toText (RemovePathErr path err) =
+    "Failed to remove path (" <> toText path <> "): " <> toText err <> "."
+  toText (CheckDirExistsErr dir err) =
+    "Failed to check if directory exists (" <> toText dir <> "): "
+      <> toText err <> "."
+  toText (CopyDirErr from to err) =
+    "Failed to copy files from " <> toText from <> " to " <> toText to
+      <> ", reason: " <> toText err <> "."
+  toText (FindFilesErr dir err) =
+    "Error when trying to find files (" <> toText dir <> "): " <> toText err <> "."
 
 
 -- Functions
@@ -105,22 +129,4 @@ runFS f = interpretM g where
        files <- shelly . silently . find . toFilePath $ dir'
        return . filter h $ fromFilePath <$> files
 
-
-handleFSErr :: FSError -> T.Text
-handleFSErr (WriteFileErr path err) =
-  T.pack $ "Failed to write to file (" <> path <> "): " <> show err <> "."
-handleFSErr (ReadFileErr path err) =
-  T.pack $ "Failed to read from file (" <> path <> "): " <> show err <> "."
-handleFSErr (CheckFileExistsErr path err) =
-  T.pack $ "Failed to check if file exists (" <> path <> "): " <> show err <> "."
-handleFSErr (CreateDirErr dir err) =
-  T.pack $ "Failed to create directory (" <> dir <> "): " <> show err <> "."
-handleFSErr (RemovePathErr path err) =
-  T.pack $ "Failed to remove path (" <> path <> "): " <> show err <> "."
-handleFSErr (CheckDirExistsErr dir err) =
-  T.pack $ "Failed to check if directory exists (" <> dir <> "): " <> show err <> "."
-handleFSErr (CopyDirErr from to err) =
-  T.pack $ "Failed to copy files from " <> from <> " to " <> to <> ", reason: " <> show err <> "."
-handleFSErr (FindFilesErr dir err) =
-  T.pack $ "Error when trying to find files (" <> dir <> "): " <> show err <> "."
 

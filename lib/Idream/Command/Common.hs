@@ -5,8 +5,6 @@ module Idream.Command.Common ( setupBuildDir
                              , readPkgFile
                              , getPkgDirPath
                              , getPkgFilePath
-                             , handleReadProjectErr
-                             , handleReadPkgErr
                              , PkgParseErr(..)
                              , ProjParseErr(..)
                              ) where
@@ -18,6 +16,7 @@ import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Idream.Types ( Project(..), ProjectName(..), Package(..), PackageName(..) )
 import Idream.Effects.FileSystem
+import Idream.ToText
 import System.FilePath ( (</>) )
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
@@ -35,6 +34,17 @@ newtype ProjParseErr = ProjParseErr String
 -- | Error type used for describing errors that can occur while reading out a package file.
 newtype PkgParseErr = PkgParseErr String
   deriving (Eq, Show)
+
+
+-- Instances
+
+instance ToText ProjParseErr where
+  toText (ProjParseErr err) =
+    "Failed to parse project file: " <> toText err <> "."
+
+instance ToText PkgParseErr where
+  toText (PkgParseErr err) =
+    "Failed to parse package file: " <> toText err <> "."
 
 
 -- Functions
@@ -85,16 +95,4 @@ getPkgFilePath :: ( Member (Error e) r, Member FileSystem r )
                -> Eff r FilePath
 getPkgFilePath f pkgName projName =
   (</> pkgFile) <$> getPkgDirPath f pkgName projName
-
--- | Helper function for handling errors related to
---   readout of project file.
-handleReadProjectErr :: ProjParseErr -> T.Text
-handleReadProjectErr (ProjParseErr err) =
-  T.pack $ "Failed to parse project file: " <> err <> "."
-
--- | Helper function for handling errors related to
---   readout of package file.
-handleReadPkgErr :: PkgParseErr -> T.Text
-handleReadPkgErr (PkgParseErr err) =
-  T.pack $ "Failed to parse package file: " <> err <> "."
 

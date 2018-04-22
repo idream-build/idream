@@ -10,12 +10,12 @@ import Idream.SafeIO
 import Idream.Effects.FileSystem
 import Idream.Effects.Idris
 import Idream.Effects.Log ( Logger )
+import Idream.ToText
 import qualified Idream.Effects.Log as Log
 import Idream.Types ( Config(..), PackageName(..), Project(..), logLevel, args )
 import Idream.Graph ( DepNode(..), BuildPlan, ParseGraphErr
-                    , loadGraphFromJSON, createBuildPlan
-                    , handleGraphErr )
-import Idream.Command.Common ( readRootProjFile, ProjParseErr(..), handleReadProjectErr )
+                    , loadGraphFromJSON, createBuildPlan )
+import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
 import qualified Data.Text as T
 import Data.Monoid
 
@@ -88,9 +88,9 @@ idrisCompile' (DepNode pkgName projName) = do
 
 
 handleCompileErr :: CompileErr -> T.Text
-handleCompileErr (CFSErr err) = handleFSErr err
-handleCompileErr (CLogErr err) = Log.handleLogErr err
-handleCompileErr (CIdrisErr err) = handleIdrisErr err
-handleCompileErr (CProjReadFileErr err) = handleReadProjectErr err
-handleCompileErr (CLoadGraphErr err) = handleGraphErr err
+handleCompileErr (CFSErr err) = toText err
+handleCompileErr (CLogErr err) = toText err
+handleCompileErr (CIdrisErr err) = toText err
+handleCompileErr (CProjReadFileErr err) = toText err
+handleCompileErr (CLoadGraphErr err) = toText err
 

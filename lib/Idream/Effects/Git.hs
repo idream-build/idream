@@ -4,7 +4,6 @@
 module Idream.Effects.Git ( Git(..)
                           , GitError(..), GitCloneError(..), GitCheckoutError(..)
                           , runGit, gitClone, gitCheckout
-                          , handleGitErr, handleGitCloneErr
                           ) where
 
 
@@ -20,7 +19,7 @@ import Data.Monoid ( (<>) )
 import Idream.SafeIO
 import Idream.Effects.FileSystem
 import Idream.Types ( Repo(..), Version(..) )
-
+import Idream.ToText
 
 -- Data types
 
@@ -45,6 +44,29 @@ data GitCloneError = CloneFailError Repo IOException
 data GitCheckoutError = CheckoutFailError Repo Version IOException
                       | CheckoutFailExitCode Repo Version ExitCode
                       deriving (Eq, Show)
+
+-- Instances
+
+instance ToText GitError where
+  toText (GitCloneErr err) = toText err
+  toText (GitCheckoutErr err) = toText err
+
+instance ToText GitCloneError where
+  toText (CloneFailError repo err) =
+    "Failed to git clone " <> toText repo <> ", reason: " <> toText err <> "."
+  toText (CloneFailExitCode repo ec) =
+    "`git clone` for repo " <> toText repo <> " returned non-zero exit code: "
+      <> toText ec <> "."
+
+instance ToText GitCheckoutError where
+  toText (CheckoutFailError repo vsn err) =
+    "Failed to do git checkout for " <> toText repo
+      <> ", version = " <> toText vsn <> ", reason: " <> toText err <> "."
+  toText (CheckoutFailExitCode repo vsn ec) =
+    "git checkout for repo " <> toText repo
+      <> ", version =" <> toText vsn <> " returned non-zero exit code: "
+      <> toText ec <> "."
+
 
 -- Functions
 
@@ -82,20 +104,4 @@ gitCheckoutHelper f repo v@(Version vsn) downloadDir = do
   result <- mapError (f . GitCheckoutErr)
           $ execProcess (CheckoutFailError repo v) "git" checkoutArgs (Just downloadDir)
   when (result /= ExitSuccess) $ raiseError . f . GitCheckoutErr $ CheckoutFailExitCode repo v result
-
-handleGitErr :: GitError -> T.Text
-handleGitErr (GitCloneErr err) = handleGitCloneErr err
-handleGitErr (GitCheckoutErr err) = handleGitCheckoutErr err
-
-handleGitCloneErr :: GitCloneError -> T.Text
-handleGitCloneErr (CloneFailError (Repo repo) err) =
-  "Failed to git clone " <> repo <> ", reason: " <> T.pack (show err) <> "."
-handleGitCloneErr (CloneFailExitCode (Repo repo) ec) =
-  "git clone for repo " <> repo <> " returned non-zero exit code: " <> T.pack (show ec) <> "."
-
-handleGitCheckoutErr :: GitCheckoutError -> T.Text
-handleGitCheckoutErr (CheckoutFailError (Repo repo) (Version vsn) err) =
-  "Failed to do git checkout for " <> repo <> ", version = " <> vsn <> ", reason: " <> T.pack (show err) <> "."
-handleGitCheckoutErr (CheckoutFailExitCode (Repo repo) (Version vsn) ec) =
-  "git checkout for repo " <> repo <> ", version =" <> vsn <> " returned non-zero exit code: " <> T.pack (show ec) <> "."
 

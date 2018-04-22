@@ -5,7 +5,6 @@ module Idream.Effects.Idris ( Idris(..), IdrisError(..)
                             , Command, Arg, Environment
                             , idrisCompile
                             , runIdris
-                            , handleIdrisErr
                             ) where
 
 -- Imports
@@ -16,6 +15,7 @@ import System.Process ( createProcess, waitForProcess, env, proc )
 import System.Exit ( ExitCode(..) )
 import Idream.SafeIO
 import Idream.Types ( ProjectName(..), PackageName(..) )
+import Idream.ToText
 import Data.Monoid ( (<>) )
 import qualified Data.Text as T
 
@@ -39,6 +39,19 @@ type Arg = String
 -- | Type alias for an environment to be passed to a command,
 --   expressed as a list of key value pairs.
 type Environment = [(String, String)]
+
+
+-- Instances
+
+instance ToText IdrisError where
+  toText (IdrCompileErr projName pkgName err) =
+    "Failed to compile idris package (project = "
+      <> toText projName <> ", package = " <> toText pkgName
+      <> "), reason: " <> toText err <> "."
+  toText (IdrCommandErr projName pkgName cmd exitCode) =
+    "Failed to invoke idris (command: " <> T.pack cmd <> ") for project "
+      <> unProjName projName <> ", package = " <> unPkgName pkgName
+      <> ", exit code = " <> T.pack (show exitCode) <> "."
 
 
 -- Functions
@@ -78,13 +91,4 @@ invokeIdrisWithEnv :: (IOException -> e)
                    -> SafeIO e ()
 invokeIdrisWithEnv f g = invokeCmdWithEnv f g "idris"
 
-handleIdrisErr :: IdrisError -> T.Text
-handleIdrisErr (IdrCompileErr projName pkgName err) =
-  "Failed to compile idris package (project = "
-    <> unProjName projName <> ", package = " <> unPkgName pkgName
-    <> "), reason: " <> T.pack (show err) <> "."
-handleIdrisErr (IdrCommandErr projName pkgName cmd exitCode) =
-  "Failed to invoke idris (command: " <> T.pack cmd <> ") for project "
-    <> unProjName projName <> ", package = " <> unPkgName pkgName
-    <> ", exit code = " <> T.pack (show exitCode) <> "."
 

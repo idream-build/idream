@@ -13,11 +13,11 @@ import Idream.SafeIO
 import qualified Idream.Effects.Log as Log
 import Idream.Types
 import Idream.Graph
+import Idream.ToText
 import qualified Algebra.Graph as Graph
 import Idream.Command.Common ( ProjParseErr(..), PkgParseErr(..)
                              , readRootProjFile, readPkgFile
-                             , getPkgFilePath, getPkgDirPath
-                             , handleReadProjectErr, handleReadPkgErr )
+                             , getPkgFilePath, getPkgDirPath )
 import Idream.Effects.FileSystem
 import Data.Text ( Text )
 import Data.Monoid ( (<>) )
@@ -129,20 +129,20 @@ formatFileNames modules = replaceSlashes . trimLeadingSlash . trimExt <$> module
 
 -- | Helper function for handling errors when generating ipkg files.
 handleGenerateIpkgErr :: MonadIO m => GenerateIpkgErr -> m ()
-handleGenerateIpkgErr (GFSErr err) = logErr $ handleFSErr err
-handleGenerateIpkgErr (GLogErr err) = logErr $ Log.handleLogErr err
+handleGenerateIpkgErr (GFSErr err) = logErr $ toText err
+handleGenerateIpkgErr (GLogErr err) = logErr $ toText err
+handleGenerateIpkgErr (GGraphErr err) = logErr $ toText err
 handleGenerateIpkgErr (GRootProjParseErr err) =
   logErr $ "Failed to parse root project file: "
-        <> handleReadProjectErr err
+        <> toText err
 handleGenerateIpkgErr (GProjParseErr (ProjectName projName) err) =
   logErr $ "Failed to read project file for project "
         <> projName <> ", reason: "
-        <> handleReadProjectErr err
+        <> toText err
 handleGenerateIpkgErr (GPkgParseErr (ProjectName projName) (PackageName pkgName) err) =
   logErr $ T.pack "Failed to read package file for project "
         <> projName <> ", package " <> pkgName <> ": "
-        <> handleReadPkgErr err
-handleGenerateIpkgErr (GGraphErr err) = logErr $ handleGraphErr err
+        <> toText err
 
 
 runProgram :: ( MonadReader Config m, MonadIO m )

@@ -25,6 +25,7 @@ import Data.Map ( Map )
 import Data.Text ( Text )
 import Control.Monad ( mzero )
 import System.FilePath ( FilePath )
+import Idream.ToText
 
 
 -- Data types
@@ -158,4 +159,16 @@ instance FromJSON PackageDescr where
 
 instance FromJSON PackageSet where
   parseJSON v = PackageSet <$> parseJSON v
+
+instance ToText Repo where
+  toText (Repo r) = r
+
+instance ToText Version where
+  toText (Version v) = v
+
+instance ToText ProjectName where
+  toText = unProjName
+
+instance ToText PackageName where
+  toText = unPkgName
 

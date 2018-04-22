@@ -14,12 +14,12 @@ import Idream.Effects.Log ( Logger, logErr )
 import Idream.SafeIO
 import Idream.Command.Common ( ProjParseErr(..), PkgParseErr(..)
                              , setupBuildDir, readRootProjFile, readProjFile
-                             , readPkgFile, getPkgFilePath
-                             , handleReadProjectErr, handleReadPkgErr )
+                             , readPkgFile, getPkgFilePath )
 import Idream.Types
 import Idream.Graph
 import Idream.Effects.FileSystem
 import Idream.Effects.Git
+import Idream.ToText
 import qualified Data.Map as Map
 import Data.Monoid ( (<>) )
 import Data.Aeson ( eitherDecode )
@@ -175,11 +175,11 @@ readPkgSetFile = do
 -- | Helper function for handling errors that can occur during
 --   fetching of dependencies.
 handleFetchErr :: FetchErr -> T.Text
-handleFetchErr (FFSErr err) = handleFSErr err
-handleFetchErr (FLogErr err) = Log.handleLogErr err
-handleFetchErr (FGitErr err) = handleGitErr err
+handleFetchErr (FFSErr err) = toText err
+handleFetchErr (FLogErr err) = toText err
+handleFetchErr (FGitErr err) = toText err
 handleFetchErr (FRootProjParseErr err) =
-  "Failed to parse root project file: " <> handleReadProjectErr err <> "."
+  "Failed to parse root project file: " <> toText err <> "."
 handleFetchErr (FProjParseErr projName err) =
   "Failed to parse project file (project = "
     <> unProjName projName <> "), reason: "
@@ -187,10 +187,10 @@ handleFetchErr (FProjParseErr projName err) =
 handleFetchErr (FPkgParseErr projName pkgName err) =
   "Failed to parse package set file for project: " <> unProjName projName
     <> ", package = " <> unPkgName pkgName <> ": "
-    <> handleReadPkgErr err <> "."
+    <> toText err <> "."
 handleFetchErr (FPkgSetParseErr err) =
   "Failed to parse package set, reason: " <> T.pack (show err) <> "."
 handleFetchErr (FPkgMissingInPkgSet projName) =
   "Package missing in idr-package-set.json: " <> unProjName projName <> "."
-handleFetchErr (FGraphErr err) = handleGraphErr err
+handleFetchErr (FGraphErr err) = toText err
 

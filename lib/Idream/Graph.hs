@@ -16,7 +16,6 @@ module Idream.Graph ( DepGraph
                     , createBuildPlan
                     , saveGraphToJSON
                     , loadGraphFromJSON
-                    , handleGraphErr
                     ) where
 
 -- Imports
@@ -27,6 +26,7 @@ import Control.Monad.Freer.Error
 import Control.Monad.State
 import Idream.Effects.FileSystem
 import Idream.Types ( Project(..), ProjectName(..), PackageName(..) )
+import Idream.ToText
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Map ( Map )
@@ -35,7 +35,6 @@ import Data.Monoid
 import Data.Aeson
 import Data.Aeson.Text ( encodeToLazyText )
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
-import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Algebra.Graph as Graph
 import qualified Algebra.Graph.AdjacencyMap as AM
@@ -85,6 +84,10 @@ data TraverseState a = TraverseState Depth (MonoidMap a (Max Depth))
 
 
 -- Instances
+
+instance ToText ParseGraphErr where
+  toText (ParseGraphErr err) =
+    "Failed to parse dependency graph from file: " <> toText err <> "."
 
 instance FromJSON DepNode where
   parseJSON (Object o) = DepNode
@@ -228,10 +231,4 @@ loadGraphFromJSON f file = do
   contents <- readFile file
   let result = eitherDecode' . encodeUtf8 . TL.fromStrict $ contents
   either (throwError . f . ParseGraphErr) (return . fromGraphInfo) result
-
--- | Helper function for handling errors related to saving
---   of the dependency graph to a file.
-handleGraphErr :: ParseGraphErr -> T.Text
-handleGraphErr (ParseGraphErr err) =
-  T.pack $ "Failed to parse dependency graph from file: " <> show err <> "."
 
