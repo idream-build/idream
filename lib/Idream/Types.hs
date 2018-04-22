@@ -79,7 +79,8 @@ newtype PackageSet = PackageSet (Map Text PackageDescr)
 type Argument = Text
 
 -- | Log level to be used while using idream.
-data LogLevel = Info | Debug deriving (Eq, Show)
+data LogLevel = Debug | Info | Warn | Err
+  deriving (Eq, Ord, Show)
 
 -- | Type describing the various commands that can be passed in via the commandline interface.
 data Command = Fetch                        -- ^ Fetches all dependencies as described in json file

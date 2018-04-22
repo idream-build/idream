@@ -4,24 +4,25 @@ module Idream.Command.New ( startNewProject ) where
 
 -- Imports
 
-import Idream.Log ( MonadLogger )
-import qualified Idream.Log as Log
-import Idream.SafeIO ( MonadSafeIO, MonadIO, runSafeIO )
-import Control.Exception ( IOException )
+import Prelude hiding ( writeFile )
+import Control.Monad.Freer
+import Control.Monad.Reader
+import System.FilePath ( (</>) )
 import Data.Monoid ( (<>) )
 import Data.Text ( Text )
 import qualified Data.Text as T
-import Idream.Types ( ProjectName(..) )
-import Idream.Command.Common ( safeWriteFile, safeCreateDir )
+import Idream.Types ( ProjectName(..), Config(..), logLevel, args )
 import Idream.FileSystem
-import System.FilePath ( (</>) )
+import Idream.Log ( Logger, LogError, logErr )
+import qualified Idream.Log as Log
+import Idream.SafeIO
 
 
 -- Data types
 
 -- | Custom error type for when creating a project template.
-data MkProjectError = MkDirError IOException
-                    | MkFileError IOException
+data MkProjectError = MPLogErr LogError
+                    | MPFSErr FSError
                     deriving (Eq, Show)
 
 
@@ -44,36 +45,38 @@ idrProjectJson projName =
 
 
 -- | Creates a new project template.
-startNewProject :: ( MonadLogger m, MonadIO m )
-                => ProjectName -> m ()
+startNewProject :: ( MonadReader Config m, MonadIO m ) => ProjectName -> m ()
 startNewProject projName = do
-  result <- runSafeIO (startNewProject' projName)
+  result <- runProgram (startNewProject' projName)
   either showError return result
 
+runProgram :: ( MonadReader Config m, MonadIO m )
+           => Eff '[Logger, FileSystem, SafeIO MkProjectError] ()
+           -> m (Either MkProjectError ())
+runProgram prog = do
+  thres <- asks $ logLevel . args
+  liftIO $ runSafeIO
+        <$> runM
+         . runFS MPFSErr
+         . Log.runLogger MPLogErr thres $ prog
 
 -- | Does the actual creation of the project template.
-startNewProject' :: ( MonadLogger m, MonadSafeIO MkProjectError m )
-                 => ProjectName -> m ()
+startNewProject' :: ( Member Logger r, Member FileSystem r )
+                 => ProjectName -> Eff r ()
 startNewProject' (ProjectName projName) = do
-  safeCreateDir' projectDir
-  safeCreateDir' $ relPath buildDir
-  safeWriteFile' gitignore $ relPath ".gitignore"
-  safeWriteFile' (idrProjectJson projName) (relPath projectFile)
-  safeWriteFile' idrPkgSetJson $ relPath pkgSetFile
+  createDir projectDir
+  createDir $ relPath buildDir
+  writeFile gitignore $ relPath ".gitignore"
+  writeFile (idrProjectJson projName) (relPath projectFile)
+  writeFile idrPkgSetJson $ relPath pkgSetFile
   Log.info ("Successfully initialized project: " <> projName <> ".")
   where projectDir = T.unpack projName
         relPath path = projectDir </> path
 
 -- | Displays the error if one occurred during project template creation.
-showError :: MonadLogger m => MkProjectError -> m ()
-showError (MkDirError e) = Log.err ("Failed to initialize project: " <> T.pack (show e))
-showError (MkFileError e) = Log.err ("Failed to initialize project: " <> T.pack (show e))
-
--- | Safely creates a directory, while handling possible exceptions.
-safeCreateDir' :: MonadSafeIO MkProjectError m => Directory -> m ()
-safeCreateDir' = safeCreateDir MkDirError
-
--- | Safely writes to a file, while handling possible exceptions.
-safeWriteFile' :: MonadSafeIO MkProjectError m => Text -> FilePath -> m ()
-safeWriteFile' = safeWriteFile MkFileError
+showError :: MonadIO m => MkProjectError -> m ()
+showError (MPFSErr e) =
+  logErr ("Failed to initialize project: " <> T.pack (show e))
+showError (MPLogErr e) =
+  logErr ("Failed to initialize project: " <> T.pack (show e))
 

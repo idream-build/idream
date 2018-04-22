@@ -2,10 +2,7 @@
 module Idream.Command.Test ( runTests ) where
 
 import Control.Monad.Reader
-import Idream.Log ( MonadLogger )
-import qualified Idream.Log as Log
-import Idream.Types (Config)
+import Idream.Log ( logErr )
 
-
-runTests :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
-runTests = Log.debug "runTests not implemented yet!"
+runTests :: MonadIO m => m ()
+runTests = logErr "runTests not implemented yet!"

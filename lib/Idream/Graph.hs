@@ -3,7 +3,7 @@
 
 module Idream.Graph ( DepGraph
                     , DepNode(..)
-                    , GraphErr(..)
+                    , ParseGraphErr(..)
                     , Max(..)
                     , MonoidMap(..)
                     , Depth
@@ -21,6 +21,11 @@ module Idream.Graph ( DepGraph
 
 -- Imports
 
+import Prelude hiding ( writeFile, readFile )
+import Control.Monad.Freer
+import Control.Monad.Freer.Error
+import Control.Monad.State
+import Idream.FileSystem
 import Idream.Types ( Project(..), ProjectName(..), PackageName(..) )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -31,15 +36,9 @@ import Data.Aeson
 import Data.Aeson.Text ( encodeToLazyText )
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import qualified Data.Text as T
-import qualified Data.Text.Lazy.IO as TIO
+import qualified Data.Text.Lazy as TL
 import qualified Algebra.Graph as Graph
 import qualified Algebra.Graph.AdjacencyMap as AM
-import Control.Monad.Except
-import Idream.Log ( MonadLogger )
-import qualified Idream.Log as Log
-import Idream.SafeIO
-import Control.Monad.State
-import Control.Exception ( IOException )
 
 
 -- Data types
@@ -47,20 +46,18 @@ import Control.Exception ( IOException )
 -- | Type used in each node of the graph, it combines the package name
 --   together with the project in which it belongs.
 data DepNode = DepNode PackageName ProjectName
-             deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show)
 
 -- | Type representing the dependency graph.
 type DepGraph = Graph.Graph DepNode
 
 -- | Type containing possible errors that can occur while working with graphs.
-data GraphErr = SaveGraphErr IOException
-              | LoadGraphErr IOException
-              | ParseGraphErr String
-              deriving (Eq, Show)
+newtype ParseGraphErr = ParseGraphErr String
+  deriving (Eq, Show)
 
 -- | Data type used for (de-)serializing graphs.
 data GraphInfo = GraphInfo [DepNode] [(DepNode, DepNode)]
-               deriving (Eq, Show)
+  deriving (Eq, Show)
 
 -- | Type representing how deep a node is located in a graph.
 type Depth = Int
@@ -218,25 +215,23 @@ fromGraphInfo :: GraphInfo -> DepGraph
 fromGraphInfo (GraphInfo vs es) = Graph.graph vs es
 
 -- | Saves a graph to a JSON file.
-saveGraphToJSON :: MonadSafeIO e m => (GraphErr -> e) -> FilePath -> DepGraph -> m ()
-saveGraphToJSON f file g = liftSafeIO (f . SaveGraphErr) $
-  TIO.writeFile file . encodeToLazyText . toGraphInfo $ g
+saveGraphToJSON :: Member FileSystem r
+                => FilePath -> DepGraph -> Eff r ()
+saveGraphToJSON file g =
+  writeFile (TL.toStrict . encodeToLazyText . toGraphInfo $ g) file
 
 -- | Loads a graph from JSON.
-loadGraphFromJSON :: MonadSafeIO e m => (GraphErr -> e) -> FilePath -> m DepGraph
+loadGraphFromJSON :: ( Member (Error e) r, Member FileSystem r )
+                  => (ParseGraphErr -> e) -> FilePath
+                  -> Eff r DepGraph
 loadGraphFromJSON f file = do
-  contents <- liftSafeIO (f . LoadGraphErr) $ TIO.readFile file
-  case eitherDecode' $ encodeUtf8 contents of
-    Left err -> raiseError $ (f . ParseGraphErr) err
-    Right graphInfo -> return $ fromGraphInfo graphInfo
+  contents <- readFile file
+  let result = eitherDecode' . encodeUtf8 . TL.fromStrict $ contents
+  either (throwError . f . ParseGraphErr) (return . fromGraphInfo) result
 
 -- | Helper function for handling errors related to saving
 --   of the dependency graph to a file.
-handleGraphErr :: MonadLogger m => GraphErr -> m ()
-handleGraphErr (LoadGraphErr err) =
-  Log.err (T.pack $ "Failed to load dependency graph from file: " <> show err <> ".")
-handleGraphErr (SaveGraphErr err) =
-  Log.err (T.pack $ "Failed to save dependency graph to file: " <> show err <> ".")
+handleGraphErr :: ParseGraphErr -> T.Text
 handleGraphErr (ParseGraphErr err) =
-  Log.err (T.pack $ "Failed to parse dependency graph from file: " <> show err <> ".")
+  T.pack $ "Failed to parse dependency graph from file: " <> show err <> "."
 

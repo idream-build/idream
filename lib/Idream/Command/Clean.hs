@@ -3,35 +3,50 @@ module Idream.Command.Clean ( cleanCode ) where
 
 -- Imports
 
-import Control.Exception ( IOException )
-import Idream.Log ( MonadLogger )
+import Control.Monad.Freer
+import Control.Monad.Reader
+import Idream.Log ( Logger, LogError, runLogger, logErr )
+import Idream.Types ( Config(..), args, logLevel )
 import qualified Idream.Log as Log
 import Idream.SafeIO
 import Idream.FileSystem
-import System.Directory ( removePathForcibly )
 import qualified Data.Text as T
 import Data.Monoid ( (<>) )
 
 
 -- Data Types
 
-newtype CleanErr = CleanErr IOException deriving (Eq, Show)
+data CleanErr = CFSErr FSError
+              | CLogErr LogError
+              deriving (Eq, Show)
 
 
 -- Functions
 
 -- | Cleans up the working directory of a project.
-cleanCode :: ( MonadLogger m, MonadIO m ) => m ()
+cleanCode :: ( MonadReader Config m, MonadIO m ) => m ()
 cleanCode = do
-  Log.info "Cleaning project."
-  result <- runSafeIO cleanCode'
+  result <- runProgram $ do
+    Log.info "Cleaning project."
+    removePath buildDir
   either showError return result
 
-cleanCode' :: ( MonadLogger m, MonadSafeIO CleanErr m ) => m ()
-cleanCode' = liftSafeIO CleanErr $ removePathForcibly buildDir
+runProgram :: ( MonadReader Config m, MonadIO m )
+           => Eff '[Logger, FileSystem, SafeIO CleanErr] ()
+           -> m (Either CleanErr ())
+runProgram prog = do
+  thres <- asks $ logLevel . args
+  liftIO $ runSafeIO
+        <$> runM
+         .  runFS CFSErr
+         .  runLogger CLogErr thres
+         $  prog
 
 -- | Displays the error if something went wrong during project cleanup.
-showError :: MonadLogger m => CleanErr -> m ()
-showError (CleanErr e) =
-  Log.err ("Failed to clean project: " <> T.pack (show e))
+showError :: MonadIO m => CleanErr -> m ()
+showError (CFSErr e) =
+  logErr ("Failed to clean project: " <> T.pack (show e))
+showError (CLogErr e) =
+  logErr ("Failed to clean project: " <> T.pack (show e))
+
 

@@ -4,8 +4,6 @@ module Main where
 -- Imports
 
 import Control.Monad.Reader
-import qualified Idream.Log as Log
-import Idream.Log ( MonadLogger )
 import Idream.OptionParser
 import Idream.Types
 import Idream.Command.Fetch (fetchDeps)
@@ -27,21 +25,13 @@ main :: IO ()
 main = do
   cmdLineArgs <- parseCmdLineArgs
   let config = Config cmdLineArgs
-      getLogThreshold Info = Log.Info
-      getLogThreshold _ = Log.Debug
-      logThreshold = getLogThreshold $ logLevel cmdLineArgs
-  flip runReaderT logThreshold
-    $ Log.runLoggingT
-    $ flip runReaderT config $ do
+  flip runReaderT config $ do
     command <- asks $ cmd . args
     processCommand command
 
 -- | Function that processes the given command.
-processCommand :: ( MonadReader Config m
-                  , MonadLogger m
-                  , MonadIO m )
-               => Command
-               -> m ()
+processCommand :: ( MonadReader Config m, MonadIO m )
+               => Command -> m ()
 processCommand Fetch = fetchDeps
 processCommand Compile = compileCode
 processCommand Clean = cleanCode

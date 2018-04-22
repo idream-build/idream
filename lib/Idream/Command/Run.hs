@@ -2,10 +2,9 @@
 module Idream.Command.Run ( runCode ) where
 
 import Control.Monad.Reader
-import Idream.Log ( MonadLogger )
-import qualified Idream.Log as Log
-import Idream.Types (Config, Argument)
+import Idream.Log ( logErr )
+import Idream.Types (Argument)
 
-runCode :: (MonadReader Config m, MonadLogger m, MonadIO m)
-        => [Argument] -> m ()
-runCode _ = Log.debug "runCode not implemented yet!"
+
+runCode :: MonadIO m => [Argument] -> m ()
+runCode _ = logErr "runCode not implemented yet!"

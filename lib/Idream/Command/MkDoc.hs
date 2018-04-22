@@ -2,10 +2,8 @@
 module Idream.Command.MkDoc ( generateDocs ) where
 
 import Control.Monad.Reader
-import Idream.Log ( MonadLogger )
-import qualified Idream.Log as Log
-import Idream.Types (Config)
+import Idream.Log ( logErr )
 
 
-generateDocs :: (MonadReader Config m, MonadLogger m, MonadIO m) => m ()
-generateDocs = Log.debug "generateDocs not implemented yet!"
+generateDocs :: MonadIO m => m ()
+generateDocs = logErr "generateDocs not implemented yet!"
