@@ -24,7 +24,6 @@ import qualified Data.Map as Map
 import Data.Monoid ( (<>) )
 import Data.Aeson ( eitherDecode )
 import Data.List ( partition )
-import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 
@@ -48,29 +47,23 @@ data FetchErr = FFSErr FSError
               | FPkgMissingInPkgSet ProjectName
               deriving (Eq, Show)
 
+-- Instances
+
+instance ToText FetchErr where
+  toText (FFSErr err) = toText err
+  toText (FLogErr err) = toText err
+  toText (FGitErr err) = toText err
+  toText (FPkgParseErr err) = toText err
+  toText (FProjParseErr err) = toText err
+  toText (FPkgSetParseErr err) =
+    "Failed to parse package set, reason: " <> toText err <> "."
+  toText (FPkgMissingInPkgSet projName) =
+    "Package missing in idr-package-set.json: " <> toText projName <> "."
+
 
 -- Functions
 
 -- TODO add force fetch flag
-
-
-runProgram :: ( MonadReader Config m, MonadIO m )
-           => Eff '[ Logger
-                   , Error FetchErr, Error PkgParseErr, Error ProjParseErr
-                   , Git, FileSystem, SafeIO FetchErr] ()
-           -> m (Either FetchErr ())
-runProgram prog = do
-  thres <- asks $ logLevel . args
-  liftIO $  fmap (join . join . join)
-         $  runSafeIO
-        <$> runM
-         .  runFS FFSErr
-         .  runGit FGitErr
-         .  runError' FProjParseErr
-         .  runError' FPkgParseErr
-         .  runError
-         .  Log.runLogger FLogErr thres
-         $  prog
 
 -- | Top level function that tries to fetch all dependencies.
 fetchDeps :: ( MonadReader Config m, MonadIO m ) => m ()
@@ -82,15 +75,15 @@ fetchDeps = do
       else do
         fetchDeps'
         Log.info "Finished fetching dependencies."
-  either (logErr . handleFetchErr) return result
+  either (logErr . toText) return result
 
 -- | Helper function that does the actual fetching of dependencies.
 fetchDeps' :: ( Member Logger r
+              , Member Git r
+              , Member FileSystem r
               , Member (Error FetchErr) r
               , Member (Error ProjParseErr) r
-              , Member (Error PkgParseErr) r
-              , Member Git r
-              , Member FileSystem r )
+              , Member (Error PkgParseErr) r )
            => Eff r ()
 fetchDeps' = do
   setupBuildDir
@@ -100,12 +93,11 @@ fetchDeps' = do
                 <> "Use `idream add` to add a package to this project first.")
     else do
       pkgSet <- readPkgSetFile
-      Log.info ("Fetching dependencies for " <> unProjName projName <> ".")
+      Log.info ("Fetching dependencies for " <> toText projName <> ".")
       let initialGraph = mkGraphFromProject rootProj
           fetchDepsForProj = fetchDepsForProject pkgSet rootProj
       graph <- execState initialGraph fetchDepsForProj
       saveGraphToJSON depGraphFile graph
-
 
 -- | Recursively fetches all dependencies for a project.
 fetchDepsForProject :: ( Member (State DepGraph) r
@@ -130,14 +122,14 @@ fetchDepsForPackage :: ( Member (Error FetchErr) r
                        , Member FileSystem r )
                     => PackageSet -> ProjectName -> PackageName -> Eff r ()
 fetchDepsForPackage pkgSet projName pkgName = do
-  Log.debug ("Fetching dependencies for package: " <> unPkgName pkgName <> ".")
+  Log.debug ("Fetching dependencies for package: " <> toText pkgName <> ".")
   pkgDeps <- readPkgDeps projName pkgName
   let isOld (AlreadyFetched _) = True
       isOld _ = False
-  (oldSubProjects, newSubProjects) <- partition isOld <$> mapM (fetchProj pkgSet) pkgDeps
-  let unwrap (AlreadyFetched proj) = proj
+      unwrap (AlreadyFetched proj) = proj
       unwrap (NewlyFetched proj) = proj
-      oldSubProjects' = unwrap <$> oldSubProjects
+  (oldSubProjects, newSubProjects) <- partition isOld <$> mapM (fetchProj pkgSet) pkgDeps
+  let oldSubProjects' = unwrap <$> oldSubProjects
       newSubProjects' = unwrap <$> newSubProjects
       subProjects = oldSubProjects' ++ newSubProjects'
   modify $ updateGraph (DepNode pkgName projName) subProjects
@@ -165,10 +157,8 @@ fetchProj (PackageSet pkgs) projName@(ProjectName name) =
           NewlyFetched <$> readProjFile projFile
 
 -- | Reads the package file to determine the project dependencies.
-readPkgDeps :: ( Member FileSystem r
-               , Member (Error ProjParseErr) r
-               , Member (Error PkgParseErr) r
-               , Member Logger r )
+readPkgDeps :: ( Member (Error ProjParseErr) r, Member (Error PkgParseErr) r
+               , Member FileSystem r, Member Logger r )
             => ProjectName -> PackageName -> Eff r [ProjectName]
 readPkgDeps projName pkgName = do
   pkgFilePath <- getPkgFilePath pkgName projName
@@ -176,24 +166,29 @@ readPkgDeps projName pkgName = do
   return deps
 
 -- | Reads out the package set file (idr-package-set.json).
-readPkgSetFile :: ( Member FileSystem r
-                  , Member (Error FetchErr) r )
+readPkgSetFile :: ( Member FileSystem r, Member (Error FetchErr) r )
                => Eff r PackageSet
 readPkgSetFile = do
   pkgSetJSON <- encodeUtf8 . TL.fromStrict <$> readFile pkgSetFile
   let result = eitherDecode pkgSetJSON
   either (throwError . FPkgSetParseErr) return result
 
--- | Helper function for handling errors that can occur during
---   fetching of dependencies.
-handleFetchErr :: FetchErr -> T.Text
-handleFetchErr (FFSErr err) = toText err
-handleFetchErr (FLogErr err) = toText err
-handleFetchErr (FGitErr err) = toText err
-handleFetchErr (FPkgParseErr err) = toText err
-handleFetchErr (FProjParseErr err) = toText err
-handleFetchErr (FPkgSetParseErr err) =
-  "Failed to parse package set, reason: " <> T.pack (show err) <> "."
-handleFetchErr (FPkgMissingInPkgSet projName) =
-  "Package missing in idr-package-set.json: " <> unProjName projName <> "."
+-- | Helper function for running the program described in the Eff monad.
+runProgram :: ( MonadReader Config m, MonadIO m )
+           => Eff '[ Logger
+                   , Error FetchErr, Error PkgParseErr, Error ProjParseErr
+                   , Git, FileSystem, SafeIO FetchErr] ()
+           -> m (Either FetchErr ())
+runProgram prog = do
+  thres <- asks $ logLevel . args
+  liftIO $  fmap (join . join . join)
+         $  runSafeIO
+        <$> runM
+         .  runFS FFSErr
+         .  runGit FGitErr
+         .  runError' FProjParseErr
+         .  runError' FPkgParseErr
+         .  runError
+         .  Log.runLogger FLogErr thres
+         $  prog
 

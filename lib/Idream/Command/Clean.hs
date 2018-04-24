@@ -8,9 +8,9 @@ import Control.Monad.Reader
 import Idream.Effects.Log ( Logger, LogError, runLogger, logErr )
 import Idream.Types ( Config(..), args, logLevel )
 import qualified Idream.Effects.Log as Log
-import Idream.SafeIO
 import Idream.Effects.FileSystem
-import qualified Data.Text as T
+import Idream.SafeIO
+import Idream.ToText
 import Data.Monoid ( (<>) )
 
 
@@ -21,6 +21,13 @@ data CleanErr = CFSErr FSError
               deriving (Eq, Show)
 
 
+-- Instances
+
+instance ToText CleanErr where
+  toText (CFSErr e) = "Failed to clean project: " <> toText e <> "."
+  toText (CLogErr e) = "Failed to clean project: " <> toText e <> "."
+
+
 -- Functions
 
 -- | Cleans up the working directory of a project.
@@ -29,24 +36,17 @@ cleanCode = do
   result <- runProgram $ do
     Log.info "Cleaning project."
     removePath buildDir
-  either showError return result
+  either (logErr . toText) return result
 
+-- | Runs the actual program described in the Eff monad.
 runProgram :: ( MonadReader Config m, MonadIO m )
            => Eff '[Logger, FileSystem, SafeIO CleanErr] ()
            -> m (Either CleanErr ())
 runProgram prog = do
   thres <- asks $ logLevel . args
-  liftIO $ runSafeIO
+  liftIO $  runSafeIO
         <$> runM
          .  runFS CFSErr
          .  runLogger CLogErr thres
          $  prog
-
--- | Displays the error if something went wrong during project cleanup.
-showError :: MonadIO m => CleanErr -> m ()
-showError (CFSErr e) =
-  logErr ("Failed to clean project: " <> T.pack (show e))
-showError (CLogErr e) =
-  logErr ("Failed to clean project: " <> T.pack (show e))
-
 

@@ -16,6 +16,7 @@ import Idream.Effects.FileSystem
 import Idream.Effects.Log ( Logger, LogError, logErr )
 import qualified Idream.Effects.Log as Log
 import Idream.SafeIO
+import Idream.ToText
 
 
 -- Data types
@@ -25,17 +26,23 @@ data MkProjectError = MPLogErr LogError
                     | MPFSErr FSError
                     deriving (Eq, Show)
 
+-- Instances
+
+instance ToText MkProjectError where
+  toText (MPFSErr e) = "Failed to initialize project: " <> toText e
+  toText (MPLogErr e) = "Failed to initialize project: " <> toText e
+
 
 -- Functions
 
 gitignore, idrPkgSetJson :: Text
-idrProjectJson :: Text -> Text
+idrProjectJson :: ProjectName -> Text
 
 gitignore = ".idream-work/\n"
 idrPkgSetJson = "{}\n"
 idrProjectJson projName =
   T.unlines [ "{"
-            , "    \"project_name\": \"" <> projName <> "\","
+            , "    \"project_name\": \"" <> toText projName <> "\","
             , "    \"packages\": ["
             , ""
             , "    ]"
@@ -43,40 +50,33 @@ idrProjectJson projName =
             , ""
             ]
 
-
 -- | Creates a new project template.
 startNewProject :: ( MonadReader Config m, MonadIO m ) => ProjectName -> m ()
 startNewProject projName = do
   result <- runProgram (startNewProject' projName)
-  either showError return result
-
-runProgram :: ( MonadReader Config m, MonadIO m )
-           => Eff '[Logger, FileSystem, SafeIO MkProjectError] ()
-           -> m (Either MkProjectError ())
-runProgram prog = do
-  thres <- asks $ logLevel . args
-  liftIO $ runSafeIO
-        <$> runM
-         . runFS MPFSErr
-         . Log.runLogger MPLogErr thres $ prog
+  either (logErr . toText) return result
 
 -- | Does the actual creation of the project template.
 startNewProject' :: ( Member Logger r, Member FileSystem r )
                  => ProjectName -> Eff r ()
-startNewProject' (ProjectName projName) = do
+startNewProject' projName = do
   createDir projectDir
   createDir $ relPath buildDir
   writeFile gitignore $ relPath ".gitignore"
   writeFile (idrProjectJson projName) (relPath projectFile)
   writeFile idrPkgSetJson $ relPath pkgSetFile
-  Log.info ("Successfully initialized project: " <> projName <> ".")
-  where projectDir = T.unpack projName
+  Log.info ("Successfully initialized project: " <> toText projName <> ".")
+  where projectDir = T.unpack $ toText projName
         relPath path = projectDir </> path
 
--- | Displays the error if one occurred during project template creation.
-showError :: MonadIO m => MkProjectError -> m ()
-showError (MPFSErr e) =
-  logErr ("Failed to initialize project: " <> T.pack (show e))
-showError (MPLogErr e) =
-  logErr ("Failed to initialize project: " <> T.pack (show e))
+-- | Helper function that runs the actual program described in the Eff monad.
+runProgram :: ( MonadReader Config m, MonadIO m )
+           => Eff '[Logger, FileSystem, SafeIO MkProjectError] ()
+           -> m (Either MkProjectError ())
+runProgram prog = do
+  thres <- asks $ logLevel . args
+  liftIO $  runSafeIO
+        <$> runM
+         .  runFS MPFSErr
+         .  Log.runLogger MPLogErr thres $ prog
 

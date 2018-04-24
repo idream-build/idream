@@ -15,6 +15,7 @@ import System.Process ( createProcess, waitForProcess, env, proc )
 import System.Exit ( ExitCode(..) )
 import Idream.SafeIO
 import Idream.Types ( ProjectName(..), PackageName(..) )
+import Idream.FilePaths
 import Idream.ToText
 import Data.Monoid ( (<>) )
 import qualified Data.Text as T
@@ -23,7 +24,7 @@ import qualified Data.Text as T
 -- Data types
 
 data Idris a where
-  IdrisCompile :: ProjectName -> PackageName -> [Arg] -> Environment -> Idris ()
+  IdrisCompile :: ProjectName -> PackageName -> Idris ()
 
 data IdrisError = IdrCompileErr ProjectName PackageName IOException
                 | IdrCommandErr ProjectName PackageName Command ExitCode
@@ -58,18 +59,24 @@ instance ToText IdrisError where
 
 
 idrisCompile :: Member Idris r
-             => ProjectName -> PackageName -> [Arg] -> Environment -> Eff r ()
-idrisCompile projName pkgName args environ =
-  send $ IdrisCompile projName pkgName args environ
+             => ProjectName -> PackageName -> Eff r ()
+idrisCompile projName pkgName =
+  send $ IdrisCompile projName pkgName
 
 runIdris :: forall e r. LastMember (SafeIO e) r
          => (IdrisError -> e) -> Eff (Idris ': r) ~> Eff r
 runIdris f = interpretM g where
   g :: Idris ~> SafeIO e
-  g (IdrisCompile projName pkgName args environ) =
+  g (IdrisCompile projName pkgName) =
     let eh1 = IdrCompileErr projName pkgName
         eh2 = IdrCommandErr projName pkgName "compile"
-     in invokeIdrisWithEnv (f . eh1) (f . eh2) args environ
+        compileDir = pkgCompileDir projName pkgName
+        ipkg = ipkgFile projName pkgName
+        idrisArgs = [ "--verbose", "--build", ipkg]
+        environ = [ ("IDRIS_LIBRARY_PATH", compileDir)
+                  , ("IDRIS_DOC_PATH", pkgDocsDir projName pkgName)
+                  ]
+     in invokeIdrisWithEnv (f . eh1) (f . eh2) idrisArgs environ
 
 
 -- | Invokes a command as a separate operating system process.
@@ -85,10 +92,11 @@ invokeCmdWithEnv f g cmd cmdArgs environ = do
     waitForProcess procHandle
   if result == ExitSuccess then return () else raiseError (g result)
 
+-- | Invokes the Idris compiler as a separate operating system process.
+--   Allows passing additional environment variables to the external process.
 invokeIdrisWithEnv :: (IOException -> e)
                    -> (ExitCode -> e)
                    -> [Arg] -> Environment
                    -> SafeIO e ()
 invokeIdrisWithEnv f g = invokeCmdWithEnv f g "idris"
-
 

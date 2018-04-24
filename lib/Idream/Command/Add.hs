@@ -35,6 +35,15 @@ data AddPkgError = PackageAlreadyExistsErr PackageName
                  | ALogErr Log.LogError
                  deriving (Eq, Show)
 
+-- Instances
+
+instance ToText AddPkgError where
+  toText (AFSErr err) = toText err
+  toText (ALogErr err) = toText err
+  toText (AProjParseErr err) = toText err
+  toText (PackageAlreadyExistsErr pkgName) =
+    "Failed to add package to project, package " <> toText pkgName <> " already exists."
+
 
 -- Functions
 
@@ -66,7 +75,49 @@ idrPkgJson (PackageName pkgName) pkgType =
             , "}"
             ]
 
+-- | Creates a new project template.
+addPackageToProject :: ( MonadReader Config m, MonadIO m )
+                    => PackageName -> PackageType -> m ()
+addPackageToProject pkgName@(PackageName name) pkgType = do
+  result <- runProgram $ do
+    pkgDirExists <- doesDirExist (T.unpack name)
+    if pkgDirExists
+       then Log.err $ toText $ PackageAlreadyExistsErr pkgName
+      else addPackageToProject' pkgName pkgType
+  either (Log.logErr . toText) return result
 
+-- | Does the actual creation of the project template.
+addPackageToProject' :: ( Member Logger r
+                        , Member (Error ProjParseErr) r
+                        , Member (Error AddPkgError) r
+                        , Member FileSystem r )
+                     => PackageName -> PackageType -> Eff r ()
+addPackageToProject' pkgName pkgType = do
+  projInfo <- readRootProjFile
+  createDir $ pkgDir pkgName
+  createDir $ pkgSrcDir pkgName
+  writeFile (idrPkgJson pkgName pkgType) (pkgDir pkgName </> pkgFile)
+  writeFile (mainContents pkgType) (pkgSrcDir pkgName </> mainFile pkgType)
+  updateProjInfo projInfo pkgName
+  Log.info ("Successfully added package " <> toText pkgName <> " to project.")
+  where mainFile Library = "Lib.idr"
+        mainFile Executable = "Main.idr"
+        mainContents Library = libIdr
+        mainContents Executable = mainIdr
+
+-- | Updates the project file with a new package entry.
+updateProjInfo :: Member FileSystem r => Project -> PackageName -> Eff r ()
+updateProjInfo projInfo pkgName =
+  let projFilePath = projectFile
+      updatedDeps = projDeps projInfo ++ [pkgName]
+      projInfo' = projInfo { projDeps = updatedDeps }
+   in writeFile (encodeJSON projInfo') projFilePath
+
+-- | Encodes a serializable JSON value to pretty printed text.
+encodeJSON :: ToJSON a => a -> Text
+encodeJSON x = (TL.toStrict . decodeUtf8 . encodePretty $ x) <> "\n"
+
+-- | Runs the actual program described in the Eff monad.
 runProgram :: ( MonadReader Config m, MonadIO m )
            => Eff '[ Logger
                    , Error AddPkgError, Error ProjParseErr
@@ -82,58 +133,4 @@ runProgram prog = do
          .  runError
          .  Log.runLogger ALogErr thres
          $  prog
-
--- | Creates a new project template.
-addPackageToProject :: ( MonadReader Config m, MonadIO m )
-                    => PackageName -> PackageType -> m ()
-addPackageToProject pkgName@(PackageName name) pkgType = do
-  result <- runProgram $ do
-    pkgDirExists <- doesDirExist (T.unpack name)
-    if pkgDirExists
-       then Log.err $ showError $ PackageAlreadyExistsErr pkgName
-      else addPackageToProject' pkgName pkgType
-  either (Log.logErr . showError) return result
-
--- | Does the actual creation of the project template.
-addPackageToProject' :: ( Member Logger r
-                        , Member (Error ProjParseErr) r
-                        , Member (Error AddPkgError) r
-                        , Member FileSystem r )
-                     => PackageName -> PackageType -> Eff r ()
-addPackageToProject' pkgName pkgType = do
-  projInfo <- readRootProjFile
-  createDir $ pkgDir pkgName
-  createDir $ pkgSrcDir pkgName
-  writeFile (idrPkgJson pkgName pkgType) (pkgDir pkgName </> pkgFile)
-  writeFile (mainContents pkgType) (pkgSrcDir pkgName </> mainFile pkgType)
-  updateProjInfo projInfo pkgName
-  displayStatusUpdate pkgName
-  where mainFile Library = "Lib.idr"
-        mainFile Executable = "Main.idr"
-        mainContents Library = libIdr
-        mainContents Executable = mainIdr
-
--- | Updates the project file with a new package entry.
-updateProjInfo :: Member FileSystem r => Project -> PackageName -> Eff r ()
-updateProjInfo projInfo pkgName =
-  let projFilePath = projectFile
-      updatedDeps = projDeps projInfo ++ [pkgName]
-      projInfo' = projInfo { projDeps = updatedDeps }
-   in writeFile (encodeJSON projInfo') projFilePath
-
-displayStatusUpdate :: Member Logger r => PackageName -> Eff r ()
-displayStatusUpdate (PackageName pkgName) =
-  Log.info ("Successfully added package " <> pkgName <> " to project.")
-
--- | Displays the error if one occurred during project template creation.
-showError :: AddPkgError -> T.Text
-showError (AFSErr err) = toText err
-showError (ALogErr err) = toText err
-showError (AProjParseErr err) = toText err
-showError (PackageAlreadyExistsErr (PackageName pkgName)) =
-  "Failed to add package to project, package "
-    <> pkgName <> " already exists"
-
-encodeJSON :: ToJSON a => a -> Text
-encodeJSON x = (TL.toStrict . decodeUtf8 . encodePretty $ x) <> "\n"
 

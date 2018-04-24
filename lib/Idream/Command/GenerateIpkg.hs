@@ -44,6 +44,16 @@ data GenerateIpkgErr = GFSErr FSError
                      | GGraphErr ParseGraphErr
                      deriving (Eq, Show)
 
+-- Instances
+
+instance ToText GenerateIpkgErr where
+  toText (GFSErr err) = toText err
+  toText (GLogErr err) = toText err
+  toText (GGraphErr err) = toText err
+  toText (GRootProjParseErr err) = "Failed to parse root project file: " <> toText err
+  toText (GProjParseErr err) = toText err
+  toText (GPkgParseErr err) = toText err
+
 
 -- Functions
 
@@ -60,7 +70,7 @@ generateIpkgFile = do
         graph <- loadGraphFromJSON depGraphFile
         mapM_ generateIpkg $ Graph.vertexList graph
         Log.info "Finished generating .ipkg files."
-  either handleGenerateIpkgErr return result
+  either (logErr . toText) return result
 
 -- | Generates an ipkg file for 1 package in a project.
 --   Note that this also cleans the build directory for that project.
@@ -69,8 +79,8 @@ generateIpkg :: ( Member Logger r
                 , Member (Error PkgParseErr) r
                 , Member FileSystem r )
              => DepNode -> Eff r ()
-generateIpkg node@(DepNode pkgName@(PackageName name) projName) = do
-  Log.debug ("Generating ipkg file for package: " <> name <> ".")
+generateIpkg node@(DepNode pkgName projName) = do
+  Log.debug ("Generating ipkg file for package: " <> toText pkgName <> ".")
   pkgDirPath <- getPkgDirPath pkgName projName
   let projectBuildDir' = projectBuildDir projName
       pkgBuildDir' = pkgBuildDir projName pkgName
@@ -78,7 +88,6 @@ generateIpkg node@(DepNode pkgName@(PackageName name) projName) = do
   createDir pkgBuildDir'
   copyDir pkgDirPath projectBuildDir'
   generateIpkgHelper node
-
 
 -- | Helper function that does the actual generation of the .ipkg file.
 generateIpkgHelper :: ( Member Logger r
@@ -129,17 +138,7 @@ formatFileNames modules = replaceSlashes . trimLeadingSlash . trimExt <$> module
         trimExt s = take (length s - 4) s
         replaceSlashes = fmap replaceSlash
 
--- | Helper function for handling errors when generating ipkg files.
-handleGenerateIpkgErr :: MonadIO m => GenerateIpkgErr -> m ()
-handleGenerateIpkgErr (GFSErr err) = logErr $ toText err
-handleGenerateIpkgErr (GLogErr err) = logErr $ toText err
-handleGenerateIpkgErr (GGraphErr err) = logErr $ toText err
-handleGenerateIpkgErr (GRootProjParseErr err) =
-  logErr $ "Failed to parse root project file: " <> toText err
-handleGenerateIpkgErr (GProjParseErr err) = logErr $ toText err
-handleGenerateIpkgErr (GPkgParseErr err) = logErr $ toText err
-
-
+-- | Helper function for running the program described in the Eff monad.
 runProgram :: ( MonadReader Config m, MonadIO m )
            => Eff '[ Logger
                    , Error PkgParseErr, Error ProjParseErr, Error ParseGraphErr

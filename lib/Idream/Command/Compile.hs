@@ -12,11 +12,10 @@ import Idream.Effects.Idris
 import Idream.Effects.Log ( Logger )
 import Idream.ToText
 import qualified Idream.Effects.Log as Log
-import Idream.Types ( Config(..), PackageName(..), Project(..), logLevel, args )
+import Idream.Types ( Config(..), Project(..), logLevel, args )
 import Idream.Graph ( DepNode(..), BuildPlan, ParseGraphErr
                     , loadGraphFromJSON, createBuildPlan )
 import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
-import qualified Data.Text as T
 import Data.Monoid
 
 
@@ -29,10 +28,48 @@ data CompileErr = CFSErr FSError
                 | CGraphErr ParseGraphErr
                 deriving (Eq, Show)
 
+-- Instances
+
+instance ToText CompileErr where
+  toText (CFSErr err) = toText err
+  toText (CLogErr err) = toText err
+  toText (CIdrisErr err) = toText err
+  toText (CProjParseErr err) = toText err
+  toText (CGraphErr err) = toText err
+
 
 -- Functions
 
 
+compileCode :: ( MonadReader Config m, MonadIO m ) => m ()
+compileCode = do
+  result <- runProgram $ do
+    Project _ rootPkgs <- readRootProjFile
+    if null rootPkgs
+      then Log.info ("Project contains no packages yet, skipping compile step. "
+                  <> "Use `idream add` to add a package to this project first.")
+      else do
+        Log.info "Compiling package(s)..."
+        graph <- loadGraphFromJSON depGraphFile
+        let buildPlan = createBuildPlan graph
+        compilePackages buildPlan
+        Log.info "Successfully compiled package(s)!"
+  case result of
+    Left err -> Log.logErr $ toText err
+    Right _ -> return ()
+
+compilePackages :: ( Member Logger r, Member Idris r, Member FileSystem r )
+                => BuildPlan DepNode -> Eff r ()
+compilePackages = mapM_ compilePackage where
+  -- TODO optimize / parallellize, handle deps...
+  compilePackage (DepNode pkgName projName) = do
+    Log.debug ("Compiling package: " <> toText pkgName)
+    let compileDir = pkgCompileDir projName pkgName
+    createDir compileDir
+    idrisCompile projName pkgName
+    Log.info ("Compiled package: " <> toText pkgName <> ".")
+
+-- | Helper function that runs the actual program (described using Eff monad).
 runProgram :: ( MonadReader Config m, MonadIO m )
            => Eff '[ Logger
                    , Error CompileErr, Error ProjParseErr, Error ParseGraphErr
@@ -49,52 +86,5 @@ runProgram prog = do
          .  runError' CProjParseErr
          .  runError
          .  Log.runLogger CLogErr thres
-         $ prog
-
-compileCode :: ( MonadReader Config m, MonadIO m ) => m ()
-compileCode = do
-  result <- runProgram $ do
-    Project _ rootPkgs <- readRootProjFile
-    if null rootPkgs
-      then Log.info ("Project contains no packages yet, skipping compile step. "
-                  <> "Use `idream add` to add a package to this project first.")
-      else do
-        Log.info "Compiling package(s)..."
-        graph <- loadGraphFromJSON depGraphFile
-        let buildPlan = createBuildPlan graph
-        compilePackages buildPlan
-        Log.info "Successfully compiled package(s)!"
-  case result of
-    Left err -> Log.logErr $ handleCompileErr err
-    Right _ -> return ()
-
-compilePackages :: ( Member Logger r, Member Idris r, Member FileSystem r )
-                => BuildPlan DepNode -> Eff r ()
-compilePackages = mapM_ compilePackage where
-  -- TODO optimize / parallellize, handle deps...
-  compilePackage depNode@(DepNode (PackageName pkgName) _) = do
-    Log.debug ("Compiling package: " <> pkgName)
-    idrisCompile' depNode
-    Log.info ("Compiled package: " <> pkgName <> ".")
-
-
-idrisCompile' :: ( Member FileSystem r, Member Idris r)
-              => DepNode -> Eff r ()
-idrisCompile' (DepNode pkgName projName) = do
-  let compileDir = pkgCompileDir projName pkgName
-      ipkg = ipkgFile projName pkgName
-      idrisArgs = [ "--verbose", "--build", ipkg]
-      environ = [ ("IDRIS_LIBRARY_PATH", compileDir)
-                , ("IDRIS_DOC_PATH", pkgDocsDir projName pkgName)
-                ]
-  createDir compileDir
-  idrisCompile projName pkgName idrisArgs environ
-
-
-handleCompileErr :: CompileErr -> T.Text
-handleCompileErr (CFSErr err) = toText err
-handleCompileErr (CLogErr err) = toText err
-handleCompileErr (CIdrisErr err) = toText err
-handleCompileErr (CProjParseErr err) = toText err
-handleCompileErr (CGraphErr err) = toText err
+         $  prog
 
