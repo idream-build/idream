@@ -121,7 +121,10 @@ describe 'idream fetch command' do
         "name": "test_lib",
         "source_dir": "src",
         "executable": false,
-        "dependencies": ["test_dependency1"]
+        "dependencies": [
+            {"project": "test_dependency1", "package": "package1"},
+            {"project": "test_dependency1", "package": "package2"}
+        ]
     }
     END
   end
@@ -133,8 +136,9 @@ describe 'idream fetch command' do
         "source_dir": "src",
         "executable": false,
         "dependencies": [
-            "test_dependency1",
-            "test_dependency2"
+            {"project": "test_dependency1", "package": "package1"},
+            {"project": "test_dependency1", "package": "package2"},
+            {"project": "test_dependency2", "package": "package3"}
         ]
     }
     END

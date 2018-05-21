@@ -110,16 +110,17 @@ generateIpkgHelper (DepNode pkgName projName) = do
 ipkgMetadataToText :: Directory -> IpkgMetadata -> Text
 ipkgMetadataToText pkgBuildSrcDir' (IpkgMetadata projName pkg modules) =
   let (Package pkgName pkgType (SourceDir srcDir) dependencies) = pkg
-      name = toText projName <> "_" <> toText pkgName
+      fullPkgName = toText projName <> "_" <> toText pkgName
+      exeName = toText pkgName
       mods = T.pack $ intercalate ", " $ formatFileNames pkgBuildSrcDir' modules
       deps = T.intercalate ", " $ toText <$> dependencies
       sourceDir = T.pack srcDir
-  in T.unlines [ "package " <> name
+  in T.unlines [ "package " <> fullPkgName
                , "-- NOTE: This is an auto-generated file by idream. Do not edit."
                , "modules = " <> mods
                , if null dependencies then "" else "pkgs = " <> deps
                , "sourcedir = " <> sourceDir
-               , if pkgType == Executable then "executable = " <> name else ""
+               , if pkgType == Executable then "executable = " <> exeName else ""
                , if pkgType == Executable then "main = Main" else ""
                ]
 

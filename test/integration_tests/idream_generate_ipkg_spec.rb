@@ -77,8 +77,9 @@ describe 'idream generate ipkg command' do
         "source_dir": "src",
         "executable": true,
         "dependencies": [
-            "test_dependency1",
-            "test_dependency2"
+            {"project": "test_dependency1", "package": "package1"},
+            {"project": "test_dependency1", "package": "package2"},
+            {"project": "test_dependency2", "package": "package3"}
         ]
     }
     END
@@ -109,9 +110,9 @@ describe 'idream generate ipkg command' do
 
   def pkg1_ipkg_contents
     <<~END
-    package package1
+    package test_dependency1_package1
     -- NOTE: This is an auto-generated file by idream. Do not edit.
-    modules = Lib, Extras
+    modules = Package1.Lib, Package1.Extras
 
     sourcedir = src
     END
@@ -119,10 +120,10 @@ describe 'idream generate ipkg command' do
 
   def exe_ipkg_contents
     <<~END
-    package test_exe
+    package test_project_test_exe
     -- NOTE: This is an auto-generated file by idream. Do not edit.
     modules = Main
-    pkgs = test_dependency1, test_dependency2
+    pkgs = test_dependency1_package1, test_dependency1_package2, test_dependency2_package3
     sourcedir = src
     executable = test_exe
     main = Main
