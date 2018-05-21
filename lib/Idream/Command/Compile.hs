@@ -17,6 +17,8 @@ import Idream.Graph ( DepNode(..), BuildPlan, ParseGraphErr
                     , loadGraphFromJSON, createBuildPlan )
 import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
 import Data.Monoid
+import qualified Data.Text as T
+import System.FilePath ( (</>) )
 
 
 -- Data types
@@ -60,14 +62,24 @@ compileCode = do
 
 compilePackages :: ( Member Logger r, Member Idris r, Member FileSystem r )
                 => BuildPlan DepNode -> Eff r ()
-compilePackages = mapM_ compilePackage where
-  -- TODO optimize / parallellize, handle deps...
-  compilePackage (DepNode pkgName projName) = do
-    Log.debug ("Compiling package: " <> toText pkgName)
-    let compileDir = pkgCompileDir projName pkgName
-    createDir compileDir
-    idrisCompile projName pkgName
-    Log.info ("Compiled package: " <> toText pkgName <> ".")
+compilePackages buildPlan = do
+  libDir <- idrisGetLibDir
+  createDir compileDir
+  Log.debug "Copying files from base packages into compile directory."
+  setupBasePackages libDir
+  mapM_ compilePackage buildPlan  -- TODO optimize / parallellize, handle deps...
+  where compilePackage (DepNode pkgName projName) = do
+          Log.debug ("Compiling package: " <> toText pkgName)
+          idrisCompile projName pkgName
+          Log.info ("Compiled package: " <> toText pkgName <> ".")
+
+-- Copies over the 'standard' packages used by Idris into the main compilation directory.
+setupBasePackages :: Member FileSystem r => Directory -> Eff r ()
+setupBasePackages libDir = mapM_ setupBasePackage basePackages where
+  basePackages = ["base", "contrib", "effects", "prelude", "pruviloj"]
+  setupBasePackage pkg = do
+    let fromDir = libDir </> T.unpack pkg
+    copyDir fromDir compileDir
 
 -- | Helper function that runs the actual program (described using Eff monad).
 runProgram :: ( MonadReader Config m, MonadIO m )

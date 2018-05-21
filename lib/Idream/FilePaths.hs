@@ -1,20 +1,22 @@
 
 module Idream.FilePaths ( Directory, FilePath
+                        , hasExt, relativeTo
                         , pkgDir, pkgSrcDir
                         , buildDir, projectBuildDir
                         , pkgBuildDir, pkgBuildSrcDir
-                        , pkgCompileDir, pkgDocsDir
-                        , repoDir, repoDirProjFile
+                        , compileDir, pkgCompileDir
+                        , pkgDocsDir, repoDir, repoDirProjFile
                         , projectFile, pkgFile, pkgSetFile
                         , ipkgFile, depGraphFile
                         ) where
 
 -- Imports
 
-import System.FilePath ( FilePath, (</>) )
+import System.FilePath ( FilePath, (</>), splitExtension )
 import Idream.Types ( ProjectName(..), PackageName(..), SourceDir(..) )
 import qualified Data.Text as T
 import Data.Monoid ( (<>) )
+import Data.List ( stripPrefix )
 
 
 -- Data types
@@ -24,6 +26,17 @@ type Directory = FilePath
 
 
 -- Functions
+
+-- | Checks if the given filepath has a specific extension.
+hasExt :: String -> FilePath -> Bool
+hasExt ext fp =
+  let (_, ext') = splitExtension fp
+   in ext' == "." <> ext
+
+-- | Helper function for returning file name relative to a directory,
+--   if the file is not contained in the current directory, it returns Nothing.
+relativeTo :: FilePath -> Directory -> Maybe FilePath
+path `relativeTo` dir = stripPrefix (dir ++ "/") path
 
 -- NOTE: all these functions return a path relative to root of a project!
 
@@ -54,9 +67,14 @@ pkgBuildSrcDir :: ProjectName -> PackageName -> SourceDir -> Directory
 pkgBuildSrcDir projName pkgName (SourceDir dir) =
   pkgBuildDir projName pkgName </> dir
 
--- | Directory in which compiled files are stored for a package.
+-- | Directory in which compiled files are stored.
+compileDir :: Directory
+compileDir = buildDir </> "bin"
+
+-- | Directory in which compiled files are stored for a project/package.
 pkgCompileDir :: ProjectName -> PackageName -> Directory
-pkgCompileDir projName pkgName = pkgBuildDir projName pkgName </> "bin"
+pkgCompileDir (ProjectName projName) (PackageName pkgName) =
+  compileDir </> T.unpack (projName <> "_" <> pkgName)
 
 -- | Directory in which the docs for a package are stored.
 pkgDocsDir :: ProjectName -> PackageName -> Directory

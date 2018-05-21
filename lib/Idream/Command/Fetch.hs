@@ -23,7 +23,7 @@ import Idream.ToText
 import qualified Data.Map as Map
 import Data.Monoid ( (<>) )
 import Data.Aeson ( eitherDecode )
-import Data.List ( partition )
+import Data.List ( partition, nub )
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 
@@ -128,7 +128,8 @@ fetchDepsForPackage pkgSet projName pkgName = do
       isOld _ = False
       unwrap (AlreadyFetched proj) = proj
       unwrap (NewlyFetched proj) = proj
-  (oldSubProjects, newSubProjects) <- partition isOld <$> mapM (fetchProj pkgSet) pkgDeps
+      projNames = nub $ depProjName <$> pkgDeps
+  (oldSubProjects, newSubProjects) <- partition isOld <$> mapM (fetchProj pkgSet) projNames
   let oldSubProjects' = unwrap <$> oldSubProjects
       newSubProjects' = unwrap <$> newSubProjects
       subProjects = oldSubProjects' ++ newSubProjects'
@@ -159,7 +160,7 @@ fetchProj (PackageSet pkgs) projName@(ProjectName name) =
 -- | Reads the package file to determine the project dependencies.
 readPkgDeps :: ( Member (Error ProjParseErr) r, Member (Error PkgParseErr) r
                , Member FileSystem r, Member Logger r )
-            => ProjectName -> PackageName -> Eff r [ProjectName]
+            => ProjectName -> PackageName -> Eff r [Dependency]
 readPkgDeps projName pkgName = do
   pkgFilePath <- getPkgFilePath pkgName projName
   (Package _ _ _ deps) <- readPkgFile pkgFilePath

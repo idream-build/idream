@@ -1,6 +1,6 @@
 require_relative 'idream_common'
 
-describe 'idream generate ipkg command' do
+describe 'idream compile ipkg command' do
 
   before do
     @idream = idream_exe
@@ -19,7 +19,7 @@ describe 'idream generate ipkg command' do
   it "does nothing when not in an idream project" do
     Dir.chdir '/tmp'
     output_before = `ls -a`
-    output = generate
+    output = compile
     output_after = `ls -a`
 
     expect(output_after).to eq(output_before)
@@ -27,47 +27,42 @@ describe 'idream generate ipkg command' do
     expect(output).to include('Failed to read from file (idr-project.json)')
   end
 
-  it "gives an informational message when no packages yet" do
-    output = generate
+  it "gives an informational message when project has no packages yet" do
+    output = compile
     expect(output).to include('Project contains no packages yet')
     expect(output).to include('Use `idream add` to add a package to this project first.')
   end
 
   it "gives an informational message when it can't find the dependency graph file" do
-    graph_file = '.idream-work/dependency-graph.json'
     idream "add --lib #{lib_name}"
-    expect(generate).to include("Failed to read from file (#{graph_file})")
+    expect(compile).to include('Failed to read from file (.idream-work/dependency-graph.json)')
   end
 
-  describe "generation of ipkg files" do
+  describe "compilation of projects" do
 
     before do
       idream "add --exe #{exe_name}"
       File.write 'idr-package-set.json', pkg_set_contents
       File.write (File.join exe_name, 'idr-package.json'), pkg_contents
       idream 'fetch'
+      idream 'generate-ipkg'
     end
 
-    it "generates a .ipkg file for each of the fetched packages" do
-      output = generate
-      exe_ipkg = File.read (File.join exe_build_dir, "#{exe_name}.ipkg")
-      pkg1_ipkg = File.read (File.join pkg1_build_dir, "package1.ipkg")
-
-      expect(output).to include('package1.ipkg')
-      expect(output).to include('package2.ipkg')
-      expect(output).to include('package3.ipkg')
-      expect(output).to include("#{exe_name}.ipkg")
-
-      expect(exe_ipkg).to include(exe_ipkg_contents)
-      expect(pkg1_ipkg).to include(pkg1_ipkg_contents)
+    it "compiles an .ipkg file for each of the fetched packages" do
+      output = compile
+      expect(output).to include('Compiled package: package1')
+      expect(output).to include('Compiled package: package2')
+      expect(output).to include('Compiled package: package3')
+      expect(output).to include('Compiled package: test_exe')
+      expect(output).to include('Successfully compiled package(s)!')
     end
   end
 
 
   # Helper functions
 
-  def generate
-    idream '--log-level debug generate-ipkg'
+  def compile
+    idream '--log-level debug compile'
   end
 
   def pkg_contents
@@ -77,8 +72,9 @@ describe 'idream generate ipkg command' do
         "source_dir": "src",
         "executable": true,
         "dependencies": [
-            "test_dependency1",
-            "test_dependency2"
+            {"project": "test_dependency1", "package": "package1"},
+            {"project": "test_dependency1", "package": "package2"},
+            {"project": "test_dependency2", "package": "package3"}
         ]
     }
     END
@@ -109,8 +105,8 @@ describe 'idream generate ipkg command' do
 
   def pkg1_ipkg_contents
     <<~END
-    package package1
     -- NOTE: This is an auto-generated file by idream. Do not edit.
+    package package1
     modules = Lib, Extras
 
     sourcedir = src
@@ -119,10 +115,10 @@ describe 'idream generate ipkg command' do
 
   def exe_ipkg_contents
     <<~END
-    package test_exe
     -- NOTE: This is an auto-generated file by idream. Do not edit.
+    package test_exe
     modules = Main
-    pkgs = test_dependency1, test_dependency2
+    pkgs = test_dependency1_package1, test_dependency1_package2, test_dependency2_package3
     sourcedir = src
     executable = test_exe
     main = Main

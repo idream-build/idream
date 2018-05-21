@@ -5,7 +5,7 @@ module Idream.Effects.FileSystem ( FSError(..), FileSystem(..)
                                  , runFS
                                  , writeFile, readFile
                                  , doesFileExist, doesDirExist
-                                 , createDir, removePath
+                                 , createDir, movePath, removePath
                                  , copyDir, findFiles
                                  , module Idream.FilePaths
                                  ) where
@@ -34,6 +34,7 @@ data FSError = WriteFileErr FilePath IOException
              | ReadFileErr FilePath IOException
              | CheckFileExistsErr FilePath IOException
              | CreateDirErr Directory IOException
+             | MovePathErr FilePath FilePath IOException
              | RemovePathErr FilePath IOException
              | CheckDirExistsErr Directory IOException
              | CopyDirErr Directory Directory IOException
@@ -46,6 +47,7 @@ data FileSystem a where
   ReadFile :: FilePath -> FileSystem T.Text
   DoesFileExist :: FilePath -> FileSystem Bool
   CreateDir :: Directory -> FileSystem ()
+  MovePath :: FilePath -> FilePath -> FileSystem ()
   RemovePath :: FilePath -> FileSystem ()
   DoesDirExist :: Directory -> FileSystem Bool
   CopyDir :: Directory -> Directory -> FileSystem ()
@@ -56,23 +58,25 @@ data FileSystem a where
 
 instance ToText FSError where
   toText (WriteFileErr path err) =
-    "Failed to write to file (" <> toText path <> "): " <> toText err <> "."
+    "Failed to write to file (" <> toText path <> "), reason: " <> toText err <> "."
   toText (ReadFileErr path err) =
-    "Failed to read from file (" <> toText path <> "): " <> toText err <> "."
+    "Failed to read from file (" <> toText path <> "), reason: " <> toText err <> "."
   toText (CheckFileExistsErr path err) =
-    "Failed to check if file exists (" <> toText path <> "): " <> toText err <> "."
+    "Failed to check if file exists (" <> toText path <> "), reason: " <> toText err <> "."
   toText (CreateDirErr dir err) =
-    "Failed to create directory (" <> toText dir <> "): " <> toText err <> "."
+    "Failed to create directory (" <> toText dir <> "), reason: " <> toText err <> "."
+  toText (MovePathErr from to err) =
+    "Failed to move path from " <> toText from <> " to " <> toText to <> ", reason: " <> toText err <> "."
   toText (RemovePathErr path err) =
-    "Failed to remove path (" <> toText path <> "): " <> toText err <> "."
+    "Failed to remove path (" <> toText path <> "), reason: " <> toText err <> "."
   toText (CheckDirExistsErr dir err) =
-    "Failed to check if directory exists (" <> toText dir <> "): "
+    "Failed to check if directory exists (" <> toText dir <> "), reason: "
       <> toText err <> "."
   toText (CopyDirErr from to err) =
     "Failed to copy files from " <> toText from <> " to " <> toText to
       <> ", reason: " <> toText err <> "."
   toText (FindFilesErr dir err) =
-    "Error when trying to find files (" <> toText dir <> "): " <> toText err <> "."
+    "Error when trying to find files (" <> toText dir <> "), reason: " <> toText err <> "."
 
 
 -- Functions
@@ -88,6 +92,9 @@ doesFileExist path = send $ DoesFileExist path
 
 createDir :: Member FileSystem r => Directory -> Eff r ()
 createDir dir = send $ CreateDir dir
+
+movePath :: Member FileSystem r => FilePath -> FilePath -> Eff r ()
+movePath from to = send $ MovePath from to
 
 removePath :: Member FileSystem r => FilePath -> Eff r ()
 removePath path = send $ RemovePath path
@@ -113,6 +120,8 @@ runFS f = interpretM g where
                          $ Dir.doesFileExist path
   g (CreateDir dir) = liftSafeIO (f . CreateDirErr dir)
                     $ Dir.createDirectoryIfMissing True dir
+  g (MovePath from to) = liftSafeIO (f . MovePathErr from to)
+                       $ Dir.renamePath from to
   g (RemovePath path) = liftSafeIO (f . RemovePathErr path)
                       $ Dir.removePathForcibly path
   g (DoesDirExist dir) = liftSafeIO (f . CheckDirExistsErr dir)
@@ -128,5 +137,4 @@ runFS f = interpretM g where
      in liftSafeIO (f . FindFilesErr dir') $ do
        files <- shelly . silently . find . toFilePath $ dir'
        return . filter h $ fromFilePath <$> files
-
 

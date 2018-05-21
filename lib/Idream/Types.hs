@@ -7,6 +7,7 @@ module Idream.Types ( ProjectName(..)
                     , Version(..)
                     , Project(..)
                     , Package(..)
+                    , Dependency(..)
                     , PackageDescr(..)
                     , PackageSet(..)
                     , LogLevel(..)
@@ -23,6 +24,7 @@ import Data.Default
 import Data.Aeson
 import Data.Map ( Map )
 import Data.Text ( Text )
+import Data.Monoid ( (<>) )
 import Control.Monad ( mzero )
 import System.FilePath ( FilePath )
 import Idream.ToText
@@ -51,12 +53,16 @@ data Project = Project { projProjName :: ProjectName
                        , projDeps :: [PackageName]
                        } deriving (Eq, Show)
 
+-- | Type describing a dependency.
+--   For idream, this is the combination of a project and a package inside that project.
+data Dependency = Dependency { depProjName :: ProjectName
+                             , depPkgName :: PackageName
+                             } deriving (Eq, Show)
+
 -- | Type containing package data (coming from idr-package.json).
 --   A package can depend on 1 or more projects (which can possibly contain
 --   multiple closely related binaries or libraries).
---   If a package does depend on a project, it will depend on each of the
---   packages in that project.
-data Package = Package PackageName PackageType SourceDir [ProjectName]
+data Package = Package PackageName PackageType SourceDir [Dependency]
              deriving (Eq, Show)
 
 -- | Type used for representing repository location of a package.
@@ -151,6 +157,13 @@ instance FromJSON Package where
     return $ Package name pkgType srcDir pkgs
   parseJSON _ = mzero
 
+instance FromJSON Dependency where
+  parseJSON (Object o) = do
+    proj <- o .: "project"
+    pkg <- o .: "package"
+    return $ Dependency proj pkg
+  parseJSON _ = mzero
+
 instance FromJSON PackageDescr where
   parseJSON (Object o) =
     PackageDescr <$> o .: "repo"
@@ -171,4 +184,8 @@ instance ToText ProjectName where
 
 instance ToText PackageName where
   toText = unPkgName
+
+instance ToText Dependency where
+  toText (Dependency projName pkgName) =
+    toText projName <> "_" <> toText pkgName
 

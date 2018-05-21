@@ -21,9 +21,9 @@ import Idream.Command.Common ( ProjParseErr(..), PkgParseErr(..)
 import Idream.Effects.FileSystem
 import Data.Text ( Text )
 import Data.Monoid ( (<>) )
-import Data.List ( intercalate )
+import Data.List ( intercalate, stripPrefix )
+import Data.Maybe ( fromJust )
 import qualified Data.Text as T
-import System.FilePath.Posix
 
 
 -- Data types
@@ -32,7 +32,7 @@ import System.FilePath.Posix
 type Module = FilePath
 
 -- | Data type containing all info needed to generate an ipkg file.
-data IpkgMetadata = IpkgMetadata Package [Module]
+data IpkgMetadata = IpkgMetadata ProjectName Package [Module]
   deriving (Eq, Show)
 
 -- | Error type used for storing all errors when generating .ipkg files.
@@ -100,23 +100,18 @@ generateIpkgHelper (DepNode pkgName projName) = do
   package@(Package _ _ srcDir _) <- readPkgFile pkgFilePath
   let pkgBuildSrcDir' = pkgBuildSrcDir projName pkgName srcDir
   idrisFiles <- findFiles (hasExt "idr") (Just pkgBuildSrcDir')
-  let pkgMetadata = IpkgMetadata package idrisFiles
-      contents = ipkgMetadataToText pkgMetadata
+  let pkgMetadata = IpkgMetadata projName package idrisFiles
+      contents = ipkgMetadataToText pkgBuildSrcDir' pkgMetadata
       ipkg = ipkgFile projName pkgName
   Log.debug ("Writing .ipkg file to: " <> toText ipkg)
   writeFile contents ipkg
 
-hasExt :: String -> FilePath -> Bool
-hasExt ext fp =
-  let (_, ext') = splitExtension fp
-   in ext' == "." <> ext
-
 -- | Converts the ipkg metadata to a text representation.
-ipkgMetadataToText :: IpkgMetadata -> Text
-ipkgMetadataToText (IpkgMetadata pkg modules) =
+ipkgMetadataToText :: Directory -> IpkgMetadata -> Text
+ipkgMetadataToText pkgBuildSrcDir' (IpkgMetadata projName pkg modules) =
   let (Package pkgName pkgType (SourceDir srcDir) dependencies) = pkg
-      name = unPkgName pkgName
-      mods = T.pack $ intercalate ", " $ formatFileNames modules
+      name = toText projName <> "_" <> toText pkgName
+      mods = T.pack $ intercalate ", " $ formatFileNames pkgBuildSrcDir' modules
       deps = T.intercalate ", " $ toText <$> dependencies
       sourceDir = T.pack srcDir
   in T.unlines [ "package " <> name
@@ -130,11 +125,12 @@ ipkgMetadataToText (IpkgMetadata pkg modules) =
 
 -- | Formats the filename for use in ipkg file.
 --   e.g. ./LightYear/Position.idr -> LightYear.Position
-formatFileNames :: [String] -> [String]
-formatFileNames modules = replaceSlashes . trimLeadingSlash . trimExt <$> modules
+formatFileNames :: Directory -> [String] -> [String]
+formatFileNames pkgBuildSrcDir' modules =
+  replaceSlashes . trimPrefix . trimExt <$> modules
   where replaceSlash '/' = '.'
         replaceSlash c = c
-        trimLeadingSlash = drop 2
+        trimPrefix = fromJust . stripPrefix (pkgBuildSrcDir' ++ "/")
         trimExt s = take (length s - 4) s
         replaceSlashes = fmap replaceSlash
 
