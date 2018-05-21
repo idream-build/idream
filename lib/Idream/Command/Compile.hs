@@ -42,7 +42,7 @@ instance ToText CompileErr where
 
 -- Functions
 
-
+-- | Top level function for compiling Idris packages.
 compileCode :: ( MonadReader Config m, MonadIO m ) => m ()
 compileCode = do
   result <- runProgram $ do
@@ -60,6 +60,8 @@ compileCode = do
     Left err -> Log.logErr $ toText err
     Right _ -> return ()
 
+-- | Performs the actual compilation of the Idris packages.
+--   Takes the buildplan into account to properly build dependencies in order.
 compilePackages :: ( Member Logger r, Member Idris r, Member FileSystem r )
                 => BuildPlan DepNode -> Eff r ()
 compilePackages buildPlan = do
@@ -69,7 +71,7 @@ compilePackages buildPlan = do
   setupBasePackages libDir
   mapM_ compilePackage buildPlan  -- TODO optimize / parallellize, handle deps...
   where compilePackage (DepNode pkgName projName) = do
-          Log.debug ("Compiling package: " <> toText pkgName)
+          Log.debug ("Compiling package: " <> toText pkgName <> ".")
           idrisCompile projName pkgName
           Log.info ("Compiled package: " <> toText pkgName <> ".")
 
@@ -85,7 +87,7 @@ setupBasePackages libDir = mapM_ setupBasePackage basePackages where
 runProgram :: ( MonadReader Config m, MonadIO m )
            => Eff '[ Logger
                    , Error CompileErr, Error ProjParseErr, Error ParseGraphErr
-                   , Idris, FileSystem, SafeIO CompileErr] ()
+                   , Idris, FileSystem, SafeIO CompileErr ] ()
            -> m (Either CompileErr ())
 runProgram prog = do
   thres <- asks $ logLevel . args

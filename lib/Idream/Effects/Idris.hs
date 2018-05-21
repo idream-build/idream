@@ -4,7 +4,9 @@
 module Idream.Effects.Idris ( Idris(..), IdrisError(..)
                             , Command, Arg, Environment
                             , idrisGetLibDir
+                            , idrisGetDocsDir
                             , idrisCompile
+                            , idrisMkDocs
                             , runIdris
                             ) where
 
@@ -32,10 +34,14 @@ import qualified Data.Text as T
 
 data Idris a where
   IdrisGetLibDir :: Idris Directory
+  IdrisGetDocsDir :: Idris Directory
   IdrisCompile :: ProjectName -> PackageName -> Idris ()
+  IdrisMkDocs :: ProjectName -> PackageName -> Idris ()
 
 data IdrisError = IdrGetLibDirErr IOException
+                | IdrGetDocsDirErr IOException
                 | IdrCompileErr ProjectName PackageName IOException
+                | IdrMkDocsErr ProjectName PackageName IOException
                 | IdrCommandErr Command ExitCode String
                 | IdrAbsPathErr IOException
                 deriving (Eq, Show)
@@ -58,8 +64,15 @@ instance ToText IdrisError where
   toText (IdrGetLibDirErr err) =
     "Failed to get lib directory for Idris packages, reason: "
       <> toText err <> "."
+  toText (IdrGetDocsDirErr err) =
+    "Failed to get docs directory for Idris packages, reason: "
+      <> toText err <> "."
   toText (IdrCompileErr projName pkgName err) =
     "Failed to compile idris package (project = "
+      <> toText projName <> ", package = " <> toText pkgName
+      <> "), reason: " <> toText err <> "."
+  toText (IdrMkDocsErr projName pkgName err) =
+    "Failed to generate docs for idris package (project = "
       <> toText projName <> ", package = " <> toText pkgName
       <> "), reason: " <> toText err <> "."
   toText (IdrCommandErr cmd exitCode errOutput) =
@@ -75,9 +88,16 @@ instance ToText IdrisError where
 idrisGetLibDir :: Member Idris r => Eff r Directory
 idrisGetLibDir = send IdrisGetLibDir
 
+idrisGetDocsDir :: Member Idris r => Eff r Directory
+idrisGetDocsDir = send IdrisGetDocsDir
+
 idrisCompile :: Member Idris r
              => ProjectName -> PackageName -> Eff r ()
 idrisCompile projName pkgName = send $ IdrisCompile projName pkgName
+
+idrisMkDocs :: Member Idris r
+            => ProjectName -> PackageName -> Eff r ()
+idrisMkDocs projName pkgName = send $ IdrisMkDocs projName pkgName
 
 runIdris :: forall e r. LastMember (SafeIO e) r
          => (IdrisError -> e) -> Eff (Idris ': r) ~> Eff r
@@ -87,6 +107,12 @@ runIdris f = interpretM g where
     let eh1 = f . IdrGetLibDirErr
         eh2 ec err = f $ IdrCommandErr "get lib dir" ec err
         idrisArgs = [ "--libdir" ]
+        toDir = filter (/= '\n')
+    toDir <$> invokeIdrisWithEnv eh1 eh2 idrisArgs Nothing []
+  g IdrisGetDocsDir = do
+    let eh1 = f . IdrGetDocsDirErr
+        eh2 ec err = f $ IdrCommandErr "get docs dir" ec err
+        idrisArgs = [ "--docdir" ]
         toDir = filter (/= '\n')
     toDir <$> invokeIdrisWithEnv eh1 eh2 idrisArgs Nothing []
   g (IdrisCompile projName pkgName) = do
@@ -101,6 +127,19 @@ runIdris f = interpretM g where
         eh3 ec err = f $ IdrCommandErr ("install " ++ unwords idrisInstallArgs) ec err
     void $ invokeIdrisWithEnv eh1 eh2 idrisCompileArgs (Just buildDir') environ
     void $ invokeIdrisWithEnv eh1 eh3 idrisInstallArgs (Just buildDir') environ
+  g (IdrisMkDocs projName pkgName) = do
+    absDocsDir <- absPath (f . IdrAbsPathErr) docsDir
+    let buildDir' = pkgBuildDir projName pkgName
+        ipkg = fromJust $ ipkgFile projName pkgName `relativeTo` buildDir'
+        idrisMkDocsArgs = [ "--verbose", "--mkdoc", ipkg]
+        idrisInstallDocsArgs = [ "--verbose", "--installdoc", ipkg]
+        environ = [ ("IDRIS_DOC_PATH", absDocsDir) ]
+        eh1 = f . IdrMkDocsErr projName pkgName
+        eh2 ec err = f $ IdrCommandErr ("mkdoc " ++ unwords idrisMkDocsArgs) ec err
+        eh3 ec err = f $ IdrCommandErr ("installdoc " ++ unwords idrisInstallDocsArgs) ec err
+    void $ invokeIdrisWithEnv eh1 eh2 idrisMkDocsArgs (Just buildDir') environ
+    void $ invokeIdrisWithEnv eh1 eh3 idrisInstallDocsArgs (Just buildDir') environ
+
 
 -- | Converts a relative path into an absolute path.
 absPath :: (IOException -> e) -> FilePath -> SafeIO e FilePath
