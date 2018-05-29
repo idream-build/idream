@@ -38,7 +38,7 @@ describe 'idream compile ipkg command' do
     expect(compile).to include('Failed to read from file (.idream-work/dependency-graph.json)')
   end
 
-  describe "compilation of projects" do
+  describe "compilation of projects (happy path)" do
 
     before do
       idream "add --exe #{exe_name}"
@@ -58,11 +58,60 @@ describe 'idream compile ipkg command' do
     end
   end
 
+  describe "compilation of projects (error situations)" do
+
+    before do
+      idream "add --exe #{exe_name}"
+      File.write 'idr-package-set.json', pkg_set_contents
+      File.write (File.join exe_name, 'idr-package.json'), bad_pkg_contents
+      File.write (File.join exe_name, 'src', 'Main.idr'), bad_main_contents
+      idream 'fetch'
+      idream 'generate-ipkg'
+    end
+
+    it "shows error output when it can't compile a package" do
+      output = compile
+      expect(output).to include('Compiled package: package1')
+      expect(output).to include('Compiled package: package2')
+      expect(output).to include('Failed to invoke idris')
+      expect(output).to include("Can't find import Package3/Lib")
+    end
+  end
+
 
   # Helper functions
 
   def compile
     idream '--log-level debug compile'
+  end
+
+  def bad_main_contents
+    <<~END
+    module Main
+
+    import Package1.Lib
+    import Package2.Lib
+    import Package3.Lib
+
+    ||| Main program, to be replaced with actual code.
+    main : IO ()
+    main = putStrLn "Hello, Idris!"
+    END
+  end
+
+  def bad_pkg_contents
+    # NOTE: misses a dependency!
+    <<~END
+    {
+        "name": "test_exe",
+        "source_dir": "src",
+        "executable": true,
+        "dependencies": [
+            {"project": "test_dependency1", "package": "package1"},
+            {"project": "test_dependency1", "package": "package2"}
+        ]
+    }
+    END
   end
 
   def pkg_contents
