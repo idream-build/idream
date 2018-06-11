@@ -1,16 +1,12 @@
-.venv/
-demo/.idream/
+# haskell
+.stack-work/
+idream.cabal
 
-*.ipkg
-*.ibc
-*.o
+# example projects
+test_project/
+tut_project/
 
-__pycache__/
-idream/build/
-idream/dist/
-*.egg-info
-*.pyc
-
+# temp files
 *.swo
 *.swp
 *~
