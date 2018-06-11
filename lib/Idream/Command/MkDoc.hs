@@ -47,7 +47,7 @@ generateDocs = do
       then Log.info ("Project contains no packages yet, skipping generation of docs."
                   <> "Use `idream add` to add a package to this project first.")
       else do
-        Log.info "Generating documentation for package (s)..."
+        Log.info "Generating documentation for package(s)..."
         graph <- loadGraphFromJSON depGraphFile
         let buildPlan = createBuildPlan graph
         genDocs buildPlan

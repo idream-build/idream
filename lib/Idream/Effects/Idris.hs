@@ -129,11 +129,13 @@ runIdris f = interpretM g where
     void $ invokeIdrisWithEnv eh1 eh3 idrisInstallArgs (Just buildDir') environ
   g (IdrisMkDocs projName pkgName) = do
     absDocsDir <- absPath (f . IdrAbsPathErr) docsDir
+    absCompileDir <- absPath (f . IdrAbsPathErr) compileDir
     let buildDir' = pkgBuildDir projName pkgName
         ipkg = fromJust $ ipkgFile projName pkgName `relativeTo` buildDir'
         idrisMkDocsArgs = [ "--verbose", "--mkdoc", ipkg]
         idrisInstallDocsArgs = [ "--verbose", "--installdoc", ipkg]
-        environ = [ ("IDRIS_DOC_PATH", absDocsDir) ]
+        environ = [ ("IDRIS_LIBRARY_PATH", absCompileDir)
+                  , ("IDRIS_DOC_PATH", absDocsDir) ]
         eh1 = f . IdrMkDocsErr projName pkgName
         eh2 ec err = f $ IdrCommandErr ("mkdoc " ++ unwords idrisMkDocsArgs) ec err
         eh3 ec err = f $ IdrCommandErr ("installdoc " ++ unwords idrisInstallDocsArgs) ec err
