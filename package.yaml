@@ -4,9 +4,9 @@ version:             0.1.0.0
 #description:
 homepage:            https://github.com/ejconlon/idream#README.md
 license:             BSD3
-author:              ejconlon
-maintainer:          ejconlon
-copyright:           ejconlon, 2017
+author:              idream team
+maintainer:          idream team
+copyright:           idream team, 2017
 category:            Web
 extra-source-files:
 - README.md

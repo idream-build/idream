@@ -19,6 +19,10 @@ lint:
 continuous:
 	@stack build --fast --file-watch -j8
 
+# TODO(ejconlon) Any other useful dev deps?
+dev:
+	@stack install hlint intero
+
 integration_test:
 	@docker build -t idream_tester .
 	@docker run -v $(shell pwd)/test/integration_tests:/test -it idream_tester
