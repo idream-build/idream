@@ -21,7 +21,18 @@ continuous:
 
 # TODO(ejconlon) Any other useful dev deps?
 dev:
-	@stack install hlint intero
+	@stack build hlint intero
+
+install:
+	@stack install idream
+
+prepare_smoke_test:
+	rm -rf test_project
+	idream new test_project
+	cd test_project && idream add --lib test_lib && idream add --exe test_exe
+
+smoke_test:
+	cd test_project && idream compile
 
 integration_test:
 	@docker build -t idream_tester .

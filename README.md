@@ -42,6 +42,28 @@ Once you have it installed, you can use `idream` like this:
 
 `idream --log-level=DEBUG` will crank up the noise.
 
+## Tutorial
+
+Let's start an Idris project from scratch! (NOTE: `tut_project` is git-ignored in this repo so you can
+just type these commands safely.)
+
+    idream new tut_project
+    cd tut_project
+
+`idream` creates two files:
+
+* `idr-project.json` - This is a top-level project configuration file. It contains the package name as well
+  as subpackage paths.
+* `idr-package-set.json` - This contains references to external packges. We will talk about this later.
+
+Now we need to add some subpackages. You can add any number of libraries and executables.  (Note that
+for now tests are just special executables.)
+
+    idream add --lib tut_lib
+    idream add --exe tut_exe
+
+TODO(ejconlon) Finish tutorial.
+
 
 ## Design
 
@@ -87,3 +109,10 @@ executables, compiled libraries, docs, and cloned dependencies in the cache.
 When necessary, `idream` will search for package set definitions to resolve
 dependencies. Currently, it only looks for a local `idr-package-set.json` file
 next to the project file.
+
+
+## TODO before merging to master
+
+* Bring to rough parity with Python version
+* Finish documentation
+* Note which commands are done/experimental/stubs

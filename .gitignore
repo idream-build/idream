@@ -1,15 +1,9 @@
-.venv/
-demo/.idream/
+test_project/
+tut_project/
 
 *.ipkg
 *.ibc
 *.o
-
-__pycache__/
-idream/build/
-idream/dist/
-*.egg-info
-*.pyc
 
 *.swo
 *.swp
@@ -17,7 +11,4 @@ idream/dist/
 *.bak
 
 .stack-work/
-result
 idream.cabal
-
-.idream-work/
