@@ -1,13 +1,12 @@
 name:                idream
 version:             0.1.0.0
-#synopsis:
-#description:
+synopsis:            A simple build system for Idris
 homepage:            https://github.com/ejconlon/idream#README.md
 license:             BSD3
 author:              idream team
 maintainer:          idream team
 copyright:           idream team, 2017
-category:            Web
+category:            Build Tool
 extra-source-files:
 - README.md
 

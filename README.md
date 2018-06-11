@@ -9,7 +9,7 @@ A simple build system for Idris
 
 * [Luc Tielen](https://github.com/luc-tielen)
 * [Eric Conlon](https://github.com/ejconlon)
-* ... you? Send patches!
+* ... you? Try it out! File bugs! Send patches!
 
 
 ## Current status
@@ -52,7 +52,7 @@ for now tests are just special executables.)
 
 Notice that there are now packages listed in the `idr-project.json` file, and some default code has been
 generated in those subdirectories. Each package has an `idr-package.json` that is more or less equivalent
-to an Idris `*.ipkg` file. We can fetch all dependencies and build projects like so:
+to an Idris `ipkg` file. We can fetch all dependencies and build projects like so:
 
     idream fetch
     idream generate-ipkg
@@ -64,13 +64,13 @@ find compiled libraries and executables, but in the future you'll be able to `re
 
 ## Design
 
+TODO(ejconlon) This is probably outdated. We need to make sure this is still accurate.
+
 The goal is to make it easy to define and build multi-package Idris projects
 with external dependencies. To that end, there are definitions for project,
 package set, and package configuration files in JSON format that can be used
 by any build system. This one just happens to be written in Haskell and happens
 to sandbox things in a certain way.
-
-TODO(ejconlon) Make sure this is still accurate.
 
 ### General metadata
 
@@ -87,18 +87,16 @@ we can define our own `package set` to resolve libraries to specific refs and su
 specific git repositories. One might maintain this list in-repository in an
 `idr-package-set.json` file or depend on a shared collection.
 
-Take a look at the `jsonschema` definitions for these files in `idream/idream/schemas`.
-(TODO(ejconlon) Resurrect these or give some other definition.)
+TODO(ejconlon) Resurrect `jsonschema` definitions for these files.
 
 ### idream specifics
 
 `idream` goes out of its way to keep build and external dependency artifacts out
 of source and global directories. When you invoke `idream` it looks for
-an `idr-project.json` file in the current directory (though you can point it
-elsewhere). It uses the package paths in the project to load all package
-definitions in the project. (Note that local package names always shadow remote ones.)
+an `idr-project.json` file in the current directory. It uses the package paths in the project
+to load all package definitions in the project.
 
-`idream` then creates an ignorable "cache" directory `.idream` (also configurable)
+`idream` then creates an ignorable "cache" directory `.idream-work`
 in the same directory as the project file. This acts much like the directory
 containing `idris --libdir` and the like, but is local to your project. `idream` stores
 executables, compiled libraries, docs, and cloned dependencies in the cache.
@@ -106,10 +104,3 @@ executables, compiled libraries, docs, and cloned dependencies in the cache.
 When necessary, `idream` will search for package set definitions to resolve
 dependencies. Currently, it only looks for a local `idr-package-set.json` file
 next to the project file.
-
-
-## TODO before merging to master
-
-* Bring to rough parity with Python version
-* Finish documentation
-* Note which commands are done/experimental/stubs
