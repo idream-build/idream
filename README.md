@@ -5,75 +5,71 @@
 A simple build system for Idris
 
 
+## Team
+
+* [Luc Tielen](https://github.com/luc-tielen)
+* [Eric Conlon](https://github.com/ejconlon)
+* ... you? Try it out! File bugs! Send patches!
+
+
 ## Current status
 
-It works for simple projects (with local or remote dependencies) but does not
-attempt to do anything smart with phases or ordering (i.e. you have to manually
-build all dependencies in order).
-
-Contributions are welcome. Open questions:
-
-* Can we simply replace ipkg files with JSON or YAML files?
-* Why is ipkg a custom data format in the first place?
-* What is the community process by which we curate package sets?
-* Can we reuse "real" build systems like `bazel`?
-* Do multi-package projects and sandboxed libs work well with existing tooling and IDEs?
+TODO(ejconlon) Give an accurate report.
 
 
 ## Installation and use
 
-Requires `python3`, a recent `idris`, and maybe `git` on your path. Try these:
+The `Makefile` has most of what you need to build and install the `idream` binary:
 
-    # install idream globally
-    pip3 install idream
-
-    # take a look at the argparse options
+    make build
+    make test
+    make integration_test
+    make install
     idream --help
 
-    # play with the demo projects
-    cd demo
-    idream validate
-    idream build demo_lib
-    idream mkdoc demo_lib
-    idream build demo_bin
-    idream execute demo_bin
-    idream build lightyear
-
-`idream --log-level=DEBUG` will crank up the noise.
+`idream --log-level=debug` will crank up the noise.
 
 
-## Installation and use
+## Tutorial
 
-Development requires `virtualenv` on your path. Follow this flow:
+Let's start an Idris project from scratch! (NOTE: `tut_project` is git-ignored in this repo so you can
+just type these commands safely.)
 
-    # initialize the virtualenv
-    ./scripts/develop.sh
+    idream new tut_project
+    cd tut_project
 
-    # lint the project
-    ./scripts/lint.sh
+`idream` creates two files:
 
-    # run the unit tests
-    ./scripts/test.sh
+* `idr-project.json` - This is a top-level project configuration file. It contains the package name as well
+  as subpackage paths.
+* `idr-package-set.json` - This contains references to external packges. (We will talk about this later.)
 
-    # run idream out of the virtualenv on the demo projects
-    ./scripts/demo.sh build demo_lib
+Now we need to add some subpackages. You can add any number of libraries and executables.  (Note that
+for now tests are just special executables.)
 
-    # run all the standard checks
-    ./scripts/ci.sh
+    idream add --lib tut_lib
+    idream add --exe tut_exe
 
-Alternatively, you can build a docker image with the right deps and run in it:
+Notice that there are now packages listed in the `idr-project.json` file, and some default code has been
+generated in those subdirectories. Each package has an `idr-package.json` that is more or less equivalent
+to an Idris `ipkg` file. We can fetch all dependencies and build projects like so:
 
-    ./scripts/docker_build.sh
-    ./scripts/docker_run.sh ./scripts/develop.sh
-    ./scripts/docker_run.sh ./scripts/ci.sh
+    idream fetch
+    idream generate-ipkg
+    idream compile
+
+We hope to make this process easier soon. For now, you can dig around in the `.idream-work` directory and
+find compiled libraries and executables, but in the future you'll be able to `repl`, `run`, `install`, etc.
 
 
 ## Design
 
+TODO(ejconlon) This is probably outdated. We need to make sure this is still accurate.
+
 The goal is to make it easy to define and build multi-package Idris projects
 with external dependencies. To that end, there are definitions for project,
 package set, and package configuration files in JSON format that can be used
-by any build system. This one just happens to be written in Python and happens
+by any build system. This one just happens to be written in Haskell and happens
 to sandbox things in a certain way.
 
 ### General metadata
@@ -91,17 +87,16 @@ we can define our own `package set` to resolve libraries to specific refs and su
 specific git repositories. One might maintain this list in-repository in an
 `idr-package-set.json` file or depend on a shared collection.
 
-Take a look at the `jsonschema` definitions for these files in `idream/idream/schemas`.
+TODO(ejconlon) Resurrect `jsonschema` definitions for these files.
 
 ### idream specifics
 
 `idream` goes out of its way to keep build and external dependency artifacts out
 of source and global directories. When you invoke `idream` it looks for
-an `idr-project.json` file in the current directory (though you can point it
-elsewhere). It uses the package paths in the project to load all package
-definitions in the project. (Note that local package names always shadow remote ones.)
+an `idr-project.json` file in the current directory. It uses the package paths in the project
+to load all package definitions in the project.
 
-`idream` then creates an ignorable "cache" directory `.idream` (also configurable)
+`idream` then creates an ignorable "cache" directory `.idream-work`
 in the same directory as the project file. This acts much like the directory
 containing `idris --libdir` and the like, but is local to your project. `idream` stores
 executables, compiled libraries, docs, and cloned dependencies in the cache.

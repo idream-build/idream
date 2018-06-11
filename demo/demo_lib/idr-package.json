@@ -1,5 +1,0 @@
-{
-  "name": "demo_lib",
-  "sourcedir": "src",
-  "modules": ["DemoLib"]
-}
