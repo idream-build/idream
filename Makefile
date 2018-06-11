@@ -42,6 +42,7 @@ smoke_build:
 .PHONY: smoke_test_only
 smoke_test_only:
 	cd test_project && idream fetch && idream generate-ipkg && idream compile
+	test_project/.idream-work/build/test_project/test_exe/test_exe
 
 .PHONY: smoke_test
 smoke_test: smoke_build smoke_test_only

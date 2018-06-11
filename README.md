@@ -50,7 +50,16 @@ for now tests are just special executables.)
     idream add --lib tut_lib
     idream add --exe tut_exe
 
-TODO(ejconlon) Finish tutorial.
+Notice that there are now packages listed in the `idr-project.json` file, and some default code has been
+generated in those subdirectories. Each package has an `idr-package.json` that is more or less equivalent
+to an Idris `*.ipkg` file. We can fetch all dependencies and build projects like so:
+
+    idream fetch
+    idream generate-ipkg
+    idream compile
+
+We hope to make this process easier soon. For now, you can dig around in the `.idream-work` directory and
+find compiled libraries and executables, but in the future you'll be able to `repl`, `run`, `install`, etc.
 
 
 ## Design
