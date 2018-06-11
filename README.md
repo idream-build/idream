@@ -25,22 +25,10 @@ The `Makefile` has most of what you need to build and install the `idream` binar
     make test
     make integration_test
     make install
-
-Once you have it installed, you can use `idream` like this:
-
-    # take a look at the argparse options
     idream --help
 
-    # play with the demo projects
-    cd demo
-    idream validate
-    idream build demo_lib
-    idream mkdoc demo_lib
-    idream build demo_bin
-    idream execute demo_bin
-    idream build lightyear
+`idream --log-level=debug` will crank up the noise.
 
-`idream --log-level=DEBUG` will crank up the noise.
 
 ## Tutorial
 
@@ -54,7 +42,7 @@ just type these commands safely.)
 
 * `idr-project.json` - This is a top-level project configuration file. It contains the package name as well
   as subpackage paths.
-* `idr-package-set.json` - This contains references to external packges. We will talk about this later.
+* `idr-package-set.json` - This contains references to external packges. (We will talk about this later.)
 
 Now we need to add some subpackages. You can add any number of libraries and executables.  (Note that
 for now tests are just special executables.)

@@ -4,8 +4,7 @@ services:
   - docker
 
 install:
-  - ./scripts/docker_build.sh
-  - ./scripts/docker_run.sh ./scripts/develop.sh
+  - make integration_build
 
 script:
-  - ./scripts/docker_run.sh ./scripts/ci.sh
+  - make integration_test_only

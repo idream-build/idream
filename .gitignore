@@ -1,14 +1,13 @@
+# haskell
+.stack-work/
+idream.cabal
+
+# example projects
 test_project/
 tut_project/
 
-*.ipkg
-*.ibc
-*.o
-
+# temp files
 *.swo
 *.swp
 *~
 *.bak
-
-.stack-work/
-idream.cabal
