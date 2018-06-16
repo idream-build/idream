@@ -11,8 +11,7 @@ import Idream.Effects.FileSystem
 import Idream.Effects.Log ( Logger )
 import Idream.ToText
 import qualified Idream.Effects.Log as Log
-import Idream.Types ( Config, Project(..), ProjectName, PackageName
-                    , logLevel, args )
+import Idream.Types ( Config, Project(..), PackageName, logLevel, args )
 import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
 import Data.Monoid ((<>))
 
@@ -32,11 +31,11 @@ instance ToText ReplErr where
 
 
 startRepl :: ( MonadReader Config m, MonadIO m )
-          => ProjectName -> PackageName -> m ()
-startRepl projName pkgName = do
+          => PackageName -> m ()
+startRepl pkgName = do
   result <- runProgram $ do
     -- TODO check needed if packages compiled yet?
-    Project _ rootPkgs <- readRootProjFile
+    Project projName rootPkgs <- readRootProjFile
     if null rootPkgs
       then Log.info ("Project contains no packages yet, skipping REPL step. "
                   <> "Use `idream add` to add a package to this project first. "

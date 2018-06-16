@@ -39,8 +39,7 @@ commandParser = hsubparser commands where
           <> mkCmd "test" (pure Test) "Runs unit tests for this project."
   mkCmd name parser desc = command name (info parser (progDesc desc))
   runParser = Run <$> many (strArgument (metavar "ARGS"))
-  replParser = Repl <$> (ProjectName <$> strArgument (metavar "PROJECT_NAME"))
-                    <*> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
+  replParser = Repl <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
   newCmdParser = New <$> (ProjectName <$> strArgument (metavar "PROJECT_NAME"))
   addCmdParser = Add <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
                      <*> codeTypeParser

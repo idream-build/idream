@@ -94,7 +94,7 @@ data Command = Fetch                        -- ^ Fetches all dependencies as des
              | Compile                      -- ^ Compiles all code (fetch needs to be done first to get dependencies code?)
              | Clean                        -- ^ Cleans up build artifacts, fetched code?
              | Run [Argument]               -- ^ Runs the executable defined in idr-project.json
-             | Repl ProjectName PackageName  -- ^ Opens up the repl
+             | Repl PackageName             -- ^ Opens up the repl
              | New ProjectName              -- ^ Initializes a new project for use with idream
              | Add PackageName PackageType  -- ^ Adds a package to an existing idream project
              | MkDoc                        -- ^ Generates the documentation
