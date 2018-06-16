@@ -27,7 +27,7 @@ logLevelParser = fromMaybe Info <$> optional (option (eitherReader f) desc) wher
 
 projRootParser :: FilePath -> Parser FilePath
 projRootParser cwd = fromMaybe cwd <$> optional (strOption desc) where
-  desc = long "project-root" <> help "Path to project root (default CWD)"
+  desc = long "project-root" <> help "Optional path to project root (defaults to CWD)"
 
 -- | Helper function for parsing the commands passed to the build tool.
 commandParser :: Parser Command

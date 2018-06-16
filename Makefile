@@ -36,15 +36,15 @@ install:
 .PHONY: smoke_build
 smoke_build:
 	rm -rf test_project
-	idream new test_project
-	idream --project-root test_project add --lib test_lib
-	idream --project-root test_project add --exe test_exe
+	stack exec idream -- new test_project
+	stack exec idream -- --project-root test_project add --lib test_lib
+	stack exec idream -- --project-root test_project add --exe test_exe
 
 .PHONY: smoke_test_only
 smoke_test_only:
-	idream --project-root test_project fetch
-	idream --project-root test_project generate-ipkg
-	idream --project-root test_project compile
+	stack exec idream -- --project-root test_project fetch
+	stack exec idream -- --project-root test_project generate-ipkg
+	stack exec idream -- --project-root test_project compile
 	test_project/.idream-work/build/test_project/test_exe/test_exe
 
 .PHONY: smoke_test
