@@ -31,7 +31,7 @@ commandParser = hsubparser commands where
           <> mkCmd "compile" (pure Compile) "Compiles all code and its dependencies."
           <> mkCmd "clean" (pure Clean) "Cleans up build artifacts and fetched code."
           <> mkCmd "run" runParser "Runs the executable (only valid for executable packages)."
-          <> mkCmd "repl" (pure Repl) "Starts the Idris repl."
+          <> mkCmd "repl" replParser "Starts the Idris repl."
           <> mkCmd "new" newCmdParser "Initializes a new project."
           <> mkCmd "add" addCmdParser "Adds a package to an existing idream project."
           <> mkCmd "docs" (pure MkDoc) "Generates the documentation."
@@ -39,6 +39,8 @@ commandParser = hsubparser commands where
           <> mkCmd "test" (pure Test) "Runs unit tests for this project."
   mkCmd name parser desc = command name (info parser (progDesc desc))
   runParser = Run <$> many (strArgument (metavar "ARGS"))
+  replParser = Repl <$> (ProjectName <$> strArgument (metavar "PROJECT_NAME"))
+                    <*> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
   newCmdParser = New <$> (ProjectName <$> strArgument (metavar "PROJECT_NAME"))
   addCmdParser = Add <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
                      <*> codeTypeParser

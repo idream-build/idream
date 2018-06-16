@@ -5,6 +5,7 @@ module Idream.Effects.Idris ( Idris(..), IdrisError(..)
                             , Command, Arg, Environment
                             , idrisGetLibDir
                             , idrisCompile
+                            , idrisRepl
                             , runIdris
                             ) where
 
@@ -30,9 +31,11 @@ import qualified Data.Text as T
 
 -- Data types
 
+data IdrisAction = CompileAction | ReplAction deriving (Eq, Show)
+
 data Idris a where
   IdrisGetLibDir :: Idris Directory
-  IdrisCompile :: ProjectName -> PackageName -> Idris ()
+  IdrisCompileLike :: ProjectName -> PackageName -> IdrisAction -> Idris ()
 
 data IdrisError = IdrGetLibDirErr IOException
                 | IdrCompileErr ProjectName PackageName IOException
@@ -77,7 +80,11 @@ idrisGetLibDir = send IdrisGetLibDir
 
 idrisCompile :: Member Idris r
              => ProjectName -> PackageName -> Eff r ()
-idrisCompile projName pkgName = send $ IdrisCompile projName pkgName
+idrisCompile projName pkgName = send $ IdrisCompileLike projName pkgName CompileAction
+
+idrisRepl :: Member Idris r
+             => ProjectName -> PackageName -> Eff r ()
+idrisRepl projName pkgName = send $ IdrisCompileLike projName pkgName ReplAction
 
 runIdris :: forall e r. LastMember (SafeIO e) r
          => (IdrisError -> e) -> Eff (Idris ': r) ~> Eff r
@@ -89,18 +96,24 @@ runIdris f = interpretM g where
         idrisArgs = [ "--libdir" ]
         toDir = filter (/= '\n')
     toDir <$> invokeIdrisWithEnv eh1 eh2 idrisArgs Nothing []
-  g (IdrisCompile projName pkgName) = do
+  g (IdrisCompileLike projName pkgName action) = do
     absCompileDir <- absPath (f . IdrAbsPathErr) compileDir
     let buildDir' = pkgBuildDir projName pkgName
         ipkg = fromJust $ ipkgFile projName pkgName `relativeTo` buildDir'
-        idrisCompileArgs = [ "--verbose", "--build", ipkg]
-        idrisInstallArgs = [ "--verbose", "--install", ipkg]
         environ = [ ("IDRIS_LIBRARY_PATH", absCompileDir) ]
         eh1 = f . IdrCompileErr projName pkgName
-        eh2 ec err = f $ IdrCommandErr ("compile " ++ unwords idrisCompileArgs) ec err
-        eh3 ec err = f $ IdrCommandErr ("install " ++ unwords idrisInstallArgs) ec err
-    void $ invokeIdrisWithEnv eh1 eh2 idrisCompileArgs (Just buildDir') environ
-    void $ invokeIdrisWithEnv eh1 eh3 idrisInstallArgs (Just buildDir') environ
+    case action of
+      CompileAction -> do
+        let idrisCompileArgs = [ "--verbose", "--build", ipkg]
+            idrisInstallArgs = [ "--verbose", "--install", ipkg]
+            eh2 ec err = f $ IdrCommandErr ("compile " ++ unwords idrisCompileArgs) ec err
+            eh3 ec err = f $ IdrCommandErr ("install " ++ unwords idrisInstallArgs) ec err
+        void $ invokeIdrisWithEnv eh1 eh2 idrisCompileArgs (Just buildDir') environ
+        void $ invokeIdrisWithEnv eh1 eh3 idrisInstallArgs (Just buildDir') environ
+      ReplAction -> do
+        let idrisReplArgs = [ "--verbose", "--repl", ipkg]
+            eh2 ec err = f $ IdrCommandErr ("repl " ++ unwords idrisReplArgs) ec err
+        void $ invokeIdrisWithEnv eh1 eh2 idrisReplArgs (Just buildDir') environ
 
 -- | Converts a relative path into an absolute path.
 absPath :: (IOException -> e) -> FilePath -> SafeIO e FilePath
