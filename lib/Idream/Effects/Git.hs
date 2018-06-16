@@ -13,7 +13,8 @@ import Control.Monad.Freer
 import Control.Monad ( when )
 import Control.Exception ( IOException )
 import System.Exit ( ExitCode(..) )
-import System.Process ( createProcess, waitForProcess, proc, cwd )
+import System.Process ( createProcess, waitForProcess, proc, cwd
+                      , std_err, StdStream(CreatePipe) )
 import qualified Data.Text as T
 import Data.Monoid ( (<>) )
 import Idream.SafeIO
@@ -87,7 +88,7 @@ execProcess :: (IOException -> e)
             -> Command -> [Argument] -> Maybe Directory
             -> SafeIO e ExitCode
 execProcess f command cmdArgs maybeDir = liftSafeIO f $ do
-  (_, _, _, procHandle) <- createProcess (proc command cmdArgs) { cwd = maybeDir }
+  (_, _, _, procHandle) <- createProcess (proc command cmdArgs) { cwd = maybeDir, std_err = CreatePipe }
   waitForProcess procHandle
 
 gitCloneHelper :: (GitError -> e)

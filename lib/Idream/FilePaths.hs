@@ -5,7 +5,7 @@ module Idream.FilePaths ( Directory, FilePath
                         , buildDir, projectBuildDir
                         , pkgBuildDir, pkgBuildSrcDir
                         , compileDir, pkgCompileDir
-                        , pkgDocsDir, repoDir, repoDirProjFile
+                        , docsDir, repoDir, repoDirProjFile
                         , projectFile, pkgFile, pkgSetFile
                         , ipkgFile, depGraphFile
                         ) where
@@ -71,14 +71,14 @@ pkgBuildSrcDir projName pkgName (SourceDir dir) =
 compileDir :: Directory
 compileDir = buildDir </> "bin"
 
+-- | Directory in which documentation is stored
+docsDir :: Directory
+docsDir = buildDir </> "docs"
+
 -- | Directory in which compiled files are stored for a project/package.
 pkgCompileDir :: ProjectName -> PackageName -> Directory
 pkgCompileDir (ProjectName projName) (PackageName pkgName) =
   compileDir </> T.unpack (projName <> "_" <> pkgName)
-
--- | Directory in which the docs for a package are stored.
-pkgDocsDir :: ProjectName -> PackageName -> Directory
-pkgDocsDir projName pkgName = pkgBuildDir projName pkgName </> "docs"
 
 -- | Directory where a dependency is downloaded to.
 repoDir :: ProjectName -> Directory

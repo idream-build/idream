@@ -4,8 +4,10 @@
 module Idream.Effects.Idris ( Idris(..), IdrisError(..)
                             , Command, Arg, Environment
                             , idrisGetLibDir
+                            , idrisGetDocsDir
                             , idrisCompile
                             , idrisRepl
+                            , idrisMkDocs
                             , runIdris
                             ) where
 
@@ -33,12 +35,16 @@ import qualified Data.Text as T
 
 data Idris a where
   IdrisGetLibDir :: Idris Directory
+  IdrisGetDocsDir :: Idris Directory
   IdrisCompile :: ProjectName -> PackageName -> Idris ()
   IdrisRepl :: ProjectName -> PackageName -> Idris ()
+  IdrisMkDocs :: ProjectName -> PackageName -> Idris ()
 
 data IdrisError = IdrGetLibDirErr IOException
+                | IdrGetDocsDirErr IOException
                 | IdrCompileErr ProjectName PackageName IOException
                 | IdrReplErr ProjectName PackageName IOException
+                | IdrMkDocsErr ProjectName PackageName IOException
                 | IdrInvokeErr Command [Arg] ExitCode String
                 | IdrAbsPathErr IOException
                 deriving (Eq, Show)
@@ -61,12 +67,19 @@ instance ToText IdrisError where
   toText (IdrGetLibDirErr err) =
     "Failed to get lib directory for Idris packages, reason: "
       <> toText err <> "."
+  toText (IdrGetDocsDirErr err) =
+    "Failed to get docs directory for Idris packages, reason: "
+      <> toText err <> "."
   toText (IdrCompileErr projName pkgName err) =
     "Failed to compile idris package (project = "
       <> toText projName <> ", package = " <> toText pkgName
       <> "), reason: " <> toText err <> "."
   toText (IdrReplErr projName pkgName err) =
     "Failed to start REPL for idris package (project = "
+      <> toText projName <> ", package = " <> toText pkgName
+      <> "), reason: " <> toText err <> "."
+  toText (IdrMkDocsErr projName pkgName err) =
+    "Failed to generate docs for idris package (project = "
       <> toText projName <> ", package = " <> toText pkgName
       <> "), reason: " <> toText err <> "."
   toText (IdrInvokeErr cmd args exitCode errOutput) =
@@ -83,9 +96,16 @@ instance ToText IdrisError where
 idrisGetLibDir :: Member Idris r => Eff r Directory
 idrisGetLibDir = send IdrisGetLibDir
 
+idrisGetDocsDir :: Member Idris r => Eff r Directory
+idrisGetDocsDir = send IdrisGetDocsDir
+
 idrisCompile :: Member Idris r
              => ProjectName -> PackageName -> Eff r ()
 idrisCompile projName pkgName = send $ IdrisCompile projName pkgName
+
+idrisMkDocs :: Member Idris r
+            => ProjectName -> PackageName -> Eff r ()
+idrisMkDocs projName pkgName = send $ IdrisMkDocs projName pkgName
 
 idrisRepl :: Member Idris r
           => ProjectName -> PackageName -> Eff r ()
@@ -101,12 +121,24 @@ runIdris f = interpretM g where
         idrisArgs = [ "--libdir" ]
         toDir = filter (/= '\n')
     toDir <$> invokeIdrisWithEnv eh1 eh2 idrisArgs Nothing []
+  g IdrisGetDocsDir = do
+    let eh1 = f . IdrGetDocsDirErr
+        eh2 ec err = f $ IdrInvokeErr "--docdir" [] ec err
+        idrisArgs = [ "--docdir" ]
+        toDir = filter (/= '\n')
+    toDir <$> invokeIdrisWithEnv eh1 eh2 idrisArgs Nothing []
   g (IdrisCompile projName pkgName) = do
     let eh1 = IdrCompileErr projName pkgName
         idrisCompileArgs = [ "--verbose", "--build"]
         idrisInstallArgs = [ "--verbose", "--install"]
     void $ invokeIdrisForPkg f eh1 projName pkgName idrisCompileArgs "compile"
     void $ invokeIdrisForPkg f eh1 projName pkgName idrisInstallArgs "install"
+  g (IdrisMkDocs projName pkgName) = do
+    let idrisMkDocsArgs = ["--verbose", "--mkdoc"]
+        idrisInstallDocsArgs = ["--verbose", "--installdoc"]
+        eh1 = IdrMkDocsErr projName pkgName
+    void $ invokeIdrisForPkg f eh1 projName pkgName idrisMkDocsArgs "mkdoc"
+    void $ invokeIdrisForPkg f eh1 projName pkgName idrisInstallDocsArgs "installdoc"
   g (IdrisRepl projName pkgName) = do
     let idrisReplArgs = [ "--verbose", "--repl"]
         eh1 = IdrReplErr projName pkgName
@@ -154,11 +186,13 @@ invokeIdrisForPkg :: forall e. (IdrisError -> e)
                   -> [Arg] -> Command
                   -> SafeIO e String
 invokeIdrisForPkg f eh1 projName pkgName args cmd = do
+  absDocsDir <- absPath (f . IdrAbsPathErr) docsDir
   absCompileDir <- absPath (f . IdrAbsPathErr) compileDir
   let buildDir' = pkgBuildDir projName pkgName
       ipkg = fromJust $ ipkgFile projName pkgName `relativeTo` buildDir'
       args' = args ++ [ipkg]
-      environ = [ ("IDRIS_LIBRARY_PATH", absCompileDir) ]
+      environ = [ ("IDRIS_LIBRARY_PATH", absCompileDir)
+                , ("IDRIS_DOC_PATH", absDocsDir) ]
       eh2 ec err = f $ IdrInvokeErr cmd args' ec err
   invokeIdrisWithEnv (f . eh1) eh2 args' (Just buildDir') environ
 
