@@ -98,11 +98,11 @@ describe 'idream mkdocs ipkg command' do
     <<~END
     {
       "test_dependency1": {
-        "repo": "https://github.com/luc-tielen/idream_test_dep1.git",
+        "repo": "https://github.com/idream-build/idream_test_dep1.git",
         "version": "master"
       },
       "test_dependency2": {
-        "repo": "https://github.com/luc-tielen/idream_test_dep2.git",
+        "repo": "https://github.com/idream-build/idream_test_dep2.git",
         "version": "master"
       }
     }
