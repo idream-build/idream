@@ -12,6 +12,7 @@ import Idream.Types ( LogLevel(..)
                     , PackageName(..)
                     , PackageType(..)
                     , Args(..))
+import System.Directory (getCurrentDirectory, makeAbsolute)
 
 
 -- Functions
@@ -23,6 +24,10 @@ logLevelParser = fromMaybe Info <$> optional (option (eitherReader f) desc) wher
   f "info" = Right Info
   f "debug" = Right Debug
   f _ = Left "Only supported options for log level are 'debug' and 'info'."
+
+projRootParser :: FilePath -> Parser FilePath
+projRootParser cwd = fromMaybe cwd <$> optional (strOption desc) where
+  desc = long "project-root" <> help "Path to project root (default CWD)"
 
 -- | Helper function for parsing the commands passed to the build tool.
 commandParser :: Parser Command
@@ -47,11 +52,15 @@ commandParser = hsubparser commands where
                 <|> flag' Executable (long "exe")
 
 -- | Helper function for parsing the command line arguments.
-argsParser :: Parser Args
-argsParser = Args <$> logLevelParser <*> commandParser
+argsParser :: FilePath -> Parser Args
+argsParser cwd = Args <$> logLevelParser <*> projRootParser cwd <*> commandParser
 
 -- | Function that performs the parsing of command line arguments.
 parseCmdLineArgs :: IO Args
-parseCmdLineArgs = execParser opts where
-  opts = info (argsParser <**> helper) desc
-  desc = fullDesc <> progDesc "A simple build system for Idris."
+parseCmdLineArgs = do
+  cwd <- getCurrentDirectory
+  let desc = fullDesc <> progDesc "A simple build system for Idris."
+      opts = info (argsParser cwd <**> helper) desc
+  args <- execParser opts
+  absRoot <- makeAbsolute (projRoot args)
+  pure (args { projRoot = absRoot })

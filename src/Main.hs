@@ -16,6 +16,7 @@ import Idream.Command.Add (addPackageToProject)
 import Idream.Command.MkDoc (generateDocs)
 import Idream.Command.GenerateIpkg (generateIpkgFile)
 import Idream.Command.Test (runTests)
+import System.Directory (setCurrentDirectory)
 
 
 -- Functions
@@ -26,8 +27,9 @@ main = do
   cmdLineArgs <- parseCmdLineArgs
   let config = Config cmdLineArgs
   flip runReaderT config $ do
-    command <- asks $ cmd . args
-    processCommand command
+    argsVal <- asks args
+    liftIO $ setCurrentDirectory (projRoot argsVal)
+    processCommand (cmd argsVal)
 
 -- | Function that processes the given command.
 processCommand :: ( MonadReader Config m, MonadIO m )

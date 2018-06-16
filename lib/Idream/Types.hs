@@ -104,6 +104,7 @@ data Command = Fetch                        -- ^ Fetches all dependencies as des
 
 -- | Data structure representing the arguments passed in to the program.
 data Args = Args { logLevel :: LogLevel
+                 , projRoot :: FilePath
                  , cmd :: Command } deriving (Eq, Show)
 
 -- | Type grouping all settings together into 1 big structure.
