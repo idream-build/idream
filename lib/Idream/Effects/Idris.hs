@@ -18,7 +18,7 @@ import Control.Monad ( void )
 import Control.Exception ( IOException )
 import System.Exit ( ExitCode(..) )
 import System.Process ( createProcess, waitForProcess, cwd, env
-                      , std_out, std_err, proc, StdStream (CreatePipe) )
+                      , std_out, std_err, proc, StdStream (..) )
 import GHC.IO.Handle ( hGetContents )
 import System.Environment ( getEnv )
 import System.Directory ( makeAbsolute )
@@ -120,29 +120,29 @@ runIdris f = interpretM g where
         eh2 ec err = f $ IdrInvokeErr "--libdir" [] ec err
         idrisArgs = [ "--libdir" ]
         toDir = filter (/= '\n')
-    toDir <$> invokeIdrisWithEnv eh1 eh2 idrisArgs Nothing []
+    toDir <$> invokeIdrisWithEnv eh1 eh2 idrisArgs Nothing [] CreatePipe
   g IdrisGetDocsDir = do
     let eh1 = f . IdrGetDocsDirErr
         eh2 ec err = f $ IdrInvokeErr "--docdir" [] ec err
         idrisArgs = [ "--docdir" ]
         toDir = filter (/= '\n')
-    toDir <$> invokeIdrisWithEnv eh1 eh2 idrisArgs Nothing []
+    toDir <$> invokeIdrisWithEnv eh1 eh2 idrisArgs Nothing [] CreatePipe
   g (IdrisCompile projName pkgName) = do
     let eh1 = IdrCompileErr projName pkgName
         idrisCompileArgs = [ "--verbose", "--build"]
         idrisInstallArgs = [ "--verbose", "--install"]
-    void $ invokeIdrisForPkg f eh1 projName pkgName idrisCompileArgs "compile"
-    void $ invokeIdrisForPkg f eh1 projName pkgName idrisInstallArgs "install"
+    void $ invokeIdrisForPkg f eh1 projName pkgName idrisCompileArgs "compile" CreatePipe
+    void $ invokeIdrisForPkg f eh1 projName pkgName idrisInstallArgs "install" CreatePipe
   g (IdrisMkDocs projName pkgName) = do
     let idrisMkDocsArgs = ["--verbose", "--mkdoc"]
         idrisInstallDocsArgs = ["--verbose", "--installdoc"]
         eh1 = IdrMkDocsErr projName pkgName
-    void $ invokeIdrisForPkg f eh1 projName pkgName idrisMkDocsArgs "mkdoc"
-    void $ invokeIdrisForPkg f eh1 projName pkgName idrisInstallDocsArgs "installdoc"
+    void $ invokeIdrisForPkg f eh1 projName pkgName idrisMkDocsArgs "mkdoc" CreatePipe
+    void $ invokeIdrisForPkg f eh1 projName pkgName idrisInstallDocsArgs "installdoc" CreatePipe
   g (IdrisRepl projName pkgName) = do
     let idrisReplArgs = [ "--verbose", "--repl"]
         eh1 = IdrReplErr projName pkgName
-    void $ invokeIdrisForPkg f eh1 projName pkgName idrisReplArgs "repl"
+    void $ invokeIdrisForPkg f eh1 projName pkgName idrisReplArgs "repl" Inherit
 
 -- | Converts a relative path into an absolute path.
 absPath :: (IOException -> e) -> FilePath -> SafeIO e FilePath
@@ -153,13 +153,14 @@ absPath f path = liftSafeIO f $ makeAbsolute path
 invokeCmdWithEnv :: (IOException -> e)
                  -> (ExitCode -> String -> e)
                  -> Command -> [Arg] -> Maybe Directory -> Environment
+                 -> StdStream
                  -> SafeIO e String
-invokeCmdWithEnv f g cmd cmdArgs maybeWorkDir environ = do
+invokeCmdWithEnv f g cmd cmdArgs maybeWorkDir environ stream = do
   result <- liftSafeIO f $ do
     homeDir <- getEnv "HOME"
     let environ' = ("HOME", homeDir) : environ
         process = (proc cmd cmdArgs) { cwd = maybeWorkDir, env = Just environ'
-                                     , std_out = CreatePipe, std_err = CreatePipe }
+                                     , std_out = stream, std_err = stream }
     (_, stdOut, stdErr, procHandle) <- createProcess process
     result <- waitForProcess procHandle
     if result /= ExitSuccess
@@ -175,6 +176,7 @@ invokeCmdWithEnv f g cmd cmdArgs maybeWorkDir environ = do
 invokeIdrisWithEnv :: (IOException -> e)
                    -> (ExitCode -> String -> e)
                    -> [Arg] -> Maybe Directory -> Environment
+                   -> StdStream
                    -> SafeIO e String
 invokeIdrisWithEnv f g = invokeCmdWithEnv f g "idris"
 
@@ -184,8 +186,9 @@ invokeIdrisForPkg :: forall e. (IdrisError -> e)
                   -> (IOException -> IdrisError)
                   -> ProjectName -> PackageName
                   -> [Arg] -> Command
+                  -> StdStream
                   -> SafeIO e String
-invokeIdrisForPkg f eh1 projName pkgName args cmd = do
+invokeIdrisForPkg f eh1 projName pkgName args cmd stream = do
   absDocsDir <- absPath (f . IdrAbsPathErr) docsDir
   absCompileDir <- absPath (f . IdrAbsPathErr) compileDir
   let buildDir' = pkgBuildDir projName pkgName
@@ -194,5 +197,5 @@ invokeIdrisForPkg f eh1 projName pkgName args cmd = do
       environ = [ ("IDRIS_LIBRARY_PATH", absCompileDir)
                 , ("IDRIS_DOC_PATH", absDocsDir) ]
       eh2 ec err = f $ IdrInvokeErr cmd args' ec err
-  invokeIdrisWithEnv (f . eh1) eh2 args' (Just buildDir') environ
+  invokeIdrisWithEnv (f . eh1) eh2 args' (Just buildDir') environ stream
 
