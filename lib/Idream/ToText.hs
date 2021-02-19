@@ -3,9 +3,9 @@ module Idream.ToText ( ToText(..) ) where
 
 -- Imports
 
+import Control.Exception (IOException)
 import qualified Data.Text as T
-import Control.Exception ( IOException )
-import System.Exit ( ExitCode )
+import System.Exit (ExitCode)
 
 
 -- Typeclasses

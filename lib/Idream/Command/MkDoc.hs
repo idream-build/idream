@@ -3,20 +3,20 @@ module Idream.Command.MkDoc ( generateDocs ) where
 
 -- Imports
 
-import Control.Monad.Reader
 import Control.Monad.Freer
-import Idream.SafeIO
-import Idream.Error
-import Idream.Effects.Idris
-import Idream.Effects.FileSystem
-import Idream.Effects.Log ( Logger )
-import qualified Idream.Effects.Log as Log
-import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
-import Idream.Types ( Project(..), Config(..), logLevel )
-import Idream.ToText
-import Idream.Graph
+import Control.Monad.Reader
 import qualified Data.Text as T
-import System.FilePath ( (</>) )
+import Idream.Command.Common (ProjParseErr (..), readRootProjFile)
+import Idream.Effects.FileSystem
+import Idream.Effects.Idris
+import Idream.Effects.Log (Logger)
+import qualified Idream.Effects.Log as Log
+import Idream.Error
+import Idream.Graph
+import Idream.SafeIO
+import Idream.ToText
+import Idream.Types (Config (..), Project (..), logLevel)
+import System.FilePath ((</>))
 
 
 -- Data types

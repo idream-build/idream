@@ -4,25 +4,24 @@ module Idream.Command.GenerateIpkg ( generateIpkgFile ) where
 
 -- Imports
 
-import Prelude hiding ( writeFile )
-import Control.Monad.Reader
-import Control.Monad.Freer
-import Idream.Error
-import Idream.Effects.Log ( Logger, LogError, logErr )
-import Idream.SafeIO
-import qualified Idream.Effects.Log as Log
-import Idream.Types
-import Idream.Graph
-import Idream.ToText
 import qualified Algebra.Graph as Graph
-import Idream.Command.Common ( ProjParseErr(..), PkgParseErr(..)
-                             , readRootProjFile, readPkgFile
-                             , getPkgFilePath, getPkgDirPath )
-import Idream.Effects.FileSystem
-import Data.Text ( Text )
-import Data.List ( intercalate, stripPrefix )
-import Data.Maybe ( fromJust )
+import Control.Monad.Freer
+import Control.Monad.Reader
+import Data.List (intercalate, stripPrefix)
+import Data.Maybe (fromJust)
+import Data.Text (Text)
 import qualified Data.Text as T
+import Idream.Command.Common (PkgParseErr (..), ProjParseErr (..), getPkgDirPath, getPkgFilePath, readPkgFile,
+                              readRootProjFile)
+import Idream.Effects.FileSystem
+import Idream.Effects.Log (LogError, Logger, logErr)
+import qualified Idream.Effects.Log as Log
+import Idream.Error
+import Idream.Graph
+import Idream.SafeIO
+import Idream.ToText
+import Idream.Types
+import Prelude hiding (writeFile)
 
 
 -- Data types

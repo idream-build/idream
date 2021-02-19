@@ -5,12 +5,12 @@ module Idream.Command.Clean ( cleanCode ) where
 
 import Control.Monad.Freer
 import Control.Monad.Reader
-import Idream.Effects.Log ( Logger, LogError, runLogger, logErr )
-import Idream.Types ( Config(..), args, logLevel )
-import qualified Idream.Effects.Log as Log
 import Idream.Effects.FileSystem
+import Idream.Effects.Log (LogError, Logger, logErr, runLogger)
+import qualified Idream.Effects.Log as Log
 import Idream.SafeIO
 import Idream.ToText
+import Idream.Types (Config (..), args, logLevel)
 
 
 -- Data Types

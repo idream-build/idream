@@ -3,18 +3,11 @@
 
 module Idream.GraphSpec where
 
-import Test.Tasty.Hspec
 import Algebra.Graph as Graph
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Idream.Graph ( getLeafNodes
-                    , mkBuildPlan
-                    , createBuildPlan
-                    , Max(..)
-                    , Depth
-                    , MonoidMap(..)
-                    , BuildPlan(..)
-                    )
+import Idream.Graph (BuildPlan (..), Depth, Max (..), MonoidMap (..), createBuildPlan, getLeafNodes, mkBuildPlan)
+import Test.Tasty.Hspec
 
 
 g1, g2, g1', g2' :: Graph.Graph Char

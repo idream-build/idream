@@ -20,11 +20,11 @@ module Idream.Types ( ProjectName(..)
 
 -- Imports
 
-import Data.Default
+import Control.Monad (mzero)
 import Data.Aeson
-import Data.Map ( Map )
-import Data.Text ( Text )
-import Control.Monad ( mzero )
+import Data.Default
+import Data.Map (Map)
+import Data.Text (Text)
 import Idream.ToText
 
 

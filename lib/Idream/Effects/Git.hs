@@ -9,17 +9,16 @@ module Idream.Effects.Git ( Git(..)
 
 -- Imports
 
+import Control.Exception (IOException)
+import Control.Monad (when)
 import Control.Monad.Freer
-import Control.Monad ( when )
-import Control.Exception ( IOException )
-import System.Exit ( ExitCode(..) )
-import System.Process ( createProcess, waitForProcess, proc, cwd
-                      , std_err, StdStream(CreatePipe) )
 import qualified Data.Text as T
-import Idream.SafeIO
 import Idream.Effects.FileSystem
-import Idream.Types ( Repo(..), Version(..) )
+import Idream.SafeIO
 import Idream.ToText
+import Idream.Types (Repo (..), Version (..))
+import System.Exit (ExitCode (..))
+import System.Process (StdStream (CreatePipe), createProcess, cwd, proc, std_err, waitForProcess)
 
 -- Data types
 

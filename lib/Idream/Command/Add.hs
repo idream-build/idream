@@ -4,25 +4,24 @@ module Idream.Command.Add ( addPackageToProject ) where
 
 -- Imports
 
-import Prelude hiding ( writeFile )
-import Control.Monad.Reader
 import Control.Monad.Freer
+import Control.Monad.Reader
+import Data.Aeson.Encode.Pretty (encodePretty)
+import Data.Aeson.Types (ToJSON (..))
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import Data.Text.Lazy.Encoding (decodeUtf8)
+import Idream.Command.Common (ProjParseErr (..), readRootProjFile)
+import Idream.Effects.FileSystem
+import Idream.Effects.Log (Logger)
+import qualified Idream.Effects.Log as Log
 import Idream.Error
 import Idream.SafeIO
-import qualified Idream.Effects.Log as Log
-import Idream.Effects.Log ( Logger )
 import Idream.ToText
-import Data.Text ( Text )
-import Data.Text.Lazy.Encoding ( decodeUtf8 )
-import Data.Aeson.Encode.Pretty ( encodePretty )
-import Data.Aeson.Types ( ToJSON(..) )
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text as T
-import System.FilePath ( (</>) )
-import Idream.Effects.FileSystem
-import Idream.Types ( Project(..), PackageName(..), PackageType(..), Config(..)
-                    , logLevel, args )
-import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
+import Idream.Types (Config (..), PackageName (..), PackageType (..), Project (..), args, logLevel)
+import Prelude hiding (writeFile)
+import System.FilePath ((</>))
 
 
 -- Data types

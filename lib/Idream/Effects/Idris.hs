@@ -13,21 +13,20 @@ module Idream.Effects.Idris ( Idris(..), IdrisError(..)
 
 -- Imports
 
+import Control.Exception (IOException)
+import Control.Monad (void)
 import Control.Monad.Freer
-import Control.Monad ( void )
-import Control.Exception ( IOException )
-import System.Exit ( ExitCode(..) )
-import System.Process ( createProcess, waitForProcess, cwd, env
-                      , std_out, std_err, proc, StdStream (CreatePipe) )
-import GHC.IO.Handle ( hGetContents )
-import System.Environment ( getEnv )
-import System.Directory ( makeAbsolute )
-import Idream.SafeIO
-import Idream.Types ( ProjectName(..), PackageName(..) )
-import Idream.FilePaths
-import Idream.ToText
-import Data.Maybe ( fromJust )
+import Data.Maybe (fromJust)
 import qualified Data.Text as T
+import GHC.IO.Handle (hGetContents)
+import Idream.FilePaths
+import Idream.SafeIO
+import Idream.ToText
+import Idream.Types (PackageName (..), ProjectName (..))
+import System.Directory (makeAbsolute)
+import System.Environment (getEnv)
+import System.Exit (ExitCode (..))
+import System.Process (StdStream (CreatePipe), createProcess, cwd, env, proc, std_err, std_out, waitForProcess)
 
 
 -- Data types

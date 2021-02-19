@@ -12,18 +12,17 @@ module Idream.Effects.FileSystem ( FSError(..), FileSystem(..)
 
 -- Imports
 
-import Prelude hiding ( writeFile, readFile )
-import qualified System.Directory as Dir
+import Control.Exception (IOException)
+import Control.Monad.Freer
+import Data.Maybe (fromMaybe)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import Idream.FilePaths
 import Idream.SafeIO
 import Idream.ToText
-import Data.Maybe ( fromMaybe )
-import Control.Monad.Freer
-import Control.Exception ( IOException )
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
-import Shelly ( shelly, silently, cp_r, find
-              , fromText, toTextIgnore )
+import Prelude hiding (readFile, writeFile)
+import Shelly (cp_r, find, fromText, shelly, silently, toTextIgnore)
+import qualified System.Directory as Dir
 
 
 -- Data types

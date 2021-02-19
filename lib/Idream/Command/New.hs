@@ -4,18 +4,18 @@ module Idream.Command.New ( startNewProject ) where
 
 -- Imports
 
-import Prelude hiding ( writeFile )
 import Control.Monad.Freer
 import Control.Monad.Reader
-import System.FilePath ( (</>) )
-import Data.Text ( Text )
+import Data.Text (Text)
 import qualified Data.Text as T
-import Idream.Types ( ProjectName(..), Config(..), logLevel, args )
 import Idream.Effects.FileSystem
-import Idream.Effects.Log ( Logger, LogError, logErr )
+import Idream.Effects.Log (LogError, Logger, logErr)
 import qualified Idream.Effects.Log as Log
 import Idream.SafeIO
 import Idream.ToText
+import Idream.Types (Config (..), ProjectName (..), args, logLevel)
+import Prelude hiding (writeFile)
+import System.FilePath ((</>))
 
 
 -- Data types

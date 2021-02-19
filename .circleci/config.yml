@@ -1,0 +1,84 @@
+version: 2.1
+
+parameters:
+  project:
+    type: string
+    default: "idream"
+  cache_ver:
+    type: string
+    default: "v2"
+  haskell_image:
+    type: string
+    default: "ejconlon/haskell-custom"
+
+commands:
+  install_native_deps:
+    steps:
+    - run:
+        name: Install native deps
+        command: if [ -f docker/packages.txt ]; then apt-get update && apt-get install -y $(cat docker/packages.txt); fi
+
+jobs:
+  stack_build:
+    parameters:
+      lts_ghc_ver:
+        type: string
+    docker:
+      - image: << pipeline.parameters.haskell_image >>:<< parameters.lts_ghc_ver >>
+    steps:
+      - checkout
+      - install_native_deps
+      - restore_cache:
+          name: Restore cached dependencies
+          keys:
+            - stack-<< pipeline.parameters.cache_ver >>-{{ checksum "stack.yaml" }}-{{ checksum "package.yaml" }}
+      - run:
+          name: Run tests
+          command: make test
+      - save_cache:
+          name: Cache dependencies
+          key: stack-<< pipeline.parameters.cache_ver >>-{{ checksum "stack.yaml" }}-{{ checksum "package.yaml" }}
+          paths:
+            - "/root/.stack"
+            - ".stack-work"
+  cabal_build:
+    parameters:
+      ghc_ver:
+        type: string
+    docker:
+      - image: << pipeline.parameters.haskell_image >>:<< parameters.ghc_ver >>
+    steps:
+      - checkout
+      - install_native_deps
+      - restore_cache:
+          name: Restore cached dependencies
+          keys:
+            - cabal-<< pipeline.parameters.cache_ver >>-<< parameters.ghc_ver >>-{{ checksum "<< pipeline.parameters.project >>.cabal" }}
+      - run:
+          name: Resolve/update dependencies
+          command: cabal update
+      - run:
+          name: Build project
+          command: cabal build
+      - run:
+          name: Run tests
+          command: cabal test
+      - save_cache:
+          name: Cache dependencies
+          key: cabal-<< pipeline.parameters.cache_ver >>-<< parameters.ghc_ver >>-{{ checksum "<< pipeline.parameters.project >>.cabal" }}
+          paths:
+            - "/root/.cabal"
+            - "dist"
+            - "dist-newstyle"
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - stack_build:
+          lts_ghc_ver: 8.10.4
+      - cabal_build:
+          name: cabal_build_8_10
+          ghc_ver: 8.10.4
+          requires:
+            - stack_build

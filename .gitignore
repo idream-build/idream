@@ -1,13 +1,6 @@
-# haskell
 .stack-work/
-idream.cabal
-
-# example projects
-test_project/
-tut_project/
-
-# temp files
+dist/
+dist-newstyle/
+*~
 *.swo
 *.swp
-*~
-*.bak

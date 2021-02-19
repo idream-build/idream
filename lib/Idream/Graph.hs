@@ -20,23 +20,23 @@ module Idream.Graph ( DepGraph
 
 -- Imports
 
-import Prelude hiding ( writeFile, readFile )
+import qualified Algebra.Graph as Graph
+import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Monad.Freer
 import Control.Monad.Freer.Error
 import Control.Monad.State
-import Idream.Effects.FileSystem
-import Idream.Types ( Project(..), ProjectName(..), PackageName(..) )
-import Idream.ToText
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Data.Map ( Map )
-import Data.Set ( Set )
 import Data.Aeson
-import Data.Aeson.Text ( encodeToLazyText )
-import Data.Text.Lazy.Encoding ( encodeUtf8 )
+import Data.Aeson.Text (encodeToLazyText)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 import qualified Data.Text.Lazy as TL
-import qualified Algebra.Graph as Graph
-import qualified Algebra.Graph.AdjacencyMap as AM
+import Data.Text.Lazy.Encoding (encodeUtf8)
+import Idream.Effects.FileSystem
+import Idream.ToText
+import Idream.Types (PackageName (..), Project (..), ProjectName (..))
+import Prelude hiding (readFile, writeFile)
 
 
 -- Data types

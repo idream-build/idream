@@ -4,27 +4,26 @@ module Idream.Command.Fetch ( fetchDeps ) where
 
 -- Imports
 
-import Prelude hiding ( readFile )
-import Control.Monad.Reader
 import Control.Monad.Freer
 import Control.Monad.Freer.State
-import Idream.Error
-import qualified Idream.Effects.Log as Log
-import Idream.Effects.Log ( Logger, logErr )
-import Idream.SafeIO
-import Idream.Command.Common ( ProjParseErr(..), PkgParseErr(..)
-                             , setupBuildDir, readRootProjFile, readProjFile
-                             , readPkgFile, getPkgFilePath )
-import Idream.Types
-import Idream.Graph
+import Control.Monad.Reader
+import Data.Aeson (eitherDecode)
+import Data.List (nub, partition)
+import qualified Data.Map as Map
+import qualified Data.Text.Lazy as TL
+import Data.Text.Lazy.Encoding (encodeUtf8)
+import Idream.Command.Common (PkgParseErr (..), ProjParseErr (..), getPkgFilePath, readPkgFile, readProjFile,
+                              readRootProjFile, setupBuildDir)
 import Idream.Effects.FileSystem
 import Idream.Effects.Git
+import Idream.Effects.Log (Logger, logErr)
+import qualified Idream.Effects.Log as Log
+import Idream.Error
+import Idream.Graph
+import Idream.SafeIO
 import Idream.ToText
-import qualified Data.Map as Map
-import Data.Aeson ( eitherDecode )
-import Data.List ( partition, nub )
-import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding ( encodeUtf8 )
+import Idream.Types
+import Prelude hiding (readFile)
 
 
 -- Types

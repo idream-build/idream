@@ -1,0 +1,128 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: f440244209052c6d305243de71b7dad2b3a32fe1957e3a5a2dcfb3c6506d993f
+
+name:           idream
+version:        0.1.0.0
+synopsis:       A simple build system for Idris
+category:       Build Tool
+homepage:       https://github.com/ejconlon/idream#README.md
+author:         idream team
+maintainer:     idream team
+copyright:      idream team, 2017
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+library
+  exposed-modules:
+      Idream.Command.Add
+      Idream.Command.Clean
+      Idream.Command.Common
+      Idream.Command.Compile
+      Idream.Command.Fetch
+      Idream.Command.GenerateIpkg
+      Idream.Command.MkDoc
+      Idream.Command.New
+      Idream.Command.Repl
+      Idream.Command.Run
+      Idream.Command.Test
+      Idream.Effects.FileSystem
+      Idream.Effects.Git
+      Idream.Effects.Idris
+      Idream.Effects.Log
+      Idream.Error
+      Idream.FilePaths
+      Idream.Graph
+      Idream.OptionParser
+      Idream.SafeIO
+      Idream.ToText
+      Idream.Types
+  other-modules:
+      Paths_idream
+  hs-source-dirs:
+      lib
+  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase GADTs DataKinds TypeOperators ScopedTypeVariables
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
+  build-depends:
+      aeson >=1.5 && <1.6
+    , aeson-pretty >=0.8 && <0.9
+    , algebraic-graphs >=0.5 && <0.6
+    , base >=4.13 && <5
+    , bytestring >=0.10 && <0.11
+    , containers >=0.6 && <0.7
+    , data-default >=0.7 && <0.8
+    , directory >=1.3 && <1.4
+    , filepath >=1.4 && <1.5
+    , freer-simple >=1.1 && <2
+    , mtl >=2.2 && <2.3
+    , optparse-applicative >=0.15 && <0.16
+    , process >=1.6 && <1.7
+    , shelly >=1.9 && <1.10
+    , text >=1.2 && <1.3
+  default-language: Haskell2010
+
+executable idream
+  main-is: Main.hs
+  other-modules:
+      Paths_idream
+  hs-source-dirs:
+      src
+  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase GADTs DataKinds TypeOperators ScopedTypeVariables
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
+  build-depends:
+      aeson >=1.5 && <1.6
+    , aeson-pretty >=0.8 && <0.9
+    , algebraic-graphs >=0.5 && <0.6
+    , base >=4.13 && <5
+    , bytestring >=0.10 && <0.11
+    , containers >=0.6 && <0.7
+    , data-default >=0.7 && <0.8
+    , directory >=1.3 && <1.4
+    , filepath >=1.4 && <1.5
+    , freer-simple >=1.1 && <2
+    , idream
+    , mtl >=2.2 && <2.3
+    , optparse-applicative >=0.15 && <0.16
+    , process >=1.6 && <1.7
+    , shelly >=1.9 && <1.10
+    , text >=1.2 && <1.3
+  default-language: Haskell2010
+
+test-suite idream-test
+  type: exitcode-stdio-1.0
+  main-is: test.hs
+  other-modules:
+      Idream.GraphSpec
+      Paths_idream
+  hs-source-dirs:
+      test
+  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase GADTs DataKinds TypeOperators ScopedTypeVariables
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
+  build-depends:
+      aeson >=1.5 && <1.6
+    , aeson-pretty >=0.8 && <0.9
+    , algebraic-graphs >=0.5 && <0.6
+    , base >=4.13 && <5
+    , bytestring >=0.10 && <0.11
+    , containers >=0.6 && <0.7
+    , data-default >=0.7 && <0.8
+    , directory >=1.3 && <1.4
+    , filepath >=1.4 && <1.5
+    , freer-simple >=1.1 && <2
+    , idream
+    , mtl >=2.2 && <2.3
+    , optparse-applicative >=0.15 && <0.16
+    , process >=1.6 && <1.7
+    , shelly >=1.9 && <1.10
+    , tasty >=1.2 && <1.3
+    , tasty-discover >=4.2 && <4.3
+    , tasty-hspec >=1.1 && <1.2
+    , text >=1.2 && <1.3
+  default-language: Haskell2010

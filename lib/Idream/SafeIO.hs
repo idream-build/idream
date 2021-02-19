@@ -1,5 +1,6 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, FunctionalDependencies #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Idream.SafeIO ( SafeIO
                      , MonadIO(..)
@@ -12,8 +13,8 @@ module Idream.SafeIO ( SafeIO
 
 -- Imports
 
-import Control.Exception ( try, Exception )
-import Control.Monad.Except hiding ( liftEither )
+import Control.Exception (Exception, try)
+import Control.Monad.Except hiding (liftEither)
 
 
 -- Data types

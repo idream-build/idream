@@ -4,18 +4,18 @@ module Main where
 -- Imports
 
 import Control.Monad.Reader
+import Idream.Command.Add (addPackageToProject)
+import Idream.Command.Clean (cleanCode)
+import Idream.Command.Compile (compileCode)
+import Idream.Command.Fetch (fetchDeps)
+import Idream.Command.GenerateIpkg (generateIpkgFile)
+import Idream.Command.MkDoc (generateDocs)
+import Idream.Command.New (startNewProject)
+import Idream.Command.Repl (startRepl)
+import Idream.Command.Run (runCode)
+import Idream.Command.Test (runTests)
 import Idream.OptionParser
 import Idream.Types
-import Idream.Command.Fetch (fetchDeps)
-import Idream.Command.Compile (compileCode)
-import Idream.Command.Clean (cleanCode)
-import Idream.Command.Run (runCode)
-import Idream.Command.Repl (startRepl)
-import Idream.Command.New (startNewProject)
-import Idream.Command.Add (addPackageToProject)
-import Idream.Command.MkDoc (generateDocs)
-import Idream.Command.GenerateIpkg (generateIpkgFile)
-import Idream.Command.Test (runTests)
 
 
 -- Functions

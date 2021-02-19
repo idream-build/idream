@@ -3,21 +3,20 @@ module Idream.Command.Compile ( compileCode ) where
 
 -- Imports
 
-import Control.Monad.Reader
 import Control.Monad.Freer
-import Idream.Error
-import Idream.SafeIO
+import Control.Monad.Reader
+import qualified Data.Text as T
+import Idream.Command.Common (ProjParseErr (..), readRootProjFile)
 import Idream.Effects.FileSystem
 import Idream.Effects.Idris
-import Idream.Effects.Log ( Logger )
-import Idream.ToText
+import Idream.Effects.Log (Logger)
 import qualified Idream.Effects.Log as Log
-import Idream.Types ( Config(..), Project(..), logLevel, args )
-import Idream.Graph ( DepNode(..), BuildPlan, ParseGraphErr
-                    , loadGraphFromJSON, createBuildPlan )
-import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
-import qualified Data.Text as T
-import System.FilePath ( (</>) )
+import Idream.Error
+import Idream.Graph (BuildPlan, DepNode (..), ParseGraphErr, createBuildPlan, loadGraphFromJSON)
+import Idream.SafeIO
+import Idream.ToText
+import Idream.Types (Config (..), Project (..), args, logLevel)
+import System.FilePath ((</>))
 
 
 -- Data types

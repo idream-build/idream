@@ -2,18 +2,17 @@
 module Idream.Command.Repl ( startRepl ) where
 
 
-import Control.Monad.Reader
 import Control.Monad.Freer
+import Control.Monad.Reader
+import Idream.Command.Common (ProjParseErr (..), readRootProjFile)
+import Idream.Effects.FileSystem
+import Idream.Effects.Idris
+import Idream.Effects.Log (Logger)
+import qualified Idream.Effects.Log as Log
 import Idream.Error
 import Idream.SafeIO
-import Idream.Effects.Idris
-import Idream.Effects.FileSystem
-import Idream.Effects.Log ( Logger )
 import Idream.ToText
-import qualified Idream.Effects.Log as Log
-import Idream.Types ( Config, Project(..), ProjectName, PackageName
-                    , logLevel, args )
-import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
+import Idream.Types (Config, PackageName, Project (..), ProjectName, args, logLevel)
 
 
 data ReplErr = RLogErr Log.LogError

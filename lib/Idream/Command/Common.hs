@@ -11,17 +11,17 @@ module Idream.Command.Common ( setupBuildDir
 
 -- Imports
 
-import Prelude hiding ( readFile )
 import Control.Monad.Freer
 import Control.Monad.Freer.Error
-import Idream.Types ( Project(..), ProjectName(..), Package(..), PackageName(..) )
-import Idream.Effects.FileSystem
-import Idream.ToText
-import System.FilePath ( (</>) )
+import Data.Aeson (eitherDecode)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding  ( encodeUtf8 )
-import Data.Aeson ( eitherDecode )
+import Data.Text.Lazy.Encoding (encodeUtf8)
+import Idream.Effects.FileSystem
+import Idream.ToText
+import Idream.Types (Package (..), PackageName (..), Project (..), ProjectName (..))
+import Prelude hiding (readFile)
+import System.FilePath ((</>))
 
 
 -- Data types

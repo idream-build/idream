@@ -3,14 +3,9 @@ module Idream.OptionParser ( parseCmdLineArgs ) where
 
 -- Imports
 
-import Options.Applicative
 import Data.Maybe (fromMaybe)
-import Idream.Types ( LogLevel(..)
-                    , Command(..)
-                    , ProjectName(..)
-                    , PackageName(..)
-                    , PackageType(..)
-                    , Args(..))
+import Idream.Types (Args (..), Command (..), LogLevel (..), PackageName (..), PackageType (..), ProjectName (..))
+import Options.Applicative
 
 
 -- Functions

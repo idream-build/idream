@@ -8,15 +8,15 @@ module Idream.Effects.Log ( LogLevel(..), LogError(..), Logger
 
 -- Imports
 
-import Prelude hiding ( putStrLn, log )
-import Data.Text ( Text )
-import Data.Text.IO ( putStrLn )
+import Control.Exception (IOException)
 import Control.Monad.Freer
 import Control.Monad.Reader
-import Control.Exception ( IOException )
+import Data.Text (Text)
+import Data.Text.IO (putStrLn)
 import Idream.SafeIO
-import Idream.Types ( LogLevel(..) )
 import Idream.ToText
+import Idream.Types (LogLevel (..))
+import Prelude hiding (log, putStrLn)
 
 
 -- Data types
