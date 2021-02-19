@@ -21,7 +21,6 @@ import Idream.Effects.FileSystem
 import Idream.Effects.Git
 import Idream.ToText
 import qualified Data.Map as Map
-import Data.Monoid ( (<>) )
 import Data.Aeson ( eitherDecode )
 import Data.List ( partition, nub )
 import qualified Data.Text.Lazy as TL

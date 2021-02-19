@@ -12,7 +12,6 @@ import Idream.SafeIO
 import qualified Idream.Effects.Log as Log
 import Idream.Effects.Log ( Logger )
 import Idream.ToText
-import Data.Monoid ( (<>) )
 import Data.Text ( Text )
 import Data.Text.Lazy.Encoding ( decodeUtf8 )
 import Data.Aeson.Encode.Pretty ( encodePretty )

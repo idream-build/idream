@@ -31,7 +31,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Map ( Map )
 import Data.Set ( Set )
-import Data.Monoid
 import Data.Aeson
 import Data.Aeson.Text ( encodeToLazyText )
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
@@ -113,13 +112,19 @@ instance ToJSON GraphInfo where
            , "edges" .= es
            ]
 
+instance Ord a => Semigroup (Max a) where
+  Max a <> Max b = if a > b then Max a else Max b
+
 instance (Ord a, Num a) => Monoid (Max a) where
   mempty = Max 0
-  mappend (Max a) (Max b) = if a > b then Max a else Max b
+  mappend = (<>)
+
+instance (Ord k, Monoid v) => Semigroup (MonoidMap k v) where
+  MonoidMap a <> MonoidMap b = MonoidMap (Map.unionWith mappend a b)
 
 instance (Ord k, Monoid v) => Monoid (MonoidMap k v) where
   mempty = MonoidMap Map.empty
-  mappend (MonoidMap a) (MonoidMap b) = MonoidMap (Map.unionWith mappend a b)
+  mappend = (<>)
 
 
 -- Functions
@@ -147,10 +152,7 @@ nodesFromProject (Project projName deps) = flip DepNode projName <$> deps
 --   Each key (node in a graph) maps onto a set of direct neighbours.
 --   NOTE: the neighbours are only in the direction of the arrows in the graph.
 toAdjacencyMap :: Ord a => Graph.Graph a -> AdjacencyMap a
-toAdjacencyMap g =
-  let vs = Graph.vertexList g
-      es = Graph.edgeList g
-  in AM.adjacencyMap $ AM.graph vs es
+toAdjacencyMap = AM.adjacencyMap . AM.edges . Graph.edgeList
 
 -- | Traverses a graph starting from a specific node
 --   and keeps a track of max depth for each node along the way.
@@ -200,7 +202,7 @@ mkBuildPlan (MonoidMap depthMap) =
       phases = length mapSet
   in BuildPlan phases mapSet
 
-  -- | Creates a build plan, given a graph.
+-- | Creates a build plan, given a graph.
 createBuildPlan :: Ord a => Graph.Graph a -> BuildPlan a
 createBuildPlan g =
   let leafs = getLeafNodes g
@@ -215,7 +217,7 @@ toGraphInfo g = GraphInfo (Graph.vertexList g) (Graph.edgeList g)
 
 -- | Creates an algebraic graph based on a GraphInfo structure.
 fromGraphInfo :: GraphInfo -> DepGraph
-fromGraphInfo (GraphInfo vs es) = Graph.graph vs es
+fromGraphInfo (GraphInfo _ es) = Graph.edges es
 
 -- | Saves a graph to a JSON file.
 saveGraphToJSON :: Member FileSystem r

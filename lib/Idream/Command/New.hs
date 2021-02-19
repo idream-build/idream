@@ -8,7 +8,6 @@ import Prelude hiding ( writeFile )
 import Control.Monad.Freer
 import Control.Monad.Reader
 import System.FilePath ( (</>) )
-import Data.Monoid ( (<>) )
 import Data.Text ( Text )
 import qualified Data.Text as T
 import Idream.Types ( ProjectName(..), Config(..), logLevel, args )

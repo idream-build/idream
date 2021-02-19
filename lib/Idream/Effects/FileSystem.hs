@@ -17,7 +17,6 @@ import qualified System.Directory as Dir
 import Idream.FilePaths
 import Idream.SafeIO
 import Idream.ToText
-import Data.Monoid ( (<>) )
 import Data.Maybe ( fromMaybe )
 import Control.Monad.Freer
 import Control.Exception ( IOException )

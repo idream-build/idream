@@ -11,7 +11,6 @@ import qualified Idream.Effects.Log as Log
 import Idream.Effects.FileSystem
 import Idream.SafeIO
 import Idream.ToText
-import Data.Monoid ( (<>) )
 
 
 -- Data Types

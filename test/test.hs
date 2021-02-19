@@ -1,1 +1,1 @@
-{-# OPTIONS_GHC -F -pgmF tasty-auto #-}
+{-# OPTIONS_GHC -F -pgmF tasty-discover #-}

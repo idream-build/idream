@@ -4,7 +4,6 @@ module Idream.OptionParser ( parseCmdLineArgs ) where
 -- Imports
 
 import Options.Applicative
-import Data.Semigroup ((<>))
 import Data.Maybe (fromMaybe)
 import Idream.Types ( LogLevel(..)
                     , Command(..)

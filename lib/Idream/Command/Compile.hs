@@ -16,7 +16,6 @@ import Idream.Types ( Config(..), Project(..), logLevel, args )
 import Idream.Graph ( DepNode(..), BuildPlan, ParseGraphErr
                     , loadGraphFromJSON, createBuildPlan )
 import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
-import Data.Monoid
 import qualified Data.Text as T
 import System.FilePath ( (</>) )
 

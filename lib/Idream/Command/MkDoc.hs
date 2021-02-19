@@ -15,7 +15,6 @@ import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
 import Idream.Types ( Project(..), Config(..), logLevel )
 import Idream.ToText
 import Idream.Graph
-import Data.Monoid ( (<>) )
 import qualified Data.Text as T
 import System.FilePath ( (</>) )
 

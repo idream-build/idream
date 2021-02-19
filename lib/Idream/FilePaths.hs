@@ -12,10 +12,9 @@ module Idream.FilePaths ( Directory, FilePath
 
 -- Imports
 
-import System.FilePath ( FilePath, (</>), splitExtension )
+import System.FilePath ( (</>), splitExtension )
 import Idream.Types ( ProjectName(..), PackageName(..), SourceDir(..) )
 import qualified Data.Text as T
-import Data.Monoid ( (<>) )
 import Data.List ( stripPrefix )
 
 

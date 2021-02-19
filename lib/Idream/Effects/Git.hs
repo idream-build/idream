@@ -16,7 +16,6 @@ import System.Exit ( ExitCode(..) )
 import System.Process ( createProcess, waitForProcess, proc, cwd
                       , std_err, StdStream(CreatePipe) )
 import qualified Data.Text as T
-import Data.Monoid ( (<>) )
 import Idream.SafeIO
 import Idream.Effects.FileSystem
 import Idream.Types ( Repo(..), Version(..) )

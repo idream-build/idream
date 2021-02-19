@@ -9,11 +9,9 @@ module Idream.Effects.Log ( LogLevel(..), LogError(..), Logger
 -- Imports
 
 import Prelude hiding ( putStrLn, log )
-import Data.Monoid ( (<>) )
 import Data.Text ( Text )
 import Data.Text.IO ( putStrLn )
 import Control.Monad.Freer
-import Control.Monad ( when )
 import Control.Monad.Reader
 import Control.Exception ( IOException )
 import Idream.SafeIO

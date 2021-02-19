@@ -14,7 +14,6 @@ import qualified Idream.Effects.Log as Log
 import Idream.Types ( Config, Project(..), ProjectName, PackageName
                     , logLevel, args )
 import Idream.Command.Common ( readRootProjFile, ProjParseErr(..) )
-import Data.Monoid ((<>))
 
 
 data ReplErr = RLogErr Log.LogError

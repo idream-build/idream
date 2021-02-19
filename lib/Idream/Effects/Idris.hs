@@ -26,7 +26,6 @@ import Idream.SafeIO
 import Idream.Types ( ProjectName(..), PackageName(..) )
 import Idream.FilePaths
 import Idream.ToText
-import Data.Monoid ( (<>) )
 import Data.Maybe ( fromJust )
 import qualified Data.Text as T
 

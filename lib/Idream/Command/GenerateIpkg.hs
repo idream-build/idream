@@ -20,7 +20,6 @@ import Idream.Command.Common ( ProjParseErr(..), PkgParseErr(..)
                              , getPkgFilePath, getPkgDirPath )
 import Idream.Effects.FileSystem
 import Data.Text ( Text )
-import Data.Monoid ( (<>) )
 import Data.List ( intercalate, stripPrefix )
 import Data.Maybe ( fromJust )
 import qualified Data.Text as T

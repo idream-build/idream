@@ -24,9 +24,7 @@ import Data.Default
 import Data.Aeson
 import Data.Map ( Map )
 import Data.Text ( Text )
-import Data.Monoid ( (<>) )
 import Control.Monad ( mzero )
-import System.FilePath ( FilePath )
 import Idream.ToText
 
 
