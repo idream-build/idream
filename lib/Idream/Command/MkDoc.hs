@@ -74,7 +74,7 @@ genDocs buildPlan = do
 --   into the main documentation directory.
 setupDocsForBasePackages :: Member FileSystem r => Directory -> Eff r ()
 setupDocsForBasePackages docDir = mapM_ setupDocsForBasePackage basePackages where
-  basePackages = ["base", "contrib", "effects", "prelude", "pruviloj"]
+  basePackages = ["base", "contrib", "network", "prelude"]
   setupDocsForBasePackage pkg = do
     let fromDir = docDir </> T.unpack pkg
     copyDir fromDir docsDir

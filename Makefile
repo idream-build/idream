@@ -20,11 +20,15 @@ smoke_test: smoke_build smoke_test_only
 
 .PHONY: integration_build
 integration_build:
-	docker build -t idream_tester .
+	bash ./script/build_images.sh
+
+.PHONY: integration_repl
+integration_repl:
+	bash ./script/integration_repl.sh
 
 .PHONY: integration_test_only
 integration_test_only:
-	docker run -v $(shell pwd)/test/integration_tests:/test -it idream_tester
+	bash ./script/integration_test.sh
 
 .PHONY: integration_test
 integration_test: integration_build integration_test_only

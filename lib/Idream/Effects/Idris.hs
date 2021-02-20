@@ -174,7 +174,7 @@ invokeIdrisWithEnv :: (IOException -> e)
                    -> (ExitCode -> String -> e)
                    -> [Arg] -> Maybe Directory -> Environment
                    -> SafeIO e String
-invokeIdrisWithEnv f g = invokeCmdWithEnv f g "idris"
+invokeIdrisWithEnv f g = invokeCmdWithEnv f g "idris2"
 
 -- | Helper function for invoking idris using the ipkg file
 --   for a specific project / package with certain command line arguments.

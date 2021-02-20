@@ -76,7 +76,7 @@ compilePackages buildPlan = do
 -- Copies over the 'standard' packages used by Idris into the main compilation directory.
 setupBasePackages :: Member FileSystem r => Directory -> Eff r ()
 setupBasePackages libDir = mapM_ setupBasePackage basePackages where
-  basePackages = ["base", "contrib", "effects", "prelude", "pruviloj"]
+  basePackages = ["base", "contrib", "network", "prelude"]
   setupBasePackage pkg = do
     let fromDir = libDir </> T.unpack pkg
     copyDir fromDir compileDir
