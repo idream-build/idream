@@ -1,9 +1,5 @@
 include Makefile.base
 
-.PHONY: lint_all
-lint_all:
-	stack exec -- hlint -i 'Parse error' -i 'Reduce duplication' src lib
-
 .PHONY: smoke_build
 smoke_build:
 	rm -rf test_project

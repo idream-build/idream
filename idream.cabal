@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d8f66e843cce324d59b4db388ed0cf55e0b63941859314d86d980741bf8dba9b
+-- hash: 8901e21e8d70807f3bdd66e2247519574f81614e0c608caa436ef9ca982edce2
 
 name:           idream
 version:        0.1.0.0
@@ -38,6 +38,7 @@ library
       Idream.Effects.Idris
       Idream.Effects.Log
       Idream.Error
+      Idream.Exe
       Idream.FilePaths
       Idream.Graph
       Idream.OptionParser

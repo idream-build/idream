@@ -1,0 +1,13 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "idream:lib"
+
+    - path: "./exe/Main.hs"
+      component: "idream:exe:idream"
+
+    - path: "./exe/Paths_idream.hs"
+      component: "idream:exe:idream"
+
+    - path: "./test"
+      component: "idream:test:idream-test"
