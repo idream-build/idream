@@ -1,34 +1,29 @@
 
-module Idream.Types ( ProjectName(..)
-                    , PackageName(..)
-                    , Argument
-                    , SourceDir(..)
-                    , Repo(..)
-                    , Version(..)
-                    , Project(..)
-                    , Package(..)
-                    , Dependency(..)
-                    , PackageDescr(..)
-                    , PackageSet(..)
-                    , LogLevel(..)
-                    , PackageType(..)
-                    , Command(..)
-                    , Args(..)
-                    , Config(..)
-                    ) where
-
-
--- Imports
+module Idream.Types
+  ( ProjectName(..)
+  , PackageName(..)
+  , Argument
+  , SourceDir(..)
+  , Repo(..)
+  , Version(..)
+  , Project(..)
+  , Package(..)
+  , Dependency(..)
+  , PackageDescr(..)
+  , PackageSet(..)
+  , LogLevel(..)
+  , PackageType(..)
+  , Command(..)
+  , Args(..)
+  , Config(..)
+  ) where
 
 import Control.Monad (mzero)
-import Data.Aeson
-import Data.Default
+import Data.Aeson (FromJSON(..), ToJSON (..), Value (..), (.=), (.:), (.!=), (.:?), object)
+import Data.Default (Default (..))
 import Data.Map (Map)
 import Data.Text (Text)
-import Idream.ToText
-
-
--- Data types
+import Idream.ToText (ToText (..))
 
 -- | Type used for representing project names.
 newtype ProjectName = ProjectName { unProjName :: Text }
@@ -88,25 +83,27 @@ data LogLevel = Debug | Info | Warn | Err
   deriving (Eq, Ord, Show)
 
 -- | Type describing the various commands that can be passed in via the commandline interface.
-data Command = Fetch                        -- ^ Fetches all dependencies as described in json file
-             | Compile                      -- ^ Compiles all code (fetch needs to be done first to get dependencies code?)
-             | Clean                        -- ^ Cleans up build artifacts, fetched code?
-             | Run [Argument]               -- ^ Runs the executable defined in idr-project.json
-             | Repl ProjectName PackageName  -- ^ Opens up the repl
-             | New ProjectName              -- ^ Initializes a new project for use with idream
-             | Add PackageName PackageType  -- ^ Adds a package to an existing idream project
-             | MkDoc                        -- ^ Generates the documentation
-             | GenerateIpkg                 -- ^ Generates a ipkg file from the idream JSON files
-             | Test                         -- ^ Runs unit tests for this project
-             deriving (Eq, Show)
+data Command
+  = Fetch                        -- ^ Fetches all dependencies as described in json file
+  | Compile                      -- ^ Compiles all code (fetch needs to be done first to get dependencies code?)
+  | Clean                        -- ^ Cleans up build artifacts, fetched code?
+  | Run [Argument]               -- ^ Runs the executable defined in idr-project.json
+  | Repl ProjectName PackageName  -- ^ Opens up the repl
+  | New ProjectName              -- ^ Initializes a new project for use with idream
+  | Add PackageName PackageType  -- ^ Adds a package to an existing idream project
+  | MkDoc                        -- ^ Generates the documentation
+  | GenerateIpkg                 -- ^ Generates a ipkg file from the idream JSON files
+  | Test                         -- ^ Runs unit tests for this project
+  deriving (Eq, Show)
 
 -- | Data structure representing the arguments passed in to the program.
-data Args = Args { logLevel :: LogLevel
-                 , cmd :: Command } deriving (Eq, Show)
+data Args = Args
+  { logLevel :: LogLevel
+  , cmd :: Command
+  } deriving (Eq, Show)
 
 -- | Type grouping all settings together into 1 big structure.
 newtype Config = Config { args :: Args } deriving (Eq, Show)
-
 
 -- Instances
 
@@ -186,4 +183,3 @@ instance ToText PackageName where
 instance ToText Dependency where
   toText (Dependency projName pkgName) =
     toText projName <> "_" <> toText pkgName
-

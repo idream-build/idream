@@ -1,6 +1,9 @@
-module Idream.Exe where
+module Idream.Exe
+  ( processCommand
+  , main
+  ) where
 
-import Control.Monad.Reader
+import Control.Monad.Reader (asks)
 import Idream.Command.Add (addPackageToProject)
 import Idream.Command.Clean (cleanCode)
 import Idream.Command.Compile (compileCode)
@@ -11,28 +14,30 @@ import Idream.Command.New (startNewProject)
 import Idream.Command.Repl (startRepl)
 import Idream.Command.Run (runCode)
 import Idream.Command.Test (runTests)
-import Idream.OptionParser
-import Idream.Types
+import Idream.OptionParser (parseCmdLineArgs)
+import Idream.Types (Args (..), Command (..), Config (..))
+import LittleRIO (RIO, runRIO)
 
 -- | Main function.
 main :: IO ()
 main = do
   cmdLineArgs <- parseCmdLineArgs
   let config = Config cmdLineArgs
-  flip runReaderT config $ do
+  runRIO config $ do
     command <- asks $ cmd . args
     processCommand command
 
 -- | Function that processes the given command.
-processCommand :: ( MonadReader Config m, MonadIO m )
-               => Command -> m ()
-processCommand Fetch = fetchDeps
-processCommand Compile = compileCode
-processCommand Clean = cleanCode
-processCommand (Run runArgs) = runCode runArgs
-processCommand (Repl projName pkgName) = startRepl projName pkgName
-processCommand (New projName) = startNewProject projName
-processCommand (Add pkgName pkgType) = addPackageToProject pkgName pkgType
-processCommand MkDoc = generateDocs
-processCommand GenerateIpkg = generateIpkgFile
-processCommand Test = runTests
+processCommand :: Command -> RIO Config ()
+processCommand command =
+  case command of
+    Fetch -> fetchDeps
+    Compile -> compileCode
+    Clean -> cleanCode
+    Run runArgs -> runCode runArgs
+    Repl projName pkgName -> startRepl projName pkgName
+    New projName -> startNewProject projName
+    Add pkgName pkgType -> addPackageToProject pkgName pkgType
+    MkDoc -> generateDocs
+    GenerateIpkg -> generateIpkgFile
+    Test -> runTests
