@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f440244209052c6d305243de71b7dad2b3a32fe1957e3a5a2dcfb3c6506d993f
+-- hash: d8f66e843cce324d59b4db388ed0cf55e0b63941859314d86d980741bf8dba9b
 
 name:           idream
 version:        0.1.0.0
@@ -47,32 +47,6 @@ library
   other-modules:
       Paths_idream
   hs-source-dirs:
-      lib
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase GADTs DataKinds TypeOperators ScopedTypeVariables
-  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
-  build-depends:
-      aeson >=1.5 && <1.6
-    , aeson-pretty >=0.8 && <0.9
-    , algebraic-graphs >=0.5 && <0.6
-    , base >=4.13 && <5
-    , bytestring >=0.10 && <0.11
-    , containers >=0.6 && <0.7
-    , data-default >=0.7 && <0.8
-    , directory >=1.3 && <1.4
-    , filepath >=1.4 && <1.5
-    , freer-simple >=1.1 && <2
-    , mtl >=2.2 && <2.3
-    , optparse-applicative >=0.15 && <0.16
-    , process >=1.6 && <1.7
-    , shelly >=1.9 && <1.10
-    , text >=1.2 && <1.3
-  default-language: Haskell2010
-
-executable idream
-  main-is: Main.hs
-  other-modules:
-      Paths_idream
-  hs-source-dirs:
       src
   default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase GADTs DataKinds TypeOperators ScopedTypeVariables
   ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
@@ -87,12 +61,46 @@ executable idream
     , directory >=1.3 && <1.4
     , filepath >=1.4 && <1.5
     , freer-simple >=1.1 && <2
-    , idream
+    , little-logger >=0.3 && <0.4
+    , little-rio >=0.2 && <0.3
     , mtl >=2.2 && <2.3
     , optparse-applicative >=0.15 && <0.16
     , process >=1.6 && <1.7
     , shelly >=1.9 && <1.10
     , text >=1.2 && <1.3
+    , unliftio >=0.2 && <0.3
+    , unliftio-core >=0.2 && <0.3
+  default-language: Haskell2010
+
+executable idream
+  main-is: Main.hs
+  other-modules:
+      Paths_idream
+  hs-source-dirs:
+      exe
+  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase GADTs DataKinds TypeOperators ScopedTypeVariables
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
+  build-depends:
+      aeson >=1.5 && <1.6
+    , aeson-pretty >=0.8 && <0.9
+    , algebraic-graphs >=0.5 && <0.6
+    , base >=4.13 && <5
+    , bytestring >=0.10 && <0.11
+    , containers >=0.6 && <0.7
+    , data-default >=0.7 && <0.8
+    , directory >=1.3 && <1.4
+    , filepath >=1.4 && <1.5
+    , freer-simple >=1.1 && <2
+    , idream
+    , little-logger >=0.3 && <0.4
+    , little-rio >=0.2 && <0.3
+    , mtl >=2.2 && <2.3
+    , optparse-applicative >=0.15 && <0.16
+    , process >=1.6 && <1.7
+    , shelly >=1.9 && <1.10
+    , text >=1.2 && <1.3
+    , unliftio >=0.2 && <0.3
+    , unliftio-core >=0.2 && <0.3
   default-language: Haskell2010
 
 test-suite idream-test
@@ -117,6 +125,8 @@ test-suite idream-test
     , filepath >=1.4 && <1.5
     , freer-simple >=1.1 && <2
     , idream
+    , little-logger >=0.3 && <0.4
+    , little-rio >=0.2 && <0.3
     , mtl >=2.2 && <2.3
     , optparse-applicative >=0.15 && <0.16
     , process >=1.6 && <1.7
@@ -125,4 +135,6 @@ test-suite idream-test
     , tasty-discover >=4.2 && <4.3
     , tasty-hspec >=1.1 && <1.2
     , text >=1.2 && <1.3
+    , unliftio >=0.2 && <0.3
+    , unliftio-core >=0.2 && <0.3
   default-language: Haskell2010

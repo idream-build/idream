@@ -26,6 +26,10 @@ dependencies:
   - aeson-pretty >= 0.8 && < 0.9
   - optparse-applicative >= 0.15 && < 0.16
   - process >= 1.6 && < 1.7
+  - little-rio >= 0.2 && < 0.3
+  - little-logger >= 0.3 && < 0.4
+  - unliftio-core >= 0.2 && < 0.3
+  - unliftio >= 0.2 && < 0.3
 
 ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path  # -O2
 
@@ -40,11 +44,11 @@ default-extensions:
   - ScopedTypeVariables
 
 library:
-  source-dirs:    lib
+  source-dirs: src
 
 executables:
   idream:
-    source-dirs:  src
+    source-dirs:  exe
     main:         Main.hs
     dependencies:
       - idream
