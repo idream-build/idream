@@ -21,7 +21,7 @@ import qualified Algebra.Graph.AdjacencyMap as AM
 import Control.Exception (Exception)
 import Control.Monad (mzero)
 import Control.Monad.State (State, execState, modify)
-import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), (.=), (.:), object)
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, (.:), (.=))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)

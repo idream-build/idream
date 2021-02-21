@@ -9,16 +9,18 @@ import Data.List (nub, partition)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import Idream.App (AppM)
-import Idream.Command.Common (getPkgFilePath, readPkgFile, readProjFile, readRootPkgSetFile, readRootProjFile, setupBuildDir)
+import Idream.Command.Common (getPkgFilePath, readPkgFile, readProjFile, readRootPkgSetFile, readRootProjFile,
+                              setupBuildDir)
 import Idream.Effects.FileSystem (fsDoesDirectoryExist, fsDoesFileExist)
 import Idream.Effects.Git (gitCheckout, gitClone)
 import Idream.FileLogic (depGraphFile, repoDir, repoDirProjFile)
 import Idream.Graph (DepGraph, DepNode (..), mkGraphFromProject, saveGraphToJSON, updateGraph)
 import Idream.ToText (ToText (..))
-import Idream.Types (Dependency (..), Package (..), PackageDescr (..), Project (..), PackageName, PackageSet (..), ProjectName (..))
+import Idream.Types (Dependency (..), Package (..), PackageDescr (..), PackageName, PackageSet (..), Project (..),
+                     ProjectName (..))
 import LittleLogger (logDebug, logInfo)
-import UnliftIO.IORef (IORef, modifyIORef', newIORef, readIORef)
 import UnliftIO.Exception (throwIO)
+import UnliftIO.IORef (IORef, modifyIORef', newIORef, readIORef)
 
 -- | Helper data type used for marking if a project was already fetched or not.
 --   This helps detecting/breaking a cycle in the dependency graph.

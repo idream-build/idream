@@ -4,8 +4,8 @@ module Idream.OptionParser
 
 import Data.Maybe (fromMaybe)
 import Idream.Types (Args (..), Command (..), PackageName (..), PackageType (..), ProjectName (..))
-import Options.Applicative
 import LittleLogger (Severity (..))
+import Options.Applicative
 
 -- | Helper function for parsing the log level the build tool should use.
 logLevelParser :: Parser Severity

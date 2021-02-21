@@ -16,7 +16,7 @@ module Idream.Types
   ) where
 
 import Control.Monad (mzero)
-import Data.Aeson (FromJSON(..), ToJSON (..), Value (..), (.=), (.:), (.!=), (.:?), object)
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, (.!=), (.:), (.:?), (.=))
 import Data.Default (Default (..))
 import Data.Map (Map)
 import Data.Text (Text)
