@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Idream.ToText
   ( ToText(..)
   ) where

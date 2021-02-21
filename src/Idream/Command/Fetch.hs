@@ -1,38 +1,40 @@
 module Idream.Command.Fetch
   ( fetchDeps
+  , PkgMissingInPkgSetErr (..)
   ) where
 
-import Control.Exception (Exception)
+import Control.Exception (Exception (..))
 import Data.Foldable (for_)
 import Data.List (nub, partition)
 import qualified Data.Map as Map
-import Idream.App (AppM, appDoesDirectoryExist, appDoesFileExist, appLogAndThrow)
+import qualified Data.Text as T
+import Idream.App (AppM)
 import Idream.Command.Common (getPkgFilePath, readPkgFile, readProjFile, readRootPkgSetFile, readRootProjFile, setupBuildDir)
-import Idream.FilePaths (depGraphFile, repoDir, repoDirProjFile)
-import Idream.Git (gitCheckout, gitClone)
+import Idream.Effects.FileSystem (fsDoesDirectoryExist, fsDoesFileExist)
+import Idream.Effects.Git (gitCheckout, gitClone)
+import Idream.FileLogic (depGraphFile, repoDir, repoDirProjFile)
 import Idream.Graph (DepGraph, DepNode (..), mkGraphFromProject, saveGraphToJSON, updateGraph)
 import Idream.ToText (ToText (..))
 import Idream.Types (Dependency (..), Package (..), PackageDescr (..), Project (..), PackageName, PackageSet (..), ProjectName (..))
 import LittleLogger (logDebug, logInfo)
 import UnliftIO.IORef (IORef, modifyIORef', newIORef, readIORef)
+import UnliftIO.Exception (throwIO)
 
 -- | Helper data type used for marking if a project was already fetched or not.
 --   This helps detecting/breaking a cycle in the dependency graph.
 data FetchInfo =
-   AlreadyFetched Project
+    AlreadyFetched Project
   | NewlyFetched Project
   deriving (Eq, Show)
 
 -- | Top level error type, models all errors that can occur
 --   during fetching of dependencies.
-data PkgMissingInPkgSetErr = PkgMissingInPkgSetErr ProjectName
+newtype PkgMissingInPkgSetErr = PkgMissingInPkgSetErr ProjectName
   deriving (Eq, Show)
 
-instance Exception PkgMissingInPkgSetErr
-
-instance ToText PkgMissingInPkgSetErr where
-  toText (PkgMissingInPkgSetErr projName) =
-    "Package missing in package set: " <> toText projName <> "."
+instance Exception PkgMissingInPkgSetErr where
+  displayException (PkgMissingInPkgSetErr (ProjectName n)) =
+    "Package missing in package set: " <> T.unpack n <> "."
 
 -- TODO add force fetch flag
 
@@ -81,12 +83,12 @@ fetchDepsForPackage graphRef pkgSet projName pkgName = do
 fetchProj :: PackageSet -> ProjectName -> AppM FetchInfo
 fetchProj (PackageSet pkgs) projName@(ProjectName name) =
   case Map.lookup name pkgs of
-    Nothing -> appLogAndThrow (PkgMissingInPkgSetErr projName)
+    Nothing -> throwIO (PkgMissingInPkgSetErr projName)
     Just (PackageDescr repo version) -> do
       let repoDir' = repoDir projName
           projFile = repoDirProjFile projName
-      dirExists <- appDoesDirectoryExist repoDir'
-      fileExists <- appDoesFileExist projFile
+      dirExists <- fsDoesDirectoryExist repoDir'
+      fileExists <- fsDoesFileExist projFile
       case (dirExists, fileExists) of
         (True, True) ->
           AlreadyFetched <$> readProjFile projFile

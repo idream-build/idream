@@ -6,8 +6,8 @@ module Idream.Exe
 import Idream.App (AppM, newApp, runAppM)
 import Idream.Command.Add (addPackageToProject)
 -- import Idream.Command.Clean (cleanCode)
--- import Idream.Command.Compile (compileCode)
--- import Idream.Command.Fetch (fetchDeps)
+import Idream.Command.Compile (compileCode)
+import Idream.Command.Fetch (fetchDeps)
 import Idream.Command.GenerateIpkg (generateIpkgFile)
 -- import Idream.Command.MkDoc (generateDocs)
 import Idream.Command.New (startNewProject)
@@ -28,8 +28,8 @@ main = do
 processCommand :: Command -> AppM ()
 processCommand command =
   case command of
-    -- Fetch -> fetchDeps
-    -- Compile -> compileCode
+    Fetch -> fetchDeps
+    Compile -> compileCode
     -- Clean -> cleanCode
     -- Run runArgs -> runCode runArgs
     -- Repl projName pkgName -> startRepl projName pkgName

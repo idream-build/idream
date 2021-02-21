@@ -1,14 +1,12 @@
-{-# LANGUAGE DeriveFoldable #-}
-
 module Idream.Graph
   ( DepGraph
-  , DepNode(..)
-  , ParseGraphErr(..)
-  , Max(..)
-  , MonoidMap(..)
+  , DepNode (..)
+  , ParseGraphErr (..)
+  , Max (..)
+  , MonoidMap (..)
   , Depth
   , Phase
-  , BuildPlan(..)
+  , BuildPlan (..)
   , mkGraphFromProject
   , updateGraph
   , getLeafNodes
@@ -28,7 +26,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Idream.App (AppM, appReadJSON, appWriteJSON)
+import Idream.App (AppM)
+import Idream.Effects.Serde (serdeReadJSON, serdeWriteJSON)
 import Idream.ToText (ToText (..))
 import Idream.Types (PackageName (..), Project (..), ProjectName (..))
 
@@ -209,8 +208,8 @@ fromGraphInfo (GraphInfo vs es) = Graph.overlay (Graph.vertices vs) (Graph.edges
 
 -- | Saves a graph to a JSON file.
 saveGraphToJSON :: FilePath -> DepGraph -> AppM ()
-saveGraphToJSON path = appWriteJSON path . toGraphInfo
+saveGraphToJSON path = serdeWriteJSON path . toGraphInfo
 
 -- | Loads a graph from JSON.
 loadGraphFromJSON :: FilePath -> AppM DepGraph
-loadGraphFromJSON path = fmap fromGraphInfo (appReadJSON ParseGraphErr path)
+loadGraphFromJSON path = fmap fromGraphInfo (serdeReadJSON ParseGraphErr path)

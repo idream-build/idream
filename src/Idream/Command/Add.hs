@@ -1,26 +1,28 @@
 module Idream.Command.Add
   ( addPackageToProject
+  , PackageAlreadyExistsErr (..)
   ) where
 
-import Control.Exception (Exception)
+import Control.Exception (Exception (..))
 import Data.Text (Text)
 import qualified Data.Text as T
-import Idream.App (AppM, appCreateDir, appDoesDirectoryExist, appLogAndThrow, appWriteFile, appWriteJSON)
-import Idream.FilePaths (pkgDir, pkgFile, pkgSrcDir, projectFile)
+import Idream.App (AppM)
+import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsWriteFile)
+import Idream.Effects.Serde (serdeWriteJSON)
+import Idream.FileLogic (pkgDir, pkgFile, pkgSrcDir, projectFile)
 import Idream.Command.Common (readRootProjFile)
 import Idream.ToText (ToText (..))
 import Idream.Types (PackageName (..), PackageType (..), Project (..))
 import LittleLogger (logInfo)
 import System.FilePath ((</>))
+import UnliftIO.Exception (throwIO)
 
-data PackageAlreadyExistsErr = PackageAlreadyExistsErr PackageName
+newtype PackageAlreadyExistsErr = PackageAlreadyExistsErr PackageName
   deriving (Eq, Show)
 
-instance Exception PackageAlreadyExistsErr
-
-instance ToText PackageAlreadyExistsErr where
-  toText (PackageAlreadyExistsErr pkgName) =
-    "Failed to add package to project, package " <> toText pkgName <> " already exists."
+instance Exception PackageAlreadyExistsErr where
+  displayException (PackageAlreadyExistsErr (PackageName p)) =
+    "Failed to add package to project, package " <> T.unpack p <> " already exists."
 
 libIdrContents, mainIdrContents :: Text
 libIdrContents =
@@ -53,19 +55,19 @@ idrPkgJsonContents (PackageName pkgName) pkgType =
 -- | Creates a new project template.
 addPackageToProject :: PackageName -> PackageType -> AppM ()
 addPackageToProject pkgName@(PackageName name) pkgType = do
-  pkgDirExists <- appDoesDirectoryExist (T.unpack name)
+  pkgDirExists <- fsDoesDirectoryExist (T.unpack name)
   if pkgDirExists
-    then appLogAndThrow (PackageAlreadyExistsErr pkgName)
+    then throwIO (PackageAlreadyExistsErr pkgName)
     else addPackageToProject' pkgName pkgType
 
 -- | Does the actual creation of the project template.
 addPackageToProject' :: PackageName -> PackageType -> AppM ()
 addPackageToProject' pkgName pkgType = do
   projInfo <- readRootProjFile
-  appCreateDir (pkgDir pkgName)
-  appCreateDir (pkgSrcDir pkgName)
-  appWriteFile (pkgDir pkgName </> pkgFile) (idrPkgJsonContents pkgName pkgType)
-  appWriteFile (pkgSrcDir pkgName </> mainFile pkgType) (mainContents pkgType)
+  fsCreateDir (pkgDir pkgName)
+  fsCreateDir (pkgSrcDir pkgName)
+  fsWriteFile (pkgDir pkgName </> pkgFile) (idrPkgJsonContents pkgName pkgType)
+  fsWriteFile (pkgSrcDir pkgName </> mainFile pkgType) (mainContents pkgType)
   updateProjInfo projInfo pkgName
   logInfo ("Successfully added package " <> toText pkgName <> " to project.")
   where mainFile Library = "Lib.idr"
@@ -79,4 +81,4 @@ updateProjInfo projInfo pkgName =
   let projFilePath = projectFile
       updatedDeps = projDeps projInfo ++ [pkgName]
       projInfo' = projInfo { projDeps = updatedDeps }
-   in appWriteJSON projFilePath projInfo'
+   in serdeWriteJSON projFilePath projInfo'

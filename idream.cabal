@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4a07b29772112af16c40d1e829da312fc83948f06153479bd31a5f51d050117f
+-- hash: b37aad8efcc4d1c9714c467a5a5a8d80c71ad3211aa6ff97fab30514ab8d1688
 
 name:           idream
 version:        0.2.0.0
@@ -37,10 +37,14 @@ library
       Idream.Effects.FileSystem
       Idream.Effects.Git
       Idream.Effects.Idris
+      Idream.Effects.Serde
       Idream.Exe
+      Idream.FileLogic
       Idream.FilePaths
-      Idream.Git
       Idream.Graph
+      Idream.OldEffects.FileSystem
+      Idream.OldEffects.Git
+      Idream.OldEffects.Idris
       Idream.OptionParser
       Idream.ToText
       Idream.Types
@@ -48,7 +52,7 @@ library
       Paths_idream
   hs-source-dirs:
       src
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase GADTs DataKinds TypeOperators ScopedTypeVariables
+  default-extensions: DeriveFoldable OverloadedStrings
   ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
   build-depends:
       aeson >=1.5 && <1.6
@@ -59,7 +63,6 @@ library
     , containers >=0.6 && <0.7
     , data-default >=0.7 && <0.8
     , directory >=1.3 && <1.4
-    , exceptions >=0.10 && <0.11
     , filepath >=1.4 && <1.5
     , little-logger >=0.3 && <0.4
     , little-rio >=0.2 && <0.3
@@ -78,7 +81,7 @@ executable idream
       Paths_idream
   hs-source-dirs:
       exe
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase GADTs DataKinds TypeOperators ScopedTypeVariables
+  default-extensions: DeriveFoldable OverloadedStrings
   ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
   build-depends:
       aeson >=1.5 && <1.6
@@ -89,7 +92,6 @@ executable idream
     , containers >=0.6 && <0.7
     , data-default >=0.7 && <0.8
     , directory >=1.3 && <1.4
-    , exceptions >=0.10 && <0.11
     , filepath >=1.4 && <1.5
     , idream
     , little-logger >=0.3 && <0.4
@@ -111,7 +113,7 @@ test-suite idream-test
       Paths_idream
   hs-source-dirs:
       test
-  default-extensions: OverloadedStrings FlexibleContexts FlexibleInstances LambdaCase GADTs DataKinds TypeOperators ScopedTypeVariables
+  default-extensions: DeriveFoldable OverloadedStrings
   ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
   build-depends:
       aeson >=1.5 && <1.6
@@ -122,7 +124,6 @@ test-suite idream-test
     , containers >=0.6 && <0.7
     , data-default >=0.7 && <0.8
     , directory >=1.3 && <1.4
-    , exceptions >=0.10 && <0.11
     , filepath >=1.4 && <1.5
     , idream
     , little-logger >=0.3 && <0.4

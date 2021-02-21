@@ -8,8 +8,10 @@ import Data.Maybe (fromJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Idream.Command.Common (getPkgDirPath, getPkgFilePath, readPkgFile, readRootProjFile)
-import Idream.App (AppM, appCopyDir, appCreateDir, appFindFiles, appRemovePath, appWriteFile)
-import Idream.FilePaths (Directory, depGraphFile, hasExt, ipkgFile, pkgBuildDir, pkgBuildSrcDir, projectBuildDir)
+import Idream.App (AppM)
+import Idream.Effects.FileSystem (fsCopyDir, fsCreateDir, fsFindFiles, fsRemovePath, fsWriteFile)
+import Idream.FileLogic (depGraphFile, ipkgFile, pkgBuildDir, pkgBuildSrcDir, projectBuildDir)
+import Idream.FilePaths (Directory, hasExt)
 import Idream.Graph (DepNode (..), loadGraphFromJSON)
 import Idream.ToText (ToText (..))
 import Idream.Types (Package (..), PackageType (..), Project (..), ProjectName, SourceDir (..))
@@ -43,9 +45,9 @@ generateIpkg node@(DepNode pkgName projName) = do
   pkgDirPath <- getPkgDirPath pkgName projName
   let projectBuildDir' = projectBuildDir projName
       pkgBuildDir' = pkgBuildDir projName pkgName
-  appRemovePath pkgBuildDir'
-  appCreateDir pkgBuildDir'
-  appCopyDir pkgDirPath projectBuildDir'
+  fsRemovePath pkgBuildDir'
+  fsCreateDir pkgBuildDir'
+  fsCopyDir pkgDirPath projectBuildDir'
   generateIpkgHelper node
 
 -- | Helper function that does the actual generation of the .ipkg file.
@@ -54,12 +56,12 @@ generateIpkgHelper (DepNode pkgName projName) = do
   pkgFilePath <- getPkgFilePath pkgName projName
   package@(Package _ _ srcDir _) <- readPkgFile pkgFilePath
   let pkgBuildSrcDir' = pkgBuildSrcDir projName pkgName srcDir
-  idrisFiles <- appFindFiles (hasExt "idr") (Just pkgBuildSrcDir')
+  idrisFiles <- fsFindFiles (hasExt "idr") (Just pkgBuildSrcDir')
   let pkgMetadata = IpkgMetadata projName package idrisFiles
       contents = ipkgMetadataToText pkgBuildSrcDir' pkgMetadata
       ipkg = ipkgFile projName pkgName
   logDebug ("Writing .ipkg file to: " <> toText ipkg)
-  appWriteFile ipkg contents
+  fsWriteFile ipkg contents
 
 -- | Converts the ipkg metadata to a text representation.
 ipkgMetadataToText :: Directory -> IpkgMetadata -> Text

@@ -19,7 +19,6 @@ dependencies:
   - containers >= 0.6 && < 0.7
   - data-default >= 0.7 && < 0.8
   - directory >= 1.3 && < 1.4
-  - exceptions >= 0.10 && < 0.11
   - filepath >= 1.4 && < 1.5
   - little-logger >= 0.3 && < 0.4
   - little-rio >= 0.2 && < 0.3
@@ -34,14 +33,8 @@ dependencies:
 ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path  # -O2
 
 default-extensions:
+  - DeriveFoldable
   - OverloadedStrings
-  - FlexibleContexts
-  - FlexibleInstances
-  - LambdaCase
-  - GADTs
-  - DataKinds
-  - TypeOperators
-  - ScopedTypeVariables
 
 library:
   source-dirs: src
