@@ -1,5 +1,9 @@
 include Makefile.base
 
+.PHONY: install
+install:
+	stack install idream
+
 .PHONY: smoke_build
 smoke_build:
 	rm -rf test_project
@@ -12,7 +16,7 @@ smoke_test_only:
 	test_project/.idream-work/build/test_project/test_exe/test_exe
 
 .PHONY: smoke_test
-smoke_test: smoke_build smoke_test_only
+smoke_test: install smoke_build smoke_test_only
 
 .PHONY: integration_build
 integration_build:

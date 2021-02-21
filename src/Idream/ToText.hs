@@ -1,21 +1,15 @@
-
-module Idream.ToText ( ToText(..) ) where
-
--- Imports
+module Idream.ToText
+  ( ToText(..)
+  ) where
 
 import Control.Exception (IOException)
 import qualified Data.Text as T
 import System.Exit (ExitCode)
 
-
--- Typeclasses
-
 -- | Helper typeclass for converting a type to a text representation.
+-- TODO(ejconlon) Consider text-show and a separate ExceptionInfo class?
 class ToText a where
   toText :: a -> T.Text
-
-
--- Instances
 
 instance ToText T.Text where
   toText = id
@@ -28,4 +22,3 @@ instance ToText IOException where
 
 instance ToText ExitCode where
   toText = T.pack . show
-

@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8901e21e8d70807f3bdd66e2247519574f81614e0c608caa436ef9ca982edce2
+-- hash: 285c0dcc9f69ca4a03b42f9524fdaa566814c4a0b7c44639807ba7bac5c75f7a
 
 name:           idream
-version:        0.1.0.0
+version:        0.2.0.0
 synopsis:       A simple build system for Idris
 category:       Build Tool
 homepage:       https://github.com/ejconlon/idream#README.md
@@ -22,6 +22,7 @@ extra-source-files:
 
 library
   exposed-modules:
+      Idream.App
       Idream.Command.Add
       Idream.Command.Clean
       Idream.Command.Common
@@ -36,13 +37,10 @@ library
       Idream.Effects.FileSystem
       Idream.Effects.Git
       Idream.Effects.Idris
-      Idream.Effects.Log
-      Idream.Error
       Idream.Exe
       Idream.FilePaths
       Idream.Graph
       Idream.OptionParser
-      Idream.SafeIO
       Idream.ToText
       Idream.Types
   other-modules:
@@ -60,17 +58,17 @@ library
     , containers >=0.6 && <0.7
     , data-default >=0.7 && <0.8
     , directory >=1.3 && <1.4
+    , exceptions >=0.10 && <0.11
     , filepath >=1.4 && <1.5
-    , freer-simple >=1.1 && <2
     , little-logger >=0.3 && <0.4
     , little-rio >=0.2 && <0.3
+    , microlens >=0.4 && <0.5
     , mtl >=2.2 && <2.3
     , optparse-applicative >=0.15 && <0.16
     , process >=1.6 && <1.7
     , shelly >=1.9 && <1.10
     , text >=1.2 && <1.3
     , unliftio >=0.2 && <0.3
-    , unliftio-core >=0.2 && <0.3
   default-language: Haskell2010
 
 executable idream
@@ -90,18 +88,18 @@ executable idream
     , containers >=0.6 && <0.7
     , data-default >=0.7 && <0.8
     , directory >=1.3 && <1.4
+    , exceptions >=0.10 && <0.11
     , filepath >=1.4 && <1.5
-    , freer-simple >=1.1 && <2
     , idream
     , little-logger >=0.3 && <0.4
     , little-rio >=0.2 && <0.3
+    , microlens >=0.4 && <0.5
     , mtl >=2.2 && <2.3
     , optparse-applicative >=0.15 && <0.16
     , process >=1.6 && <1.7
     , shelly >=1.9 && <1.10
     , text >=1.2 && <1.3
     , unliftio >=0.2 && <0.3
-    , unliftio-core >=0.2 && <0.3
   default-language: Haskell2010
 
 test-suite idream-test
@@ -123,11 +121,12 @@ test-suite idream-test
     , containers >=0.6 && <0.7
     , data-default >=0.7 && <0.8
     , directory >=1.3 && <1.4
+    , exceptions >=0.10 && <0.11
     , filepath >=1.4 && <1.5
-    , freer-simple >=1.1 && <2
     , idream
     , little-logger >=0.3 && <0.4
     , little-rio >=0.2 && <0.3
+    , microlens >=0.4 && <0.5
     , mtl >=2.2 && <2.3
     , optparse-applicative >=0.15 && <0.16
     , process >=1.6 && <1.7
@@ -137,5 +136,4 @@ test-suite idream-test
     , tasty-hspec >=1.1 && <1.2
     , text >=1.2 && <1.3
     , unliftio >=0.2 && <0.3
-    , unliftio-core >=0.2 && <0.3
   default-language: Haskell2010

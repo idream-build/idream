@@ -1,92 +1,41 @@
-
 {-# LANGUAGE DeriveFoldable #-}
 
-module Idream.Graph ( DepGraph
-                    , DepNode(..)
-                    , ParseGraphErr(..)
-                    , Max(..)
-                    , MonoidMap(..)
-                    , Depth
-                    , Phase
-                    , BuildPlan(..)
-                    , mkGraphFromProject
-                    , updateGraph
-                    , getLeafNodes
-                    , mkBuildPlan
-                    , createBuildPlan
-                    , saveGraphToJSON
-                    , loadGraphFromJSON
-                    ) where
-
--- Imports
+module Idream.Graph
+  ( DepGraph
+  , DepNode(..)
+  , ParseGraphErr(..)
+  , Max(..)
+  , MonoidMap(..)
+  , Depth
+  , Phase
+  , BuildPlan(..)
+  , mkGraphFromProject
+  , updateGraph
+  , getLeafNodes
+  , mkBuildPlan
+  , createBuildPlan
+  , saveGraphToJSON
+  , loadGraphFromJSON
+  ) where
 
 import qualified Algebra.Graph as Graph
 import qualified Algebra.Graph.AdjacencyMap as AM
-import Control.Monad.Freer
-import Control.Monad.Freer.Error
-import Control.Monad.State
-import Data.Aeson
-import Data.Aeson.Text (encodeToLazyText)
+import Control.Exception (Exception)
+import Control.Monad (mzero)
+import Control.Monad.State (State, execState, modify)
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), (.=), (.:), object)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding (encodeUtf8)
-import Idream.Effects.FileSystem
-import Idream.ToText
+import Idream.App (AppM, appReadJSON, appWriteJSON)
+import Idream.ToText (ToText (..))
 import Idream.Types (PackageName (..), Project (..), ProjectName (..))
-import Prelude hiding (readFile, writeFile)
-
-
--- Data types
 
 -- | Type used in each node of the graph, it combines the package name
 --   together with the project in which it belongs.
 data DepNode = DepNode PackageName ProjectName
   deriving (Eq, Ord, Show)
-
--- | Type representing the dependency graph.
-type DepGraph = Graph.Graph DepNode
-
--- | Type containing possible errors that can occur while working with graphs.
-newtype ParseGraphErr = ParseGraphErr String
-  deriving (Eq, Show)
-
--- | Data type used for (de-)serializing graphs.
-data GraphInfo = GraphInfo [DepNode] [(DepNode, DepNode)]
-  deriving (Eq, Show)
-
--- | Type representing how deep a node is located in a graph.
-type Depth = Int
-
--- | Type representing an adjacency map of a graph.
-type AdjacencyMap a = Map a (Set a)
-
--- | Monoid used for finding the maximum.
-newtype Max a = Max a deriving (Eq, Ord, Show)
-
--- | Wrapper type around map that combines values using monoidal appends.
-newtype MonoidMap k v = MonoidMap (Map k v) deriving (Eq, Show)
-
--- | Type alias for a phase in the build plan.
-type Phase = Int
-
--- | Type used for describing the build plan idream uses.
-data BuildPlan a = BuildPlan { numPhases :: Phase
-                             , phaseMap :: Map Phase (Set a)
-                             } deriving (Eq, Show, Foldable)
-
--- | Helper data type for finding the depth of each node in a graph.
-data TraverseState a = TraverseState Depth (MonoidMap a (Max Depth))
-                     deriving (Eq, Show)
-
-
--- Instances
-
-instance ToText ParseGraphErr where
-  toText (ParseGraphErr err) =
-    "Failed to parse dependency graph from file: " <> toText err <> "."
 
 instance FromJSON DepNode where
   parseJSON (Object o) = DepNode
@@ -100,6 +49,23 @@ instance ToJSON DepNode where
            , "project_name" .= projName
            ]
 
+-- | Type representing the dependency graph.
+type DepGraph = Graph.Graph DepNode
+
+-- | Type containing possible errors that can occur while working with graphs.
+newtype ParseGraphErr = ParseGraphErr String
+  deriving (Eq, Show)
+
+instance Exception ParseGraphErr
+
+instance ToText ParseGraphErr where
+  toText (ParseGraphErr err) =
+    "Failed to parse dependency graph from file: " <> toText err <> "."
+
+-- | Data type used for (de-)serializing graphs.
+data GraphInfo = GraphInfo [DepNode] [(DepNode, DepNode)]
+  deriving (Eq, Show)
+
 instance FromJSON GraphInfo where
   parseJSON (Object o) = GraphInfo
                       <$> o .: "vertices"
@@ -112,12 +78,24 @@ instance ToJSON GraphInfo where
            , "edges" .= es
            ]
 
+-- | Type representing how deep a node is located in a graph.
+type Depth = Int
+
+-- | Type representing an adjacency map of a graph.
+type AdjacencyMap a = Map a (Set a)
+
+-- | Monoid used for finding the maximum.
+newtype Max a = Max a deriving (Eq, Ord, Show)
+
 instance Ord a => Semigroup (Max a) where
   Max a <> Max b = if a > b then Max a else Max b
 
 instance (Ord a, Num a) => Monoid (Max a) where
   mempty = Max 0
   mappend = (<>)
+
+-- | Wrapper type around map that combines values using monoidal appends.
+newtype MonoidMap k v = MonoidMap (Map k v) deriving (Eq, Show)
 
 instance (Ord k, Monoid v) => Semigroup (MonoidMap k v) where
   MonoidMap a <> MonoidMap b = MonoidMap (Map.unionWith mappend a b)
@@ -126,8 +104,18 @@ instance (Ord k, Monoid v) => Monoid (MonoidMap k v) where
   mempty = MonoidMap Map.empty
   mappend = (<>)
 
+-- | Type alias for a phase in the build plan.
+type Phase = Int
 
--- Functions
+-- | Type used for describing the build plan idream uses.
+data BuildPlan a = BuildPlan
+  { numPhases :: Phase
+  , phaseMap :: Map Phase (Set a)
+  } deriving (Eq, Show, Foldable)
+
+-- | Helper data type for finding the depth of each node in a graph.
+data TraverseState a = TraverseState Depth (MonoidMap a (Max Depth))
+  deriving (Eq, Show)
 
 -- | Constructs an initial graph from a top level project.
 mkGraphFromProject :: Project -> DepGraph
@@ -152,7 +140,7 @@ nodesFromProject (Project projName deps) = flip DepNode projName <$> deps
 --   Each key (node in a graph) maps onto a set of direct neighbours.
 --   NOTE: the neighbours are only in the direction of the arrows in the graph.
 toAdjacencyMap :: Ord a => Graph.Graph a -> AdjacencyMap a
-toAdjacencyMap = AM.adjacencyMap . AM.edges . Graph.edgeList
+toAdjacencyMap g = AM.adjacencyMap (AM.overlay (AM.vertices (Graph.vertexList g)) (AM.edges (Graph.edgeList g)))
 
 -- | Traverses a graph starting from a specific node
 --   and keeps a track of max depth for each node along the way.
@@ -217,19 +205,12 @@ toGraphInfo g = GraphInfo (Graph.vertexList g) (Graph.edgeList g)
 
 -- | Creates an algebraic graph based on a GraphInfo structure.
 fromGraphInfo :: GraphInfo -> DepGraph
-fromGraphInfo (GraphInfo _ es) = Graph.edges es
+fromGraphInfo (GraphInfo vs es) = Graph.overlay (Graph.vertices vs) (Graph.edges es)
 
 -- | Saves a graph to a JSON file.
-saveGraphToJSON :: Member FileSystem r
-                => FilePath -> DepGraph -> Eff r ()
-saveGraphToJSON file g =
-  writeFile (TL.toStrict . encodeToLazyText . toGraphInfo $ g) file
+saveGraphToJSON :: FilePath -> DepGraph -> AppM ()
+saveGraphToJSON path = appWriteJSON path . toGraphInfo
 
 -- | Loads a graph from JSON.
-loadGraphFromJSON :: ( Member (Error ParseGraphErr) r, Member FileSystem r )
-                  => FilePath -> Eff r DepGraph
-loadGraphFromJSON file = do
-  contents <- readFile file
-  let result = eitherDecode' . encodeUtf8 . TL.fromStrict $ contents
-  either (throwError . ParseGraphErr) (return . fromGraphInfo) result
-
+loadGraphFromJSON :: FilePath -> AppM DepGraph
+loadGraphFromJSON path = fmap fromGraphInfo (appReadJSON ParseGraphErr path)

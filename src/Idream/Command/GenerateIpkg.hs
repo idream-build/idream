@@ -1,30 +1,19 @@
-
-module Idream.Command.GenerateIpkg ( generateIpkgFile ) where
-
-
--- Imports
+module Idream.Command.GenerateIpkg
+  ( generateIpkgFile
+  ) where
 
 import qualified Algebra.Graph as Graph
-import Control.Monad.Freer
-import Control.Monad.Reader
 import Data.List (intercalate, stripPrefix)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Idream.Command.Common (PkgParseErr (..), ProjParseErr (..), getPkgDirPath, getPkgFilePath, readPkgFile,
-                              readRootProjFile)
-import Idream.Effects.FileSystem
-import Idream.Effects.Log (LogError, Logger, logErr)
-import qualified Idream.Effects.Log as Log
-import Idream.Error
-import Idream.Graph
-import Idream.SafeIO
-import Idream.ToText
-import Idream.Types
-import Prelude hiding (writeFile)
-
-
--- Data types
+import Idream.Command.Common (getPkgDirPath, getPkgFilePath, readPkgFile, readRootProjFile)
+import Idream.App (AppM, appCopyDir, appCreateDir, appFindFiles, appRemovePath, appWriteFile)
+import Idream.FilePaths (Directory, depGraphFile, hasExt, ipkgFile, pkgBuildDir, pkgBuildSrcDir, projectBuildDir)
+import Idream.Graph (DepNode (..), loadGraphFromJSON)
+import Idream.ToText (ToText (..))
+import Idream.Types (Package (..), PackageType (..), Project (..), ProjectName, SourceDir (..))
+import LittleLogger (logDebug, logInfo)
 
 -- | Type alias for modules inside an ipkg file.
 type Module = FilePath
@@ -33,76 +22,44 @@ type Module = FilePath
 data IpkgMetadata = IpkgMetadata ProjectName Package [Module]
   deriving (Eq, Show)
 
--- | Error type used for storing all errors when generating .ipkg files.
-data GenerateIpkgErr = GFSErr FSError
-                     | GLogErr LogError
-                     | GRootProjParseErr ProjParseErr
-                     | GProjParseErr ProjParseErr
-                     | GPkgParseErr PkgParseErr
-                     | GGraphErr ParseGraphErr
-                     deriving (Eq, Show)
-
--- Instances
-
-instance ToText GenerateIpkgErr where
-  toText (GFSErr err) = toText err
-  toText (GLogErr err) = toText err
-  toText (GGraphErr err) = toText err
-  toText (GRootProjParseErr err) = "Failed to parse root project file: " <> toText err
-  toText (GProjParseErr err) = toText err
-  toText (GPkgParseErr err) = toText err
-
-
--- Functions
-
 -- | Top level function used for generating .ipkg files.
-generateIpkgFile :: ( MonadReader Config m, MonadIO m ) => m ()
+generateIpkgFile :: AppM ()
 generateIpkgFile = do
-  result <- runProgram $ do
-    Project _ rootPkgs <- readRootProjFile
-    if null rootPkgs
-      then Log.info ("Project contains no packages yet, skipping generate step. "
-                  <> "Use `idream add` to add a package to this project first.")
-      else do
-        Log.info "Generating .ipkg files..."
-        graph <- loadGraphFromJSON depGraphFile
-        mapM_ generateIpkg $ Graph.vertexList graph
-        Log.info "Finished generating .ipkg files."
-  either (logErr . toText) return result
+  Project _ rootPkgs <- readRootProjFile
+  if null rootPkgs
+    then logInfo ("Project contains no packages yet, skipping generate step. "
+                 <> "Use `idream add` to add a package to this project first.")
+    else do
+      logInfo "Generating .ipkg files..."
+      graph <- loadGraphFromJSON depGraphFile
+      mapM_ generateIpkg $ Graph.vertexList graph
+      logInfo "Finished generating .ipkg files."
 
 -- | Generates an ipkg file for 1 package in a project.
 --   Note that this also cleans the build directory for that project.
-generateIpkg :: ( Member Logger r
-                , Member (Error ProjParseErr) r
-                , Member (Error PkgParseErr) r
-                , Member FileSystem r )
-             => DepNode -> Eff r ()
+generateIpkg :: DepNode -> AppM ()
 generateIpkg node@(DepNode pkgName projName) = do
-  Log.debug ("Generating ipkg file for package: " <> toText pkgName <> ".")
+  logDebug ("Generating ipkg file for package: " <> toText pkgName <> ".")
   pkgDirPath <- getPkgDirPath pkgName projName
   let projectBuildDir' = projectBuildDir projName
       pkgBuildDir' = pkgBuildDir projName pkgName
-  removePath pkgBuildDir'
-  createDir pkgBuildDir'
-  copyDir pkgDirPath projectBuildDir'
+  appRemovePath pkgBuildDir'
+  appCreateDir pkgBuildDir'
+  appCopyDir pkgDirPath projectBuildDir'
   generateIpkgHelper node
 
 -- | Helper function that does the actual generation of the .ipkg file.
-generateIpkgHelper :: ( Member Logger r
-                      , Member (Error ProjParseErr) r
-                      , Member (Error PkgParseErr) r
-                      , Member FileSystem r )
-                   => DepNode -> Eff r ()
+generateIpkgHelper :: DepNode -> AppM ()
 generateIpkgHelper (DepNode pkgName projName) = do
   pkgFilePath <- getPkgFilePath pkgName projName
   package@(Package _ _ srcDir _) <- readPkgFile pkgFilePath
   let pkgBuildSrcDir' = pkgBuildSrcDir projName pkgName srcDir
-  idrisFiles <- findFiles (hasExt "idr") (Just pkgBuildSrcDir')
+  idrisFiles <- appFindFiles (hasExt "idr") (Just pkgBuildSrcDir')
   let pkgMetadata = IpkgMetadata projName package idrisFiles
       contents = ipkgMetadataToText pkgBuildSrcDir' pkgMetadata
       ipkg = ipkgFile projName pkgName
-  Log.debug ("Writing .ipkg file to: " <> toText ipkg)
-  writeFile contents ipkg
+  logDebug ("Writing .ipkg file to: " <> toText ipkg)
+  appWriteFile ipkg contents
 
 -- | Converts the ipkg metadata to a text representation.
 ipkgMetadataToText :: Directory -> IpkgMetadata -> Text
@@ -132,22 +89,3 @@ formatFileNames pkgBuildSrcDir' modules =
         trimPrefix = fromJust . stripPrefix (pkgBuildSrcDir' ++ "/")
         trimExt s = take (length s - 4) s
         replaceSlashes = fmap replaceSlash
-
--- | Helper function for running the program described in the Eff monad.
-runProgram :: ( MonadReader Config m, MonadIO m )
-           => Eff '[ Logger
-                   , Error PkgParseErr, Error ProjParseErr, Error ParseGraphErr
-                   , FileSystem, SafeIO GenerateIpkgErr] ()
-           -> m (Either GenerateIpkgErr ())
-runProgram prog = do
-  thres <- asks $ logLevel . args
-  liftIO $  fmap (join . join . join)
-         $  runSafeIO
-        <$> runM
-         .  runFS GFSErr
-         .  runError' GGraphErr
-         .  runError' GProjParseErr
-         .  runError' GPkgParseErr
-         .  Log.runLogger GLogErr thres
-         $  prog
-

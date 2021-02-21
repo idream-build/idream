@@ -2,6 +2,7 @@
 images/idream/cache/
 dist/
 dist-newstyle/
+test_project/
 *~
 *.swo
 *.swp

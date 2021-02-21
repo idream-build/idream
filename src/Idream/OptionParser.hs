@@ -1,22 +1,21 @@
-
-module Idream.OptionParser ( parseCmdLineArgs ) where
-
--- Imports
+module Idream.OptionParser
+  ( parseCmdLineArgs
+  ) where
 
 import Data.Maybe (fromMaybe)
-import Idream.Types (Args (..), Command (..), LogLevel (..), PackageName (..), PackageType (..), ProjectName (..))
+import Idream.Types (Args (..), Command (..), PackageName (..), PackageType (..), ProjectName (..))
 import Options.Applicative
-
-
--- Functions
+import LittleLogger (Severity (..))
 
 -- | Helper function for parsing the log level the build tool should use.
-logLevelParser :: Parser LogLevel
+logLevelParser :: Parser Severity
 logLevelParser = fromMaybe Info <$> optional (option (eitherReader f) desc) where
   desc = long "log-level" <> help "Logging level to be used."
-  f "info" = Right Info
   f "debug" = Right Debug
-  f _ = Left "Only supported options for log level are 'debug' and 'info'."
+  f "info" = Right Info
+  f "warning" = Right Warning
+  f "error" = Right Error
+  f _ = Left "Only supported options for log level are 'debug', 'info', 'warning', and 'error'."
 
 -- | Helper function for parsing the commands passed to the build tool.
 commandParser :: Parser Command

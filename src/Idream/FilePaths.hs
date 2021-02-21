@@ -1,30 +1,22 @@
-
-module Idream.FilePaths ( Directory, FilePath
-                        , hasExt, relativeTo
-                        , pkgDir, pkgSrcDir
-                        , buildDir, projectBuildDir
-                        , pkgBuildDir, pkgBuildSrcDir
-                        , compileDir, pkgCompileDir
-                        , docsDir, repoDir, repoDirProjFile
-                        , projectFile, pkgFile, pkgSetFile
-                        , ipkgFile, depGraphFile
-                        ) where
-
--- Imports
+module Idream.FilePaths
+  ( Directory, FilePath
+  , hasExt, relativeTo
+  , pkgDir, pkgSrcDir
+  , buildDir, projectBuildDir
+  , pkgBuildDir, pkgBuildSrcDir
+  , compileDir, pkgCompileDir
+  , docsDir, repoDir, repoDirProjFile
+  , projectFile, pkgFile, pkgSetFile
+  , ipkgFile, depGraphFile
+  ) where
 
 import Data.List (stripPrefix)
 import qualified Data.Text as T
 import Idream.Types (PackageName (..), ProjectName (..), SourceDir (..))
 import System.FilePath (splitExtension, (</>))
 
-
--- Data types
-
 -- | Type alias for directories.
 type Directory = FilePath
-
-
--- Functions
 
 -- | Checks if the given filepath has a specific extension.
 hasExt :: String -> FilePath -> Bool
@@ -108,4 +100,3 @@ ipkgFile projName pkgName@(PackageName name) =
 -- | Location of the dependency graph file.
 depGraphFile :: FilePath
 depGraphFile = buildDir </> "dependency-graph.json"
-
