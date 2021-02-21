@@ -7,6 +7,7 @@ module Idream.App
   , appCopyDir
   , appCreateDir
   , appDoesDirectoryExist
+  , appDoesFileExist
   , appFindFiles
   , appReadJSON
   , appRemovePath
@@ -27,7 +28,7 @@ import Idream.ToText (ToText (..))
 import Lens.Micro (lens)
 import LittleLogger (HasSimpleLog (..), Severity, SimpleLogAction, defaultSimpleLogAction, filterActionSeverity, logError)
 import LittleRIO (RIO, runRIO)
-import UnliftIO.Directory (createDirectoryIfMissing, doesDirectoryExist)
+import UnliftIO.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
 import UnliftIO.Exception (catchIO)
 
 data App = App
@@ -76,6 +77,9 @@ appCreateDir dir = catchIO (createDirectoryIfMissing False dir) (appLogAndThrow 
 
 appDoesDirectoryExist :: Directory -> AppM Bool
 appDoesDirectoryExist = doesDirectoryExist
+
+appDoesFileExist :: FilePath -> AppM Bool
+appDoesFileExist = doesFileExist
 
 appFindFiles :: (FilePath -> Bool) -> Maybe Directory -> AppM [FilePath]
 appFindFiles _pcate _mayDir = error "TODO: find files"
