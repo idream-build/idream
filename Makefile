@@ -2,7 +2,7 @@ include Makefile.base
 
 .PHONY: install
 install:
-	stack install idream
+	stack build idream --test --no-run-tests --copy-bins
 
 .PHONY: smoke_build
 smoke_build:
