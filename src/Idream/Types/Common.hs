@@ -20,12 +20,11 @@ data PackageType = PkgTypeLibrary | PkgTypeExecutable | PkgTypeTest
 
 instance FromJSON PackageType where
   parseJSON =
-    withText "PackageType" $ \s ->
-      case s of
-        "library" -> pure PkgTypeLibrary
-        "executable" -> pure PkgTypeExecutable
-        "test" -> pure PkgTypeTest
-        _ -> fail "Expected one of: library/executable/test"
+    withText "PackageType" $ \case
+      "library" -> pure PkgTypeLibrary
+      "executable" -> pure PkgTypeExecutable
+      "test" -> pure PkgTypeTest
+      _ -> fail "Expected one of: library/executable/test"
 
 instance ToJSON PackageType where
   toJSON p =

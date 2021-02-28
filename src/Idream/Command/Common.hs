@@ -16,24 +16,24 @@ module Idream.Command.Common
   , ProjParseErr (..)
   ) where
 
+import Control.Exception (Exception (..))
 import Data.Foldable (toList)
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Traversable (for)
-import Control.Exception (Exception (..))
 import Idream.App (AppM)
 import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, unionAllDeps, unionDeps)
 import Idream.Effects.Serde (serdeReadJSON)
-import Idream.Types.Common (PackageName (..), RepoName (..))
-import Idream.Types.External (Package (..), PackageSet (..), Project (..), PackageRef (..), RepoRef (..))
-import Idream.Types.Internal (ResolvedProject (..))
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
-import System.FilePath ((</>))
 import Idream.FileLogic (pkgFileName)
+import Idream.Types.Common (PackageName (..), RepoName (..))
+import Idream.Types.External (Package (..), PackageRef (..), PackageSet (..), Project (..), RepoRef (..))
+import Idream.Types.Internal (ResolvedProject (..))
+import System.FilePath ((</>))
 
 -- | Error type for describing errors when parsing project file.
 data ProjParseErr = ProjParseErr FilePath String

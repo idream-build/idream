@@ -9,8 +9,8 @@ module Idream.Effects.Git
 import Data.Text (Text)
 import qualified Data.Text as T
 import Idream.App (AppM)
-import Idream.FilePaths (Directory)
 import Idream.Effects.Process (Arg, Result (..), Spec (..), procInvokeEnsure, procInvokeEnsure_)
+import Idream.FilePaths (Directory)
 
 gitClone :: Directory -> Text -> Text -> AppM ()
 gitClone repoDir url commit = procInvokeEnsure_ spec where

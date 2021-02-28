@@ -1,10 +1,10 @@
 module Idream.DepsTest where
 
-import Idream.Deps
-import Test.Tasty (TestTree)
-import Test.Tasty.HUnit (testCase, (@?=))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, depsFromPath, revDeps)
+import Test.Tasty (TestTree)
+import Test.Tasty.HUnit (testCase, (@?=))
 
 type D = Deps Int Int
 

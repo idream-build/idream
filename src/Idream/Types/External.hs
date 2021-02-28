@@ -10,7 +10,7 @@ module Idream.Types.External
   , PackageSet (..)
   ) where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, withText, withObject, (.:), (.:?), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, withObject, withText, (.:), (.:?), (.=))
 import Data.Map (Map)
 import Data.Text (Text)
 import Idream.FilePaths (Directory)

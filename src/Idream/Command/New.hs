@@ -9,7 +9,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Idream.App (AppM)
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsWriteFile)
-import Idream.FileLogic (buildDir, projFileName, pkgSetFileName)
+import Idream.FileLogic (buildDir, pkgSetFileName, projFileName)
 import Idream.FilePaths (Directory)
 import Idream.Types.Common (ProjectName (..))
 import LittleLogger (logInfo)
