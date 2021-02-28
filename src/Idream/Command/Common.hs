@@ -1,111 +1,121 @@
 module Idream.Command.Common
-  ( setupBuildDir
-  , readProjFile
-  , readRootProjFile
-  , readPkgFile
+  ( readPkgFile
   , readPkgSetFile
-  , readRootPkgSetFile
-  , getPkgDirPath
-  , getPkgFilePath
+  , readProjFile
+  , resolveProj
+  , PackageGroup (..)
+  , mkPkgGroup
+  , pkgGroupToText
+  , reposForGroup
   , PkgParseErr (..)
   , PkgSetParseErr (..)
   , ProjParseErr (..)
-  , RootProjMissingErr (..)
-  , RootPkgSetMissingErr (..)
   ) where
 
-import Control.Exception (Exception (..))
+import Data.Foldable (toList)
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Traversable (for)
+import Control.Exception (Exception (..))
 import Idream.App (AppM)
-import Idream.Effects.FileSystem (fsCreateDir, fsDoesFileExist)
+import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, unionAllDeps, unionDeps)
 import Idream.Effects.Serde (serdeReadJSON)
-import Idream.FileLogic (buildDir, pkgFile, pkgSetFile, projectFile)
-import Idream.FilePaths (Directory)
-import Idream.Types (Package (..), PackageName (..), PackageSet, Project (..), ProjectName (..))
+import Idream.Types.Common (PackageName (..), RepoName (..))
+import Idream.Types.External (Package (..), PackageSet (..), Project (..), PackageRef (..), RepoRef (..))
+import Idream.Types.Internal (ResolvedProject (..))
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 import System.FilePath ((</>))
-import UnliftIO.Exception (throwIO)
+import Idream.FileLogic (pkgFileName)
 
 -- | Error type for describing errors when parsing project file.
-newtype ProjParseErr = ProjParseErr String
+data ProjParseErr = ProjParseErr FilePath String
   deriving (Eq, Show)
 
 instance Exception ProjParseErr where
-  displayException (ProjParseErr err) =
-    "Failed to parse project file: " <> err <> "."
+  displayException (ProjParseErr path err) =
+    "Failed to parse project file at " <> path <> ": " <> err <> "."
 
 -- | Error type used for describing errors that can occur while reading out a package file.
-newtype PkgParseErr = PkgParseErr String
+data PkgParseErr = PkgParseErr FilePath String
   deriving (Eq, Show)
 
 instance Exception PkgParseErr where
-  displayException (PkgParseErr err) =
-    "Failed to parse package file: " <> err <> "."
+  displayException (PkgParseErr path err) =
+    "Failed to parse package file at " <> path <> ": " <> err <> "."
 
 -- | Error type used for describing errors that can occur while reading out a package set file.
-newtype PkgSetParseErr = PkgSetParseErr String
+data PkgSetParseErr = PkgSetParseErr FilePath String
   deriving (Eq, Show)
 
 instance Exception PkgSetParseErr where
-  displayException (PkgSetParseErr err) =
-    "Failed to parse package set file: " <> err <> "."
-
--- | Error type indicating that the root project is missing.
-data RootProjMissingErr = RootProjMissingErr
-  deriving (Eq, Show)
-
-instance Exception RootProjMissingErr where
-  displayException RootProjMissingErr =
-    "Missing root project at " <> projectFile <> "."
-
--- | Error type indicating that the root package set is missing.
-data RootPkgSetMissingErr = RootPkgSetMissingErr
-  deriving (Eq, Show)
-
-instance Exception RootPkgSetMissingErr where
-  displayException RootPkgSetMissingErr =
-    "Missing root package set at " <> pkgSetFile <> "."
-
--- | Creates a build directory in which idream will store all build artifacts.
-setupBuildDir :: AppM ()
-setupBuildDir = fsCreateDir buildDir
-
--- | Reads out a project file (idr-project.json).
-readProjFile :: FilePath -> AppM Project
-readProjFile = serdeReadJSON ProjParseErr
-
--- | Reads out the top level project file (idr-project.json).
-readRootProjFile :: AppM Project
-readRootProjFile = do
-  exists <- fsDoesFileExist projectFile
-  if exists
-    then readProjFile projectFile
-    else throwIO RootProjMissingErr
+  displayException (PkgSetParseErr path err) =
+    "Failed to parse package set file at " <> path <> ": " <> err <> "."
 
 -- | Reads out a package file (idr-package.json)
 readPkgFile :: FilePath -> AppM Package
-readPkgFile = serdeReadJSON PkgParseErr
+readPkgFile path = serdeReadJSON (PkgParseErr path) path
 
 -- | Reads out a package set file (idr-package-set.json)
 readPkgSetFile :: FilePath -> AppM PackageSet
-readPkgSetFile = serdeReadJSON PkgSetParseErr
+readPkgSetFile path = serdeReadJSON (PkgSetParseErr path) path
 
--- | Reads out the top level package set file (idr-package-set.json).
-readRootPkgSetFile :: AppM PackageSet
-readRootPkgSetFile = do
-  exists <- fsDoesFileExist pkgSetFile
-  if exists
-    then readPkgSetFile pkgSetFile
-    else throwIO RootPkgSetMissingErr
+-- | Reads out a project file (idr-project.json).
+readProjFile :: FilePath -> AppM Project
+readProjFile path = serdeReadJSON (ProjParseErr path) path
 
--- Helper function to determine location of package directory.
-getPkgDirPath :: PackageName -> ProjectName -> AppM Directory
-getPkgDirPath pkg@(PackageName pkgName) (ProjectName projName) = do
-  (Project _ rootPkgNames) <- readRootProjFile
-  let basePath = if pkg `elem` rootPkgNames
-                   then "."
-                   else buildDir </> "src" </> T.unpack projName
-  pure (basePath </> T.unpack pkgName)
+-- | Reads project and package info into one struct.
+resolveProj :: Project -> AppM ResolvedProject
+resolveProj (Project pn mpaths) = do
+  let paths = fromMaybe [] mpaths
+  pairs <- for paths $ \path -> do
+    pkg <- readPkgFile (path </> pkgFileName)
+    pure (path, pkg)
+  pure (ResolvedProject pn pairs)
 
--- Helper function to determine location of package file.
-getPkgFilePath :: PackageName -> ProjectName -> AppM FilePath
-getPkgFilePath pkgName projName = (</> pkgFile) <$> getPkgDirPath pkgName projName
+initRepoDeps :: PackageSet -> Deps PackageName RepoName
+initRepoDeps (PackageSet _ pkgs) = depsFromEdges edges where
+  edges = fmap mkEdge (maybe [] Map.toList pkgs)
+  mkEdge (name, PackageRef repo _ _ _) = (name, repo)
+
+initPkgDeps :: ResolvedProject -> Deps PackageName PackageName
+initPkgDeps (ResolvedProject  _ pkgs) = depsFromGroups groups where
+  groups = fmap (mkGroup . snd) pkgs
+  mkGroup (Package name _ _ depends) = (name, maybe Set.empty Set.fromList depends)
+
+repoDeps :: ResolvedProject -> PackageSet -> Deps PackageName RepoName
+repoDeps rp ps = composeDeps (closureDeps (initPkgDeps rp)) (initRepoDeps ps)
+
+allRepos :: ResolvedProject -> PackageSet -> Set RepoName
+allRepos rp ps = unionAllDeps (repoDeps rp ps)
+
+specificRepos :: Foldable f => ResolvedProject -> PackageSet -> f PackageName -> Set RepoName
+specificRepos rp ps pns = unionDeps pns (repoDeps rp ps)
+
+data PackageGroup =
+    PackageGroupAll
+  | PackageGroupSubset (Set PackageName)
+  deriving (Eq, Show)
+
+mkPkgGroup :: Foldable f => f PackageName -> PackageGroup
+mkPkgGroup pns =
+  case toList pns of
+    [] -> PackageGroupAll
+    x -> PackageGroupSubset (Set.fromList x)
+
+pkgGroupToText :: PackageGroup -> Text
+pkgGroupToText g =
+  case g of
+    PackageGroupAll -> "all packages"
+    PackageGroupSubset pns -> "selected packages (" <> T.intercalate ", " (fmap unPkgName (Set.toList pns)) <> ")"
+
+reposForGroup :: ResolvedProject -> PackageSet -> PackageGroup -> Map RepoName RepoRef
+reposForGroup rp ps g =
+  let repos = case g of
+        PackageGroupAll -> allRepos rp ps
+        PackageGroupSubset pns -> specificRepos rp ps pns
+      refs = fromMaybe Map.empty (psRepos ps)
+  in Map.fromList (fmap (\r -> (r, refs Map.! r)) (Set.toList repos))

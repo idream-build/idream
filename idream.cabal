@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ef50018e045efe4e282ca266ffaf685715b1289302ddc11209be54f5a8deeba6
+-- hash: 7cb2240ea2fa80299ddda47fe63d3bfb7ccadc5681e1738fef258aae0655dca8
 
 name:           idream
 version:        0.2.0.0
@@ -34,6 +34,7 @@ library
       Idream.Command.Repl
       Idream.Command.Run
       Idream.Command.Test
+      Idream.Deps
       Idream.Effects.FileSystem
       Idream.Effects.Git
       Idream.Effects.Idris
@@ -47,14 +48,16 @@ library
       Idream.OldEffects.Git
       Idream.OldEffects.Idris
       Idream.OptionParser
-      Idream.ToText
       Idream.Types
+      Idream.Types.Command
+      Idream.Types.Common
+      Idream.Types.External
+      Idream.Types.Internal
   other-modules:
       Paths_idream
   hs-source-dirs:
       src
-  default-extensions: DeriveFoldable OverloadedStrings
-  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
+  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase OverloadedStrings ScopedTypeVariables
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
@@ -73,7 +76,9 @@ library
     , process >=1.6 && <1.7
     , shelly >=1.9 && <1.10
     , text >=1.2 && <1.3
+    , text-show >=3.9 && <3.10
     , unliftio >=0.2 && <0.3
+    , unordered-containers >=0.2 && <0.3
   default-language: Haskell2010
 
 executable idream
@@ -82,8 +87,7 @@ executable idream
       Paths_idream
   hs-source-dirs:
       exe
-  default-extensions: DeriveFoldable OverloadedStrings
-  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
+  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase OverloadedStrings ScopedTypeVariables
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
@@ -103,7 +107,9 @@ executable idream
     , process >=1.6 && <1.7
     , shelly >=1.9 && <1.10
     , text >=1.2 && <1.3
+    , text-show >=3.9 && <3.10
     , unliftio >=0.2 && <0.3
+    , unordered-containers >=0.2 && <0.3
   default-language: Haskell2010
 
 test-suite idream-test
@@ -114,8 +120,7 @@ test-suite idream-test
       Paths_idream
   hs-source-dirs:
       test
-  default-extensions: DeriveFoldable OverloadedStrings
-  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
+  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase OverloadedStrings ScopedTypeVariables
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
@@ -138,5 +143,7 @@ test-suite idream-test
     , tasty-discover >=4.2 && <4.3
     , tasty-hspec >=1.1 && <1.2
     , text >=1.2 && <1.3
+    , text-show >=3.9 && <3.10
     , unliftio >=0.2 && <0.3
+    , unordered-containers >=0.2 && <0.3
   default-language: Haskell2010

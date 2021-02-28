@@ -3,19 +3,21 @@ module Idream.Exe
   , main
   ) where
 
+import qualified Data.Text as T
 import Idream.App (AppM, newApp, runAppM)
 import Idream.Command.Add (addPackageToProject)
 -- import Idream.Command.Clean (cleanCode)
-import Idream.Command.Compile (compileCode)
+-- import Idream.Command.Compile (compileCode)
 import Idream.Command.Fetch (fetchDeps)
-import Idream.Command.GenerateIpkg (generateIpkgFile)
+-- import Idream.Command.GenerateIpkg (generateIpkgFile)
 -- import Idream.Command.MkDoc (generateDocs)
 import Idream.Command.New (startNewProject)
 -- import Idream.Command.Repl (startRepl)
 -- import Idream.Command.Run (runCode)
 -- import Idream.Command.Test (runTests)
 import Idream.OptionParser (parseCmdLineArgs)
-import Idream.Types (Args (..), Command (..))
+import Idream.Types.Command (Args (..), Command (..))
+import Idream.Types.Common (PackageName (..), ProjectName (..))
 
 -- | Main function.
 main :: IO ()
@@ -28,14 +30,14 @@ main = do
 processCommand :: Command -> AppM ()
 processCommand command =
   case command of
-    Fetch -> fetchDeps
-    Compile -> compileCode
+    Fetch -> fetchDeps "." []
+    -- Compile -> compileCode
     -- Clean -> cleanCode
     -- Run runArgs -> runCode runArgs
     -- Repl projName pkgName -> startRepl projName pkgName
-    New projName -> startNewProject projName
-    Add pkgName pkgType -> addPackageToProject pkgName pkgType
+    New projName -> startNewProject (T.unpack (unProjName projName)) projName
+    Add pkgName pkgType -> addPackageToProject "." (T.unpack (unPkgName pkgName)) pkgName pkgType
     -- MkDoc -> generateDocs
-    GenerateIpkg -> generateIpkgFile
+    -- GenerateIpkg -> generateIpkgFile
     -- Test -> runTests
     _ -> error "TODO"

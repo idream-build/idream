@@ -28,13 +28,19 @@ dependencies:
   - process >= 1.6 && < 1.7
   - shelly >= 1.9 && < 1.10
   - text >= 1.2 && < 1.3
+  - text-show >= 3.9 && < 3.10
   - unliftio >= 0.2 && < 0.3
+  - unordered-containers >= 0.2 && < 0.3
 
-ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path  # -O2
+# ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path  # -O2
 
 default-extensions:
   - DeriveFoldable
+  - DerivingStrategies
+  - GeneralizedNewtypeDeriving
+  - LambdaCase
   - OverloadedStrings
+  - ScopedTypeVariables
 
 library:
   source-dirs: src

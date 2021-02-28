@@ -3,7 +3,8 @@ module Idream.OptionParser
   ) where
 
 import Data.Maybe (fromMaybe)
-import Idream.Types (Args (..), Command (..), PackageName (..), PackageType (..), ProjectName (..))
+import Idream.Types.Command (Args (..), Command (..))
+import Idream.Types.Common (PackageName (..), PackageType (..), ProjectName (..))
 import LittleLogger (Severity (..))
 import Options.Applicative
 
@@ -37,8 +38,9 @@ commandParser = hsubparser commands where
   newCmdParser = New <$> (ProjectName <$> strArgument (metavar "PROJECT_NAME"))
   addCmdParser = Add <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
                      <*> codeTypeParser
-  codeTypeParser =  flag' Library (long "lib")
-                <|> flag' Executable (long "exe")
+  codeTypeParser =  flag' PkgTypeLibrary (long "lib")
+                <|> flag' PkgTypeExecutable (long "exe")
+                <|> flag' PkgTypeTest (long "test")
 
 -- | Helper function for parsing the command line arguments.
 argsParser :: Parser Args

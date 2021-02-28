@@ -1,28 +1,41 @@
 module Idream.Command.Add
   ( addPackageToProject
-  , PackageAlreadyExistsErr (..)
+  , PackageDirAlreadyExistsErr (..)
+  , PackageNameAlreadyExistsErr (..)
   ) where
 
 import Control.Exception (Exception (..))
+import Control.Monad (when)
+import Data.Foldable (for_)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Idream.App (AppM)
-import Idream.Command.Common (readRootProjFile)
+import Idream.Command.Common (readProjFile, resolveProj)
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsWriteFile)
 import Idream.Effects.Serde (serdeWriteJSON)
-import Idream.FileLogic (pkgDir, pkgFile, pkgSrcDir, projectFile)
-import Idream.ToText (ToText (..))
-import Idream.Types (PackageName (..), PackageType (..), Project (..))
+import Idream.FilePaths (Directory)
+import Idream.FileLogic (pkgFileName, projFileName)
+import Idream.Types.Common (PackageName (..), PackageType (..))
+import Idream.Types.External (Package (..), Project (..))
+import Idream.Types.Internal (ResolvedProject (..))
 import LittleLogger (logInfo)
 import System.FilePath ((</>))
 import UnliftIO.Exception (throwIO)
 
-newtype PackageAlreadyExistsErr = PackageAlreadyExistsErr PackageName
+data PackageDirAlreadyExistsErr = PackageDirAlreadyExistsErr Directory PackageName
   deriving (Eq, Show)
 
-instance Exception PackageAlreadyExistsErr where
-  displayException (PackageAlreadyExistsErr (PackageName p)) =
-    "Failed to add package to project, package " <> T.unpack p <> " already exists."
+instance Exception PackageDirAlreadyExistsErr where
+  displayException (PackageDirAlreadyExistsErr pkgDir (PackageName p)) =
+    "Failed to add package " <> T.unpack p <> " to project; directory " <> pkgDir <> " already exists."
+
+data PackageNameAlreadyExistsErr = PackageNameAlreadyExistsErr Directory PackageName
+  deriving (Eq, Show)
+
+instance Exception PackageNameAlreadyExistsErr where
+  displayException (PackageNameAlreadyExistsErr pkgDir (PackageName p)) =
+    "Failed to add package " <> T.unpack p <> " to project; it already exists at " <> pkgDir
 
 libIdrContents, mainIdrContents :: Text
 libIdrContents =
@@ -42,43 +55,44 @@ mainIdrContents =
 
 idrPkgJsonContents :: PackageName -> PackageType -> Text
 idrPkgJsonContents (PackageName pkgName) pkgType =
-  T.unlines [ "{"
-            , "    \"name\": \"" <> pkgName <> "\","
-            , "    \"source_dir\": \"src\","
-            , if pkgType == Library
-              then "    \"executable\": false,"
-              else "    \"executable\": true,"
-            , "    \"dependencies\": []"
-            , "}"
-            ]
+  T.unlines
+    [ "{"
+    , "  \"name\": \"" <> pkgName <> "\","
+    , "  \"source_dir\": \"src\","
+    , if pkgType == PkgTypeLibrary
+      then "  \"executable\": false,"
+      else "  \"executable\": true,"
+    , "  \"dependencies\": []"
+    , "}"
+    ]
+
+mainFile :: PackageType -> FilePath
+mainFile PkgTypeLibrary = "Lib.idr"
+mainFile _ = "Main.idr"
+
+mainContents :: PackageType -> Text
+mainContents PkgTypeLibrary = libIdrContents
+mainContents _ = mainIdrContents
 
 -- | Creates a new project template.
-addPackageToProject :: PackageName -> PackageType -> AppM ()
-addPackageToProject pkgName@(PackageName name) pkgType = do
-  pkgDirExists <- fsDoesDirectoryExist (T.unpack name)
+addPackageToProject :: Directory -> Directory -> PackageName -> PackageType -> AppM ()
+addPackageToProject projDir pkgSubDir pkgName pkgType = do
+  let pkgDir = projDir </> pkgSubDir
+  pkgDirExists <- fsDoesDirectoryExist pkgDir
   if pkgDirExists
-    then throwIO (PackageAlreadyExistsErr pkgName)
-    else addPackageToProject' pkgName pkgType
-
--- | Does the actual creation of the project template.
-addPackageToProject' :: PackageName -> PackageType -> AppM ()
-addPackageToProject' pkgName pkgType = do
-  projInfo <- readRootProjFile
-  fsCreateDir (pkgDir pkgName)
-  fsCreateDir (pkgSrcDir pkgName)
-  fsWriteFile (pkgDir pkgName </> pkgFile) (idrPkgJsonContents pkgName pkgType)
-  fsWriteFile (pkgSrcDir pkgName </> mainFile pkgType) (mainContents pkgType)
-  updateProjInfo projInfo pkgName
-  logInfo ("Successfully added package " <> toText pkgName <> " to project.")
-  where mainFile Library = "Lib.idr"
-        mainFile Executable = "Main.idr"
-        mainContents Library = libIdrContents
-        mainContents Executable = mainIdrContents
-
--- | Updates the project file with a new package entry.
-updateProjInfo :: Project -> PackageName -> AppM ()
-updateProjInfo projInfo pkgName =
-  let projFilePath = projectFile
-      updatedDeps = projDeps projInfo ++ [pkgName]
-      projInfo' = projInfo { projDeps = updatedDeps }
-   in serdeWriteJSON projFilePath projInfo'
+    then throwIO (PackageDirAlreadyExistsErr pkgDir pkgName)
+    else do
+      let pkgSrcDir = pkgDir </> "src"
+          projFile = projDir </> projFileName
+      proj <- readProjFile projFile
+      resolvedProj <- resolveProj proj
+      for_ (rpPackages resolvedProj) $ \(d, p) ->
+        when (packageName p == pkgName) (throwIO (PackageNameAlreadyExistsErr d pkgName))
+      fsCreateDir pkgDir
+      fsCreateDir pkgSrcDir
+      fsWriteFile (pkgDir </> pkgFileName) (idrPkgJsonContents pkgName pkgType)
+      fsWriteFile (pkgSrcDir </> mainFile pkgType) (mainContents pkgType)
+      let paths = fromMaybe [] (projectPaths proj) ++ [pkgSubDir]
+          proj' = proj { projectPaths = Just paths }
+      serdeWriteJSON projFile proj'
+      logInfo ("Successfully added package " <> unPkgName pkgName <> " to project.")

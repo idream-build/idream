@@ -6,9 +6,12 @@ module Idream.Effects.Process
   , Result (..)
   , procInvoke
   , procEnsureSuccess
+  , procInvokeEnsure
+  , procInvokeEnsure_
   ) where
 
 import Control.Exception (Exception (..))
+import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
@@ -81,3 +84,12 @@ procEnsureSuccess spec (Result code out err) =
   case code of
     ExitSuccess -> pure ()
     ExitFailure failCode -> throwIO (ProcessFailedErr spec failCode out err)
+
+procInvokeEnsure :: Spec -> AppM Result
+procInvokeEnsure spec = do
+  res <- procInvoke spec
+  procEnsureSuccess spec res
+  pure res
+
+procInvokeEnsure_ :: Spec -> AppM ()
+procInvokeEnsure_ = void . procInvokeEnsure
