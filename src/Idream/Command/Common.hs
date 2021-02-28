@@ -4,6 +4,10 @@ module Idream.Command.Common
   , readProjFile
   , resolveProj
   , PackageGroup (..)
+  , initPkgDeps
+  , initRepoDeps
+  , repoDeps
+  , allRepos
   , mkPkgGroup
   , pkgGroupToText
   , reposForGroup

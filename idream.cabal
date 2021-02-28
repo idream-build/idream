@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7cb2240ea2fa80299ddda47fe63d3bfb7ccadc5681e1738fef258aae0655dca8
+-- hash: 15cb22f4d4b87461a23201c3fec3c20aa497eb36dcf33986c95a0cccb3c4bbf0
 
 name:           idream
 version:        0.2.0.0
@@ -58,6 +58,7 @@ library
   hs-source-dirs:
       src
   default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase OverloadedStrings ScopedTypeVariables
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
@@ -88,6 +89,7 @@ executable idream
   hs-source-dirs:
       exe
   default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase OverloadedStrings ScopedTypeVariables
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
@@ -116,11 +118,13 @@ test-suite idream-test
   type: exitcode-stdio-1.0
   main-is: test.hs
   other-modules:
+      Idream.DepsTest
       Idream.GraphSpec
       Paths_idream
   hs-source-dirs:
       test
   default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase OverloadedStrings ScopedTypeVariables
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
@@ -142,6 +146,7 @@ test-suite idream-test
     , tasty >=1.2 && <1.3
     , tasty-discover >=4.2 && <4.3
     , tasty-hspec >=1.1 && <1.2
+    , tasty-hunit >=0.10 && <0.11
     , text >=1.2 && <1.3
     , text-show >=3.9 && <3.10
     , unliftio >=0.2 && <0.3

@@ -6,9 +6,10 @@ module Idream.Exe
 import qualified Data.Text as T
 import Idream.App (AppM, newApp, runAppM)
 import Idream.Command.Add (addPackageToProject)
--- import Idream.Command.Clean (cleanCode)
+import Idream.Command.Clean (clean)
 -- import Idream.Command.Compile (compileCode)
-import Idream.Command.Fetch (fetchDeps)
+-- import Idream.Command.Compile (compileCode)
+import Idream.Command.Fetch (Network (..), fetchDeps)
 -- import Idream.Command.GenerateIpkg (generateIpkgFile)
 -- import Idream.Command.MkDoc (generateDocs)
 import Idream.Command.New (startNewProject)
@@ -30,9 +31,9 @@ main = do
 processCommand :: Command -> AppM ()
 processCommand command =
   case command of
-    Fetch -> fetchDeps "." []
+    Fetch -> fetchDeps "." YesNetwork []
     -- Compile -> compileCode
-    -- Clean -> cleanCode
+    Clean -> clean "."
     -- Run runArgs -> runCode runArgs
     -- Repl projName pkgName -> startRepl projName pkgName
     New projName -> startNewProject (T.unpack (unProjName projName)) projName
