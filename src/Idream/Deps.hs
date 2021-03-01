@@ -12,6 +12,7 @@ module Idream.Deps
   , lookupDeps
   , unionAllDeps
   , linearizeDeps
+  , filterDeps
   ) where
 
 import Data.Foldable (toList)
@@ -91,3 +92,13 @@ linearizeDeps d@(Deps n) = finalOut where
               then goEach out seen oks'
               else let deps = maybe [] (fmap OpSearch . Set.toList) (Map.lookup k m)
                    in goEach out (Set.insert k seen) (deps ++ [OpOut k] ++ oks')
+
+filterDeps :: Ord k => (k -> Bool) -> Deps k k -> (Deps k k, Set k)
+filterDeps pcate initDeps@(Deps m) = (finalDeps, finalKs) where
+  initKs = Set.filter pcate (Map.keysSet m)
+  initVs = unionDeps initKs initDeps
+  finalKs = go initKs initVs
+  finalDeps = Deps (Map.filterWithKey (\k _ -> Set.member k finalKs) m)
+  go ks vs =
+    let us = Set.difference vs ks
+    in if Set.null us then ks else go (ks <> us) (unionDeps us initDeps)

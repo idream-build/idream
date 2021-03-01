@@ -2,12 +2,23 @@ module Idream.Command.Compile
   ( compile
   ) where
 
+import Data.Foldable (for_)
 import Idream.App (AppM)
+import Idream.Command.Common (PackageGroup, pkgGroupToText, pkgDepsForGroup, withResolvedProject)
+import Idream.Deps (linearizeDeps)
 import Idream.FilePaths (Directory)
-import Idream.Command.Common (PackageGroup)
+import Idream.Types.Common (ProjectName (..), PackageName (..))
+import Idream.Types.Internal (ResolvedProject (..))
+import LittleLogger (logInfo)
 
 compile :: Directory -> PackageGroup -> AppM ()
-compile = undefined
+compile projDir group = do
+  withResolvedProject "compile" projDir $ \rp -> do
+    logInfo ("Compiling project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
+    let filtDeps = pkgDepsForGroup rp group
+        linPkgs = linearizeDeps filtDeps
+    for_ linPkgs $ \pkg -> do
+      logInfo ("TODO compile " <> unPkgName pkg)
 
 -- import Data.Foldable (for_)
 -- import qualified Data.Text as T

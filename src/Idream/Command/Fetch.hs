@@ -12,15 +12,15 @@ import Data.Foldable (for_)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import Idream.App (AppM)
-import Idream.Command.Common (PackageGroup, pkgGroupToText, readPkgSetFile, readProjFile, reposForGroup, resolveProj)
+import Idream.Command.Common (PackageGroup, pkgGroupToText, readPkgSetFile, reposForGroup, withResolvedProject)
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsRemovePath)
 import Idream.Effects.Git (gitClone, gitFetch, gitReadCurrentBranch, gitReadOriginUrl, gitSwitch)
-import Idream.FileLogic (fetchDir, pkgSetFileName, projFileName)
+import Idream.FileLogic (fetchDir, pkgSetFileName)
 import Idream.FilePaths (Directory)
 import Idream.Types.Common (ProjectName (..), RepoName (..))
-import Idream.Types.External (GitRepoRef (..), LocalRepoRef (..), Project (..), RepoRef (..))
+import Idream.Types.External (GitRepoRef (..), LocalRepoRef (..), RepoRef (..))
 import Idream.Types.Internal (ResolvedProject (..))
-import LittleLogger (logInfo, logWarning)
+import LittleLogger (logInfo)
 import System.FilePath ((</>))
 import UnliftIO.Exception (throwIO)
 
@@ -53,22 +53,18 @@ instance Exception MissingLocalPathErr where
 -- | Top level function that tries to fetch all dependencies.
 fetchDeps :: Directory -> Network -> PackageGroup -> AppM ()
 fetchDeps projDir network group = do
-  proj <- readProjFile (projDir </> projFileName)
-  logInfo ("Fetching dependencies for project " <> unProjName (projectName proj) <> " with " <> pkgGroupToText group <> ".")
-  resolvedProj <- resolveProj proj
-  if null (rpPackages resolvedProj)
-    then logWarning ("Project contains no packages yet, skipping fetch step. "
-                    <> "Use `idream add` to add a package to this project first.")
-    else do
-      pkgSet <- readPkgSetFile (projDir </> pkgSetFileName)
-      let repoRefs = reposForGroup resolvedProj pkgSet group
-      logInfo "Resolving dependencies"
-      fsCreateDir fetchDir
-      for_ (Map.toList repoRefs) $ \(repo, ref) -> do
-        fetchRepo projDir network repo ref
+  withResolvedProject "fetch" projDir $ \rp -> do
+    logInfo ("Fetching dependencies for project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
+    pkgSet <- readPkgSetFile (projDir </> pkgSetFileName)
+    let repoRefs = reposForGroup rp pkgSet group
+    logInfo "Resolving dependencies"
+    fsCreateDir fetchDir
+    for_ (Map.toList repoRefs) $ \(repo, ref) -> do
+      fetchRepo projDir network repo ref
   logInfo "Finished fetching dependencies."
 
 -- | Fetches a project as specified in the top level package set file.
+-- TODO(ejconlon) Recursively fetch repo deps for idream projects
 fetchRepo :: Directory -> Network -> RepoName -> RepoRef -> AppM ()
 fetchRepo projDir network repo ref =
   case ref of

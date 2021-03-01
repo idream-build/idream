@@ -9,8 +9,11 @@ module Idream.Command.Common
   , repoDeps
   , allRepos
   , mkPkgGroup
+  , pkgGroupMember
   , pkgGroupToText
   , reposForGroup
+  , pkgDepsForGroup
+  , withResolvedProject
   , PkgParseErr (..)
   , PkgSetParseErr (..)
   , ProjParseErr (..)
@@ -27,13 +30,15 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Traversable (for)
 import Idream.App (AppM)
-import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, unionAllDeps, unionDeps)
+import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, filterDeps, unionAllDeps, unionDeps)
 import Idream.Effects.Serde (serdeReadJSON)
-import Idream.FileLogic (pkgFileName)
+import Idream.FileLogic (pkgFileName, projFileName)
+import Idream.FilePaths (Directory)
 import Idream.Types.Common (PackageName (..), RepoName (..))
 import Idream.Types.External (Package (..), PackageRef (..), PackageSet (..), Project (..), RepoRef (..))
 import Idream.Types.Internal (ResolvedProject (..))
 import System.FilePath ((</>))
+import LittleLogger (logWarning)
 
 -- | Error type for describing errors when parsing project file.
 data ProjParseErr = ProjParseErr FilePath String
@@ -110,6 +115,12 @@ mkPkgGroup pns =
     [] -> PackageGroupAll
     x -> PackageGroupSubset (Set.fromList x)
 
+pkgGroupMember :: PackageName -> PackageGroup -> Bool
+pkgGroupMember p g =
+  case g of
+    PackageGroupAll -> True
+    PackageGroupSubset s -> Set.member p s
+
 pkgGroupToText :: PackageGroup -> Text
 pkgGroupToText g =
   case g of
@@ -123,3 +134,19 @@ reposForGroup rp ps g =
         PackageGroupSubset pns -> specificRepos rp ps pns
       refs = fromMaybe Map.empty (psRepos ps)
   in Map.fromList (fmap (\r -> (r, refs Map.! r)) (Set.toList repos))
+
+pkgDepsForGroup :: ResolvedProject -> PackageGroup -> Deps PackageName PackageName
+pkgDepsForGroup rp g =
+  let ipd = initPkgDeps rp
+  in case g of
+    PackageGroupAll -> ipd
+    PackageGroupSubset s -> fst (filterDeps (`Set.member` s) ipd)
+
+withResolvedProject :: Text -> Directory -> (ResolvedProject -> AppM ()) -> AppM ()
+withResolvedProject step projDir act = do
+  proj <- readProjFile (projDir </> projFileName)
+  rp <- resolveProj proj
+  if null (rpPackages rp)
+    then logWarning ("Project contains no packages yet, skipping " <> step <> " step."
+                    <> "Use `idream add` to add a package to this project first.")
+    else act rp

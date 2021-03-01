@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 15cb22f4d4b87461a23201c3fec3c20aa497eb36dcf33986c95a0cccb3c4bbf0
+-- hash: ece1d3e85ed756fb75d8546205cd676628b2ac4e09f12dd80a4c37a2f33f6e54
 
 name:           idream
 version:        0.2.0.0
@@ -43,9 +43,6 @@ library
       Idream.Exe
       Idream.FileLogic
       Idream.FilePaths
-      Idream.Graph
-      Idream.OldEffects.FileSystem
-      Idream.OldEffects.Git
       Idream.OldEffects.Idris
       Idream.OptionParser
       Idream.Types
@@ -119,7 +116,6 @@ test-suite idream-test
   main-is: test.hs
   other-modules:
       Idream.DepsTest
-      Idream.GraphSpec
       Paths_idream
   hs-source-dirs:
       test
@@ -145,7 +141,6 @@ test-suite idream-test
     , shelly >=1.9 && <1.10
     , tasty >=1.2 && <1.3
     , tasty-discover >=4.2 && <4.3
-    , tasty-hspec >=1.1 && <1.2
     , tasty-hunit >=0.10 && <0.11
     , text >=1.2 && <1.3
     , text-show >=3.9 && <3.10
