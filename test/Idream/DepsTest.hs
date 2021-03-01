@@ -2,7 +2,8 @@ module Idream.DepsTest where
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, depsFromPath, revDeps)
+import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, depsFromPath, linearizeDeps,
+                    revDeps)
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (testCase, (@?=))
 
@@ -29,3 +30,5 @@ test_deps = testCase "deps" $ do
   e1 @?= e2
   c1 <> d1 @?= e1
   d1 <> c1 @?= e1
+  linearizeDeps d1 @?= [3, 2, 1]
+  linearizeDeps x1 @?= [1, 2, 3]

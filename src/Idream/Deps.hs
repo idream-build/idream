@@ -11,6 +11,7 @@ module Idream.Deps
   , unionDeps
   , lookupDeps
   , unionAllDeps
+  , linearizeDeps
   ) where
 
 import Data.Foldable (toList)
@@ -70,3 +71,23 @@ lookupDeps k = fromMaybe Set.empty . Map.lookup k . unDeps
 
 unionAllDeps :: (Ord k, Ord v) => Deps k v -> Set v
 unionAllDeps d@(Deps kvs) = unionDeps (Map.keys kvs) d
+
+data Op k = OpSearch !k | OpOut !k deriving (Eq, Show)
+
+linearizeDeps :: Ord k => Deps k k -> [k]
+linearizeDeps d@(Deps n) = finalOut where
+  Deps m = revDeps d
+  roots = Map.keysSet n <> Map.keysSet m
+  (finalOut, _) = foldr goRoot ([], Set.empty) (Set.toList roots)
+  goRoot k (out, seen) = goEach out seen [OpSearch k]
+  goEach out seen oks =
+    case oks of
+      [] -> (out, seen)
+      (ok:oks') ->
+        case ok of
+          OpOut k -> goEach (k:out) seen oks'
+          OpSearch k ->
+            if Set.member k seen
+              then goEach out seen oks'
+              else let deps = maybe [] (fmap OpSearch . Set.toList) (Map.lookup k m)
+                   in goEach out (Set.insert k seen) (deps ++ [OpOut k] ++ oks')
