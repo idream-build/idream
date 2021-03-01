@@ -12,12 +12,12 @@ import Data.Foldable (for_)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import Idream.App (AppM)
-import Idream.Command.Common (mkPkgGroup, pkgGroupToText, readPkgSetFile, readProjFile, reposForGroup, resolveProj)
+import Idream.Command.Common (PackageGroup, pkgGroupToText, readPkgSetFile, readProjFile, reposForGroup, resolveProj)
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsRemovePath)
 import Idream.Effects.Git (gitClone, gitFetch, gitReadCurrentBranch, gitReadOriginUrl, gitSwitch)
 import Idream.FileLogic (fetchDir, pkgSetFileName, projFileName)
 import Idream.FilePaths (Directory)
-import Idream.Types.Common (PackageName, ProjectName (..), RepoName (..))
+import Idream.Types.Common (ProjectName (..), RepoName (..))
 import Idream.Types.External (GitRepoRef (..), LocalRepoRef (..), Project (..), RepoRef (..))
 import Idream.Types.Internal (ResolvedProject (..))
 import LittleLogger (logInfo, logWarning)
@@ -51,9 +51,8 @@ instance Exception MissingLocalPathErr where
     "Missing local path for repo: " <> T.unpack n <> " - " <> path
 
 -- | Top level function that tries to fetch all dependencies.
-fetchDeps :: Directory -> Network -> [PackageName] -> AppM ()
-fetchDeps projDir network pkgNames = do
-  let group = mkPkgGroup pkgNames
+fetchDeps :: Directory -> Network -> PackageGroup -> AppM ()
+fetchDeps projDir network group = do
   proj <- readProjFile (projDir </> projFileName)
   logInfo ("Fetching dependencies for project " <> unProjName (projectName proj) <> " with " <> pkgGroupToText group <> ".")
   resolvedProj <- resolveProj proj

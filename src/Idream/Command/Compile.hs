@@ -1,6 +1,13 @@
-module Idream.Command.Compile where
---   ( compileCode
---   ) where
+module Idream.Command.Compile
+  ( compile
+  ) where
+
+import Idream.App (AppM)
+import Idream.FilePaths (Directory)
+import Idream.Command.Common (PackageGroup)
+
+compile :: Directory -> PackageGroup -> AppM ()
+compile = undefined
 
 -- import Data.Foldable (for_)
 -- import qualified Data.Text as T
