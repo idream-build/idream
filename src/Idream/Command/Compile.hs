@@ -4,10 +4,10 @@ module Idream.Command.Compile
 
 import Data.Foldable (for_)
 import Idream.App (AppM)
-import Idream.Command.Common (PackageGroup, pkgGroupToText, pkgDepsForGroup, withResolvedProject)
+import Idream.Command.Common (PackageGroup, pkgDepsForGroup, pkgGroupToText, withResolvedProject)
 import Idream.Deps (linearizeDeps)
 import Idream.FilePaths (Directory)
-import Idream.Types.Common (ProjectName (..), PackageName (..))
+import Idream.Types.Common (PackageName (..), ProjectName (..))
 import Idream.Types.Internal (ResolvedProject (..))
 import LittleLogger (logInfo)
 

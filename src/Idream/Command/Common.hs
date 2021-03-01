@@ -30,15 +30,16 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Traversable (for)
 import Idream.App (AppM)
-import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, filterDeps, unionAllDeps, unionDeps)
+import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, restrictDeps, unionAllDeps,
+                    unionDeps)
 import Idream.Effects.Serde (serdeReadJSON)
 import Idream.FileLogic (pkgFileName, projFileName)
 import Idream.FilePaths (Directory)
 import Idream.Types.Common (PackageName (..), RepoName (..))
 import Idream.Types.External (Package (..), PackageRef (..), PackageSet (..), Project (..), RepoRef (..))
 import Idream.Types.Internal (ResolvedProject (..))
-import System.FilePath ((</>))
 import LittleLogger (logWarning)
+import System.FilePath ((</>))
 
 -- | Error type for describing errors when parsing project file.
 data ProjParseErr = ProjParseErr FilePath String
@@ -140,7 +141,7 @@ pkgDepsForGroup rp g =
   let ipd = initPkgDeps rp
   in case g of
     PackageGroupAll -> ipd
-    PackageGroupSubset s -> fst (filterDeps (`Set.member` s) ipd)
+    PackageGroupSubset s -> restrictDeps (`Set.member` s) ipd
 
 withResolvedProject :: Text -> Directory -> (ResolvedProject -> AppM ()) -> AppM ()
 withResolvedProject step projDir act = do

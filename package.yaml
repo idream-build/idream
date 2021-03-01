@@ -41,6 +41,7 @@ default-extensions:
   - LambdaCase
   - OverloadedStrings
   - ScopedTypeVariables
+  - TupleSections
 
 library:
   source-dirs: src
