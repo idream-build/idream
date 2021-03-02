@@ -8,6 +8,7 @@ module Idream.Effects.Process
   , procEnsureSuccess
   , procInvokeEnsure
   , procInvokeEnsure_
+  , procDebug_
   ) where
 
 import Control.Exception (Exception (..))
@@ -22,7 +23,7 @@ import Idream.FilePaths (Directory)
 import System.Exit (ExitCode (..))
 import UnliftIO.Environment (getEnv)
 import UnliftIO.Exception (throwIO)
-import UnliftIO.Process (StdStream (CreatePipe), createProcess, cwd, env, proc, std_err, std_out, waitForProcess)
+import UnliftIO.Process (StdStream (..), createProcess, cwd, env, proc, std_err, std_out, waitForProcess)
 
 -- | Type alias for command when spawning an external OS process.
 type Command = String
@@ -93,3 +94,15 @@ procInvokeEnsure spec = do
 
 procInvokeEnsure_ :: Spec -> AppM ()
 procInvokeEnsure_ = void . procInvokeEnsure
+
+procDebug_ :: Spec -> AppM ()
+procDebug_ spec@(Spec cmd cmdArgs maybeWorkDir environ) = do
+  homeDir <- getEnv "HOME"
+  let environ' = ("HOME", homeDir) : environ
+      process = (proc cmd cmdArgs) { cwd = maybeWorkDir, env = Just environ'
+                                    , std_out = Inherit, std_err = Inherit }
+  (_, _, _, procHandle) <- createProcess process
+  code <- waitForProcess procHandle
+  case code of
+    ExitSuccess -> pure ()
+    ExitFailure failCode -> throwIO (ProcessFailedErr spec failCode "" "")

@@ -13,6 +13,7 @@ module Idream.Command.Common
   , pkgGroupToText
   , reposForGroup
   , pkgDepsForGroup
+  , fullPkgDepsForGroup
   , withResolvedProject
   , mkDepInfoMap
   , PkgParseErr (..)
@@ -32,13 +33,13 @@ import qualified Data.Text as T
 import Data.Traversable (for)
 import Idream.App (AppM)
 import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, restrictDeps, unionAllDeps,
-                    unionDeps)
+                    unionDeps, depsVertices, depsFromMap)
 import Idream.Effects.Serde (serdeReadJSON)
 import Idream.FileLogic (pkgFileName, projFileName, fetchDir)
 import Idream.FilePaths (Directory)
 import Idream.Types.Common (PackageName (..), RepoName (..), PackageType (..))
 import Idream.Types.External (Package (..), PackageRef (..), PackageSet (..), Project (..), RepoRef (..), BuildType (..), LocalRepoRef (..))
-import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..), IdreamDepInfo (..), BuiltinDepInfo (..), IpkgDepInfo (..))
+import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..), IdreamDepInfo (..), BuiltinDepInfo (..), IpkgDepInfo (..), depInfoDepends)
 import LittleLogger (logWarning)
 import System.FilePath ((</>), isExtensionOf, makeRelative, isPathSeparator)
 import Idream.Effects.FileSystem (fsFindFiles)
@@ -144,6 +145,16 @@ pkgDepsForGroup rp g =
   in case g of
     PackageGroupAll -> ipd
     PackageGroupSubset s -> restrictDeps (`Set.member` s) ipd
+
+depInfoPkgDeps :: DepInfoMap -> Deps PackageName PackageName
+depInfoPkgDeps = depsFromGroups . fmap (fmap (Set.fromList . depInfoDepends)) . Map.toList . unDepInfoMap
+
+fullPkgDepsForGroup :: ResolvedProject -> PackageGroup -> DepInfoMap -> Deps PackageName PackageName
+fullPkgDepsForGroup rp g dim =
+  let x = pkgDepsForGroup rp g
+      y = depInfoPkgDeps dim
+      z = depsVertices x
+  in restrictDeps (`Set.member` z) y
 
 withResolvedProject :: Text -> Directory -> (ResolvedProject -> AppM ()) -> AppM ()
 withResolvedProject step projDir act = do

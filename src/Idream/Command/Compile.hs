@@ -6,14 +6,15 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
 import qualified Data.Map as Map
 import Idream.App (AppM)
-import Idream.Command.Common (PackageGroup, pkgDepsForGroup, pkgGroupToText, withResolvedProject, readPkgSetFile, mkDepInfoMap)
+import Idream.Command.Common (PackageGroup, fullPkgDepsForGroup, pkgDepsForGroup, pkgGroupToText, withResolvedProject, readPkgSetFile, mkDepInfoMap)
 import Idream.Deps (linearizeDeps)
-import Idream.FileLogic (pkgSetFileName)
+import Idream.FileLogic (pkgSetFileName, buildDir)
 import Idream.FilePaths (Directory)
 import Idream.Types.Common (PackageName (..), ProjectName (..))
-import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..))
+import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..), IdreamDepInfo (..),IpkgDepInfo (IpkgDepInfo))
 import LittleLogger (logInfo)
 import System.FilePath ((</>))
+import Idream.Effects.Process (Spec (..), procInvokeEnsure_, procDebug_)
 
 compile :: Directory -> PackageGroup -> AppM ()
 compile projDir group = do
@@ -22,21 +23,30 @@ compile projDir group = do
     ps <- readPkgSetFile (projDir </> pkgSetFileName)
     dim <- mkDepInfoMap rp ps
     liftIO (print dim)
-    error "TODO"
-    -- let filtDeps = pkgDepsForGroup rp group
-    --     linPkgs = linearizeDeps filtDeps
-    -- for_ linPkgs (compilePkg projDir dim)
+    let filtDeps = fullPkgDepsForGroup rp group dim
+        linPkgs = linearizeDeps filtDeps
+    liftIO (print linPkgs)
+    for_ linPkgs $ \pn -> do
+      let di = unDepInfoMap dim Map.! pn
+      compilePkg projDir di pn
 
--- compilePkg :: Directory -> DepInfoMap -> PackageName -> AppM ()
--- compilePkg _projDir dim pn = do
---   logInfo ("Compiling " <> unPkgName pn)
---   case Map.lookup pn (unDepInfoMap dim) of
---     Nothing -> error ("TODO throw error on missing pkg" <> show pn)
---     Just di -> do
---       case di of
---         DepInfoBuiltin _ -> pure ()
---         DepInfoProject _pdi -> error "TODO compile project package"
---         DepInfoRef _rdi -> error "TODO compile ref package"
+compilePkg :: Directory -> DepInfo -> PackageName -> AppM ()
+compilePkg projDir di pn = do
+  logInfo ("Compiling " <> unPkgName pn)
+  let realBuildDir = projDir </> buildDir
+      env = [("IDRIS2_PATH", realBuildDir)]
+  case di of
+    DepInfoBuiltin _ -> pure ()
+    DepInfoIdream (IdreamDepInfo _ path _ msourcedir _) -> do
+      let args = maybe [] (\s -> ["--sourcedir", s]) msourcedir
+          spec = Spec "idris2" args (Just path) env
+      -- procInvokeEnsure_ spec
+      procDebug_ spec
+    DepInfoIpkg (IpkgDepInfo path pkgFile _) -> do
+      let args = ["--build", pkgFile]
+          spec = Spec "idris2" args (Just path) env
+      -- procInvokeEnsure_ spec
+      procDebug_ spec
 
 -- import Data.Foldable (for_)
 -- import qualified Data.Text as T
