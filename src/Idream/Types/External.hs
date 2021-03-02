@@ -2,7 +2,6 @@ module Idream.Types.External
   ( Project (..)
   , Package (..)
   , BuildType (..)
-  , IpkgBuildSpec (..)
   , LocalRepoRef (..)
   , GitRepoRef (..)
   , RepoRef (..)
@@ -75,21 +74,6 @@ instance ToJSON BuildType where
       BuildTypeIdream -> String "idream"
       BuildTypeIpkg -> String "ipkg"
 
-data IpkgBuildSpec = IpkgBuildSpec
-  { ibsSourcedir :: Maybe Directory
-  , ibsDepends :: Maybe [PackageName]
-  } deriving (Eq, Show)
-
-instance FromJSON IpkgBuildSpec where
-  parseJSON = withObject "IpkgBuildSpec" $ \o -> do
-    sourcedir <- o .:? "sourcedir"
-    depends <- o .:? "depends"
-    pure (IpkgBuildSpec sourcedir depends)
-
-instance ToJSON IpkgBuildSpec where
-  toJSON (IpkgBuildSpec sourcedir depends) =
-    object ["sourcedir" .= toJSON sourcedir, "depends" .= toJSON depends]
-
 newtype LocalRepoRef = LocalRepoRef
   { lrrPath :: Directory
   } deriving newtype (Eq, Show, ToJSON, FromJSON)
@@ -132,21 +116,25 @@ instance ToJSON RepoRef where
 data PackageRef = PackageRef
   { prRepo :: RepoName
   , prType :: Maybe BuildType
-  , prSpec :: Maybe IpkgBuildSpec
   , prSubdir :: Maybe Directory
+  , prDepends :: Maybe [PackageName]
   } deriving (Eq, Show)
 
 instance FromJSON PackageRef where
   parseJSON = withObject "PackageRef" $ \o -> do
     repo <- o .: "repo"
     ty <- o .:? "type"
-    spec <- o .:? "spec"
     subdir <- o .:? "subdir"
-    pure (PackageRef repo ty spec subdir)
+    depends <- o .:? "depends"
+    pure (PackageRef repo ty subdir depends)
 
 instance ToJSON PackageRef where
-  toJSON (PackageRef repo ty spec subdir) =
-    object ["repo" .= toJSON repo, "ty" .= toJSON ty, "spec" .= toJSON spec, "subdir" .= toJSON subdir]
+  toJSON (PackageRef repo ty subdir depends) = object
+    [ "repo" .= toJSON repo
+    , "ty" .= toJSON ty
+    , "subdir" .= toJSON subdir
+    , "depends" .= toJSON depends
+    ]
 
 -- | Type containing information about a package set
 --   (as described in idr-package-set.json).

@@ -1,21 +1,20 @@
 module Idream.Types.Internal
   ( BuiltinDepInfo (..)
-  , ProjectDepInfo (..)
-  , RefDepInfo (..)
+  , IdreamDepInfo (..)
+  , IpkgDepInfo (..)
   , DepInfo (..)
+  , depInfoDepends
   , DepInfoMap (..)
-  , DepGraphMap (..)
   , ResolvedProject (..)
   ) where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.:?), (.=))
 import Data.Map (Map)
-import Data.Set (Set)
 import Idream.FilePaths (Directory)
-import Idream.Types.Common (PackageName, PackageType, ProjectName, RepoName)
-import Idream.Types.External (BuildType, Package)
+import Idream.Types.Common (PackageName, PackageType, ProjectName)
+import Idream.Types.External (Package)
 
-newtype BuiltinDepInfo = BuiltinDepInfo { bdiDepends :: [PackageName] }
+newtype BuiltinDepInfo = BuiltinDepInfo { builtinDepDepends :: [PackageName] }
   deriving (Eq, Show)
 
 instance FromJSON BuiltinDepInfo where
@@ -26,81 +25,88 @@ instance ToJSON BuiltinDepInfo where
   toJSON (BuiltinDepInfo depends) =
     object ["depends" .= toJSON depends]
 
-data ProjectDepInfo = ProjectDepInfo
-  { pdiType :: PackageType
-  , pdiSourcedir :: Maybe Directory
-  , pdiDepends :: [PackageName]
+data IdreamDepInfo = IdreamDepInfo
+  { idreamDepLocal :: Bool  -- local == is part of current project, not a ref
+  , idreamDepPath :: Directory
+  , idreamDepType :: PackageType
+  , idreamDepSourcedir :: Maybe Directory
+  , idreamDepDepends :: [PackageName]
   } deriving (Eq, Show)
 
-instance FromJSON ProjectDepInfo where
-  parseJSON = withObject "ProjectDepInfo" $ \o -> do
+instance FromJSON IdreamDepInfo where
+  parseJSON = withObject "IdreamDepInfo" $ \o -> do
+    local <- o .: "local"
+    path <- o .: "path"
     ty <- o .: "type"
     sourcedir <- o .:? "sourcedir"
     depends <- o .: "depends"
-    pure (ProjectDepInfo ty sourcedir depends)
+    pure (IdreamDepInfo local path ty sourcedir depends)
 
-instance ToJSON ProjectDepInfo where
-  toJSON (ProjectDepInfo ty sourcedir depends) =
-    object ["type" .= toJSON ty, "sourcedir" .= toJSON sourcedir, "depends" .= toJSON depends]
-
-data RefDepInfo = RefDepInfo
-  { rdiBuildType :: BuildType
-  , rdiRepoName :: RepoName
-  , rdiSubdir :: Maybe Directory
-  , rdiSourcedir :: Maybe Directory
-  , rdiDepends :: [PackageName]
-  } deriving (Eq, Show)
-
-instance FromJSON RefDepInfo where
-  parseJSON = withObject "RefDepInfo" $ \o -> do
-    ty <- o .: "type"
-    repo <- o .: "repo"
-    subdir <- o .:? "subdir"
-    sourcedir <- o .:? "sourcedir"
-    depends <- o .: "depends"
-    pure (RefDepInfo ty repo subdir sourcedir depends)
-
-instance ToJSON RefDepInfo where
-  toJSON (RefDepInfo ty rn subdir sourcedir depends) = object
-    [ "type" .= toJSON ty
-    , "repo" .= toJSON rn
-    , "subdir" .= toJSON subdir
+instance ToJSON IdreamDepInfo where
+  toJSON (IdreamDepInfo local path ty sourcedir depends) = object
+    [ "local" .= toJSON local
+    , "path" .= toJSON path
+    , "type" .= toJSON ty
     , "sourcedir" .= toJSON sourcedir
+    , "depends" .= toJSON depends
+    ]
+
+data IpkgDepInfo = IpkgDepInfo
+  { ipkgDepPath :: Directory
+  , ipkgDepPkgFile :: FilePath  -- relative to path
+  , ipkgDepDepends :: [PackageName]
+  } deriving (Eq, Show)
+
+instance FromJSON IpkgDepInfo where
+  parseJSON = withObject "IpkgDepInfo" $ \o -> do
+    path <- o .: "path"
+    pkgFile <- o .: "pkgfile"
+    depends <- o .: "depends"
+    pure (IpkgDepInfo path pkgFile depends)
+
+instance ToJSON IpkgDepInfo where
+  toJSON (IpkgDepInfo path pkgFile depends) = object
+    [ "path" .= toJSON path
+    , "pkgfile" .= toJSON pkgFile
     , "depends" .= toJSON depends
     ]
 
 data DepInfo =
     DepInfoBuiltin BuiltinDepInfo
-  | DepInfoProject ProjectDepInfo
-  | DepInfoRef RefDepInfo
+  | DepInfoIdream IdreamDepInfo
+  | DepInfoIpkg IpkgDepInfo
   deriving (Eq, Show)
 
 instance FromJSON DepInfo where
   parseJSON = withObject "DepInfo" $ \o -> do
     mbuiltin <- o .:? "builtin"
-    mproject <- o .:? "project"
-    mref <- o .:? "ref"
-    case (mbuiltin, mproject, mref) of
+    midream <- o .:? "idream"
+    mipkg <- o .:? "ipkg"
+    case (mbuiltin, midream, mipkg) of
       (Just x, Nothing, Nothing) ->
         pure (DepInfoBuiltin x)
       (Nothing, Just x, Nothing) ->
-        pure (DepInfoProject x)
+        pure (DepInfoIdream x)
       (Nothing, Nothing, Just x) ->
-        pure (DepInfoRef x)
-      _ -> fail "Expected exactly one of builtin/project/ref"
+        pure (DepInfoIpkg x)
+      _ -> fail "Expected exactly one of builtin/idream/ipkg"
 
 instance ToJSON DepInfo where
   toJSON d =
     case d of
       DepInfoBuiltin x -> object ["builtin" .= toJSON x]
-      DepInfoProject x -> object ["project" .= toJSON x]
-      DepInfoRef x -> object ["ref" .= toJSON x]
+      DepInfoIdream x -> object ["idream" .= toJSON x]
+      DepInfoIpkg x -> object ["ipkg" .= toJSON x]
+
+depInfoDepends :: DepInfo -> [PackageName]
+depInfoDepends d =
+  case d of
+    DepInfoBuiltin x -> builtinDepDepends x
+    DepInfoIdream x -> idreamDepDepends x
+    DepInfoIpkg x -> ipkgDepDepends x
 
 newtype DepInfoMap = DepInfoMap { unDepInfoMap :: Map PackageName DepInfo }
   deriving newtype (Eq, Show, ToJSON)
-
-newtype DepGraphMap = DepGraphMap { unDepGraphMap :: Map PackageName (Set PackageName) }
-  deriving newtype (Eq, Show, ToJSON, FromJSON)
 
 data ResolvedProject = ResolvedProject
   { rpName :: ProjectName

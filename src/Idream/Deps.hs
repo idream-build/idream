@@ -83,7 +83,7 @@ depsFromGroups groups = Deps finalM finalB finalC where
 composeDeps :: (Ord k, Ord v, Ord w) => Deps k v -> Deps v w -> Deps k w
 composeDeps (Deps ke kb _) dv@(Deps _ _ vc) = Deps m kb vc where
   m = foldr go Map.empty (Map.toList ke)
-  go (k, vs) = mapSafeUnion k (unionDeps vs dv)
+  go (k, vs) n = let ws = unionDeps vs dv in if Set.null ws then n else Map.insert k ws n
 
 composeAndUnionDeps :: Ord k => Deps k k -> Deps k k
 composeAndUnionDeps d@(Deps m b c) = Deps n b c where

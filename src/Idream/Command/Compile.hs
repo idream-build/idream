@@ -2,23 +2,41 @@ module Idream.Command.Compile
   ( compile
   ) where
 
+import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
+import qualified Data.Map as Map
 import Idream.App (AppM)
-import Idream.Command.Common (PackageGroup, pkgDepsForGroup, pkgGroupToText, withResolvedProject)
+import Idream.Command.Common (PackageGroup, pkgDepsForGroup, pkgGroupToText, withResolvedProject, readPkgSetFile, mkDepInfoMap)
 import Idream.Deps (linearizeDeps)
+import Idream.FileLogic (pkgSetFileName)
 import Idream.FilePaths (Directory)
 import Idream.Types.Common (PackageName (..), ProjectName (..))
-import Idream.Types.Internal (ResolvedProject (..))
+import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..))
 import LittleLogger (logInfo)
+import System.FilePath ((</>))
 
 compile :: Directory -> PackageGroup -> AppM ()
 compile projDir group = do
   withResolvedProject "compile" projDir $ \rp -> do
     logInfo ("Compiling project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
-    let filtDeps = pkgDepsForGroup rp group
-        linPkgs = linearizeDeps filtDeps
-    for_ linPkgs $ \pkg -> do
-      logInfo ("TODO compile " <> unPkgName pkg)
+    ps <- readPkgSetFile (projDir </> pkgSetFileName)
+    dim <- mkDepInfoMap rp ps
+    liftIO (print dim)
+    error "TODO"
+    -- let filtDeps = pkgDepsForGroup rp group
+    --     linPkgs = linearizeDeps filtDeps
+    -- for_ linPkgs (compilePkg projDir dim)
+
+-- compilePkg :: Directory -> DepInfoMap -> PackageName -> AppM ()
+-- compilePkg _projDir dim pn = do
+--   logInfo ("Compiling " <> unPkgName pn)
+--   case Map.lookup pn (unDepInfoMap dim) of
+--     Nothing -> error ("TODO throw error on missing pkg" <> show pn)
+--     Just di -> do
+--       case di of
+--         DepInfoBuiltin _ -> pure ()
+--         DepInfoProject _pdi -> error "TODO compile project package"
+--         DepInfoRef _rdi -> error "TODO compile ref package"
 
 -- import Data.Foldable (for_)
 -- import qualified Data.Text as T

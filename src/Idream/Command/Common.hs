@@ -14,6 +14,7 @@ module Idream.Command.Common
   , reposForGroup
   , pkgDepsForGroup
   , withResolvedProject
+  , mkDepInfoMap
   , PkgParseErr (..)
   , PkgSetParseErr (..)
   , ProjParseErr (..)
@@ -33,13 +34,14 @@ import Idream.App (AppM)
 import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, restrictDeps, unionAllDeps,
                     unionDeps)
 import Idream.Effects.Serde (serdeReadJSON)
-import Idream.FileLogic (pkgFileName, projFileName)
+import Idream.FileLogic (pkgFileName, projFileName, fetchDir)
 import Idream.FilePaths (Directory)
-import Idream.Types.Common (PackageName (..), RepoName (..))
-import Idream.Types.External (Package (..), PackageRef (..), PackageSet (..), Project (..), RepoRef (..))
-import Idream.Types.Internal (ResolvedProject (..))
+import Idream.Types.Common (PackageName (..), RepoName (..), PackageType (..))
+import Idream.Types.External (Package (..), PackageRef (..), PackageSet (..), Project (..), RepoRef (..), BuildType (..), LocalRepoRef (..))
+import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..), IdreamDepInfo (..), BuiltinDepInfo (..), IpkgDepInfo (..))
 import LittleLogger (logWarning)
-import System.FilePath ((</>))
+import System.FilePath ((</>), isExtensionOf, makeRelative, isPathSeparator)
+import Idream.Effects.FileSystem (fsFindFiles)
 
 -- | Error type for describing errors when parsing project file.
 data ProjParseErr = ProjParseErr FilePath String
@@ -151,3 +153,58 @@ withResolvedProject step projDir act = do
     then logWarning ("Project contains no packages yet, skipping " <> step <> " step."
                     <> "Use `idream add` to add a package to this project first.")
     else act rp
+
+mkProjectDepInfo :: Directory -> Package -> IdreamDepInfo
+mkProjectDepInfo path (Package _ mty msourcedir mdepends) = pdi where
+  ty = fromMaybe PkgTypeLibrary mty
+  depends = fromMaybe [] mdepends
+  pdi = IdreamDepInfo True path ty msourcedir depends
+
+mkProjectDepPair :: Directory -> Package -> (PackageName, DepInfo)
+mkProjectDepPair path pkg = (packageName pkg, DepInfoIdream (mkProjectDepInfo path pkg))
+
+mkBuiltinDepPairs :: [(PackageName, DepInfo)]
+mkBuiltinDepPairs =
+  fmap (fmap DepInfoBuiltin)
+  [ ("base", BuiltinDepInfo [])
+  , ("prelude", BuiltinDepInfo [])
+  , ("contrib", BuiltinDepInfo [])
+  , ("network", BuiltinDepInfo ["contrib"])
+  ]
+
+getRepoDir :: RepoName -> RepoRef -> Directory
+getRepoDir rn rr =
+  case rr of
+    RepoRefLocal (LocalRepoRef d) -> d
+    _ -> fetchDir </> T.unpack (unRepoName rn)
+
+mkRefDepInfo :: Map RepoName RepoRef -> PackageRef -> AppM DepInfo
+mkRefDepInfo repoRefs (PackageRef rn mbty msubdir mdepends) = do
+  case Map.lookup rn repoRefs of
+    Nothing -> error "TODO - throw for missing repo"
+    Just rr -> do
+      let repoDir = getRepoDir rn rr
+          path = maybe repoDir (repoDir </>) msubdir
+      case fromMaybe BuildTypeIpkg mbty of
+        BuildTypeIpkg -> do
+          let depends = fromMaybe [] mdepends
+          pkgCand <- fmap (fmap (makeRelative path)) (fsFindFiles (isExtensionOf "ipkg") (Just path))
+          case filter (not . any isPathSeparator) pkgCand of
+            [longPkgFile] -> do
+              let pkgFile = makeRelative path longPkgFile
+              pure (DepInfoIpkg (IpkgDepInfo path pkgFile depends))
+            _ -> error ("TODO - throw for no pkg " <> show path <> " " <> show pkgCand)
+        BuildTypeIdream -> error "TODO - read idream dep depends"
+
+mkRefDepPair :: Map RepoName RepoRef -> PackageName -> PackageRef -> AppM (PackageName, DepInfo)
+mkRefDepPair repoRefs pn pr = fmap (pn,) (mkRefDepInfo repoRefs pr)
+
+mkDepInfoMap :: ResolvedProject -> PackageSet -> AppM DepInfoMap
+mkDepInfoMap rp ps = do
+  let projectPairs = fmap (uncurry mkProjectDepPair) (rpPackages rp)
+      builtinPairs = mkBuiltinDepPairs
+      repoRefs = fromMaybe Map.empty (psRepos ps)
+      pkgRefs = maybe [] Map.toList (psPkgs ps)
+  refPairs <- for pkgRefs (uncurry (mkRefDepPair repoRefs))
+  let m = Map.fromList (projectPairs ++ builtinPairs ++ refPairs)
+  pure (DepInfoMap m)
