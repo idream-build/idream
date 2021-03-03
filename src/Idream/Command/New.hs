@@ -1,5 +1,5 @@
 module Idream.Command.New
-  ( startNewProject
+  ( newImpl
   , ProjectDirAlreadyExistsErr (..)
   ) where
 
@@ -39,8 +39,9 @@ idrProjectJsonContents (ProjectName pn) =
             ]
 
 -- | Creates a new project template.
-startNewProject :: Directory -> ProjectName -> AppM ()
-startNewProject projDir projName = do
+newImpl :: Directory -> ProjectName -> AppM ()
+newImpl projDir projName = do
+  -- TODO(ejconlon) Allow this if dir is empty?
   exists <- fsDoesDirectoryExist projDir
   when exists (throwIO (ProjectDirAlreadyExistsErr projDir projName))
   fsCreateDir projDir

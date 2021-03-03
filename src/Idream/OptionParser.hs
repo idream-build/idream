@@ -3,48 +3,76 @@ module Idream.OptionParser
   ) where
 
 import Data.Maybe (fromMaybe)
+import Idream.FilePaths (Directory)
 import Idream.Types.Command (Args (..), Command (..))
-import Idream.Types.Common (PackageName (..), PackageType (..), ProjectName (..))
+import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..),
+                            RefreshStrategy (..), packageGroupFromList, packageTypeFromString, refreshStratFromString)
 import LittleLogger (Severity (..))
 import Options.Applicative
 
 -- | Helper function for parsing the log level the build tool should use.
 logLevelParser :: Parser Severity
 logLevelParser = fromMaybe Info <$> optional (option (eitherReader f) desc) where
-  desc = long "log-level" <> help "Logging level to be used."
+  desc = long "log-level" <> help "Logging level (debug/info/warning/error)"
   f "debug" = Right Debug
   f "info" = Right Info
   f "warning" = Right Warning
   f "error" = Right Error
-  f _ = Left "Only supported options for log level are 'debug', 'info', 'warning', and 'error'."
+  f _ = Left "log-level must be one of debug/info/warning/error"
+
+projDirParser :: Parser (Maybe Directory)
+projDirParser = optional (option str desc) where
+  desc = long "project-dir" <> help "Root project directory"
+
+pkgDirParser :: Parser (Maybe Directory)
+pkgDirParser = optional (option str desc) where
+  desc = long "package-dir" <> help "Package directory"
+
+packageTypeParser :: Parser PackageType
+packageTypeParser = fromMaybe PkgTypeLibrary <$> optional (option (eitherReader f) desc) where
+  desc = long "package-type" <> help "Package type (library/executable/test)"
+  f s = case packageTypeFromString s of
+    Just pt -> Right pt
+    Nothing -> Left "package-type must be one of library/executable/test"
+
+packageGroupParser :: Parser PackageGroup
+packageGroupParser = packageGroupFromList <$> many (option str desc) where
+  desc = long "package"
+
+refreshStratParser :: Parser RefreshStrategy
+refreshStratParser = fromMaybe EnableRefresh <$> optional (option (eitherReader f) desc) where
+  desc = long "refresh-strategy" <> help "Refresh strategy (force/enable/disable)"
+  f s = case refreshStratFromString s of
+    Just pt -> Right pt
+    Nothing -> Left "refresh-strategy must be one of force/enable/disable"
 
 -- | Helper function for parsing the commands passed to the build tool.
 commandParser :: Parser Command
 commandParser = hsubparser commands where
-  commands = mkCmd "fetch" (pure Fetch) "Fetches all dependencies."
-          <> mkCmd "compile" (pure Compile) "Compiles all code and its dependencies."
-          <> mkCmd "clean" (pure Clean) "Cleans up build artifacts and fetched code."
-          <> mkCmd "run" runParser "Runs the executable (only valid for executable packages)."
-          <> mkCmd "repl" replParser "Starts the Idris repl."
+  commands = mkCmd "fetch" fetchCmdParser "Fetches all dependencies."
+          <> mkCmd "compile" compileCmdParser "Compiles all code and its dependencies."
+          <> mkCmd "clean" cleanCmdParser "Cleans up build artifacts and fetched code."
+          <> mkCmd "run" runCmdParser "Runs the executable (only valid for executable or test packages)."
+          <> mkCmd "repl" replCmdParser "Starts the Idris repl."
           <> mkCmd "new" newCmdParser "Initializes a new project."
           <> mkCmd "add" addCmdParser "Adds a package to an existing idream project."
-          <> mkCmd "mkdocs" (pure MkDoc) "Generates the documentation."
-          <> mkCmd "generate-ipkg" (pure GenerateIpkg) "Generates an ipkg file from the Idream JSON files."
-          <> mkCmd "test" (pure Test) "Runs unit tests for this project."
+          <> mkCmd "test" testCmdParser "Runs unit tests for this project."
   mkCmd name parser desc = command name (info parser (progDesc desc))
-  runParser = Run <$> many (strArgument (metavar "ARGS"))
-  replParser = Repl <$> (ProjectName <$> strArgument (metavar "PROJECT_NAME"))
-                    <*> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
+  fetchCmdParser = Fetch <$> packageGroupParser <*> refreshStratParser
+  compileCmdParser = Compile <$> packageGroupParser <*> refreshStratParser
+  cleanCmdParser = pure Clean
+  runCmdParser = Run <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
+                     <*> many (strArgument (metavar "ARGS"))
+  replCmdParser = Repl <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
   newCmdParser = New <$> (ProjectName <$> strArgument (metavar "PROJECT_NAME"))
-  addCmdParser = Add <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
-                     <*> codeTypeParser
-  codeTypeParser =  flag' PkgTypeLibrary (long "lib")
-                <|> flag' PkgTypeExecutable (long "exe")
-                <|> flag' PkgTypeTest (long "test")
+  addCmdParser = Add <$> pkgDirParser
+                     <*> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
+                     <*> packageTypeParser
+  testCmdParser = Test <$> packageGroupParser
 
 -- | Helper function for parsing the command line arguments.
 argsParser :: Parser Args
-argsParser = Args <$> logLevelParser <*> commandParser
+argsParser = Args <$> logLevelParser <*> projDirParser <*> commandParser
 
 -- | Function that performs the parsing of command line arguments.
 parseCmdLineArgs :: IO Args

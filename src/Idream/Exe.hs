@@ -3,19 +3,16 @@ module Idream.Exe
   , main
   ) where
 
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import Idream.App (AppM, newApp, runAppM)
-import Idream.Command.Add (addPackageToProject)
-import Idream.Command.Clean (clean)
+import Idream.Command.Add (addImpl)
+import Idream.Command.Clean (cleanImpl)
 import Idream.Command.Common (PackageGroup (..))
-import Idream.Command.Compile (compile)
-import Idream.Command.Fetch (Network (..), fetchDeps)
--- import Idream.Command.GenerateIpkg (generateIpkgFile)
--- import Idream.Command.MkDoc (generateDocs)
-import Idream.Command.New (startNewProject)
--- import Idream.Command.Repl (startRepl)
--- import Idream.Command.Run (runCode)
--- import Idream.Command.Test (runTests)
+import Idream.Command.Compile (compileImpl)
+import Idream.Command.Fetch (fetchImpl)
+import Idream.Command.New (newImpl)
+import Idream.FilePaths (Directory)
 import Idream.OptionParser (parseCmdLineArgs)
 import Idream.Types.Command (Args (..), Command (..))
 import Idream.Types.Common (PackageName (..), ProjectName (..))
@@ -23,23 +20,32 @@ import Idream.Types.Common (PackageName (..), ProjectName (..))
 -- | Main function.
 main :: IO ()
 main = do
-  Args severity command <- parseCmdLineArgs
-  let app = newApp severity
-  runAppM app (processCommand command)
+  Args severity mayProjDir command <- parseCmdLineArgs
+  let projDir = effectiveProjDir mayProjDir command
+      app = newApp severity
+  runAppM app (processCommand projDir command)
+
+-- | Gets the project dir as configured through args or convention.
+effectiveProjDir :: Maybe Directory -> Command -> Directory
+effectiveProjDir mayProjDir cmd =
+  case mayProjDir of
+    Nothing ->
+      case cmd of
+        New jn -> T.unpack (unProjName jn)
+        _ -> "."
+    Just d -> d
 
 -- | Function that processes the given command.
-processCommand :: Command -> AppM ()
-processCommand command =
-  let projDir = "."
-  in case command of
-    Fetch -> fetchDeps projDir YesNetwork PackageGroupAll
-    Compile -> compile projDir PackageGroupAll
-    Clean -> clean projDir
-    -- Run runArgs -> runCode runArgs
-    -- Repl projName pkgName -> startRepl projName pkgName
-    New projName -> startNewProject (T.unpack (unProjName projName)) projName
-    Add pkgName pkgType -> addPackageToProject projDir (T.unpack (unPkgName pkgName)) pkgName pkgType
-    -- MkDoc -> generateDocs
-    -- GenerateIpkg -> generateIpkgFile
-    -- Test -> runTests
-    _ -> error "TODO"
+processCommand :: Directory -> Command -> AppM ()
+processCommand projDir command =
+  case command of
+    Fetch pkgGroup refreshStrat -> fetchImpl projDir pkgGroup refreshStrat
+    Compile pkgGroup refreshStrat -> do
+      fetchImpl projDir pkgGroup refreshStrat
+      compileImpl projDir pkgGroup
+    Clean -> cleanImpl projDir
+    New projName -> newImpl projDir projName
+    Add mayPkgSubDir pkgName pkgType -> do
+      let pkgSubDir = fromMaybe (T.unpack (unPkgName pkgName)) mayPkgSubDir
+      addImpl projDir pkgSubDir pkgName pkgType
+    _ -> error ("TODO implement command: " <> show command)

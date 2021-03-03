@@ -1,5 +1,5 @@
 module Idream.Command.Add
-  ( addPackageToProject
+  ( addImpl
   , PackageDirAlreadyExistsErr (..)
   , PackageNameAlreadyExistsErr (..)
   ) where
@@ -75,8 +75,8 @@ mainContents PkgTypeLibrary = libIdrContents
 mainContents _ = mainIdrContents
 
 -- | Creates a new project template.
-addPackageToProject :: Directory -> Directory -> PackageName -> PackageType -> AppM ()
-addPackageToProject projDir pkgSubDir pkgName pkgType = do
+addImpl :: Directory -> Directory -> PackageName -> PackageType -> AppM ()
+addImpl projDir pkgSubDir pkgName pkgType = do
   let pkgDir = projDir </> pkgSubDir
   pkgDirExists <- fsDoesDirectoryExist pkgDir
   if pkgDirExists

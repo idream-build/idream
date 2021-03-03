@@ -45,7 +45,7 @@ import Idream.Effects.FileSystem (fsFindFiles)
 import Idream.Effects.Serde (serdeReadJSON)
 import Idream.FileLogic (fetchDir, pkgFileName, projFileName)
 import Idream.FilePaths (Directory)
-import Idream.Types.Common (PackageName (..), PackageType (..), ProjectName (..), RepoName (..))
+import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..), RepoName (..))
 import Idream.Types.External (LocalRepoRef (..), Package (..), PackageRef (..), PackageSet (..), Project (..),
                               ProjectRef (..), RepoRef (..))
 import Idream.Types.Internal (BuiltinDepInfo (..), DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), IpkgDepInfo (..),
@@ -168,11 +168,6 @@ allRepos rp ps = unionAllDeps (repoDeps rp ps)
 
 specificRepos :: Foldable f => ResolvedProject -> PackageSet -> f PackageName -> Set RepoName
 specificRepos rp ps pns = unionDeps pns (repoDeps rp ps)
-
-data PackageGroup =
-    PackageGroupAll
-  | PackageGroupSubset (Set PackageName)
-  deriving (Eq, Show)
 
 mkPkgGroup :: Foldable f => f PackageName -> PackageGroup
 mkPkgGroup pns =

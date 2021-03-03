@@ -1,5 +1,5 @@
 module Idream.Command.Compile
-  ( compile
+  ( compileImpl
   , MissingPackageInResolvedErr (..)
   ) where
 
@@ -36,8 +36,8 @@ instance Exception MissingPackageInResolvedErr where
   displayException (MissingPackageInResolvedErr pn) =
     "Missing packaged in resolved set: " <> T.unpack (unPkgName pn)
 
-compile :: Directory -> PackageGroup -> AppM ()
-compile projDir group = do
+compileImpl :: Directory -> PackageGroup -> AppM ()
+compileImpl projDir group = do
   withResolvedProject "compile" projDir $ \rp -> do
     logInfo ("Compiling project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
     ps <- readPkgSetFile (projDir </> pkgSetFileName)

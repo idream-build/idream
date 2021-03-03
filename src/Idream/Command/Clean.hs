@@ -1,5 +1,5 @@
 module Idream.Command.Clean
-  ( clean
+  ( cleanImpl
   ) where
 
 import Control.Monad (when)
@@ -10,8 +10,8 @@ import Idream.FilePaths (Directory)
 import LittleLogger (logInfo)
 import System.FilePath ((</>))
 
-clean :: Directory -> AppM ()
-clean projDir = do
+cleanImpl :: Directory -> AppM ()
+cleanImpl projDir = do
   let projWorkDir = projDir </> workDir
   exists <- fsDoesDirectoryExist projWorkDir
   when exists $ do
