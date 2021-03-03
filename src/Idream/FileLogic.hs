@@ -4,6 +4,7 @@ module Idream.FileLogic
   , buildDir
   , outputDir
   , fetchDir
+  , installDir
   , pkgBuildDir
   , pkgOutputDir
   , repoDir
@@ -34,6 +35,9 @@ outputDir = workDir </> "output"
 
 fetchDir :: Directory
 fetchDir = workDir </> "fetch"
+
+installDir :: Directory
+installDir = workDir </> "install"
 
 -- | Directory that is used for storing build artifacts of a specific package.
 pkgBuildDir :: PackageName -> Directory

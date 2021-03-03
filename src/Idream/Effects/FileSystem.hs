@@ -1,9 +1,11 @@
 module Idream.Effects.FileSystem
   ( fsCopyDir
+  , fsCopyFile
   , fsCreateDir
   , fsDoesDirectoryExist
   , fsDoesFileExist
   , fsFindFiles
+  , fsMakeAbsolute
   , fsRemovePath
   , fsWriteFile
   , WriteFileErr (..)
@@ -22,7 +24,7 @@ import qualified Data.Text.IO as TIO
 import Idream.App (AppM)
 import Idream.FilePaths (Directory)
 import Shelly (cp_r, find, fromText, shelly, silently, toTextIgnore)
-import UnliftIO.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removePathForcibly)
+import UnliftIO.Directory (copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, makeAbsolute, removePathForcibly)
 import UnliftIO.Exception (catch, catchIO, throwIO)
 
 data WriteFileErr = WriteFileErr FilePath IOException
@@ -65,6 +67,12 @@ fsCopyDir :: Directory -> Directory -> AppM ()
 fsCopyDir fromDir toDir = catch act (throwIO . CopyDirErr fromDir toDir) where
   toFilePath = fromText . T.pack
   act = shelly (silently (cp_r (toFilePath fromDir) (toFilePath toDir)))
+
+fsCopyFile :: FilePath -> FilePath -> AppM ()
+fsCopyFile = copyFile
+
+fsMakeAbsolute :: FilePath -> AppM FilePath
+fsMakeAbsolute = makeAbsolute
 
 fsCreateDir :: Directory -> AppM ()
 fsCreateDir dir = catchIO (createDirectoryIfMissing True dir) (throwIO . CreateDirErr dir)

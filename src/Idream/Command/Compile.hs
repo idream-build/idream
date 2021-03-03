@@ -2,19 +2,25 @@ module Idream.Command.Compile
   ( compile
   ) where
 
+import Control.Monad (unless, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
+import Data.List (intercalate, stripPrefix, groupBy)
 import qualified Data.Map as Map
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import qualified Data.Text as T
 import Idream.App (AppM)
 import Idream.Command.Common (PackageGroup, fullPkgDepsForGroup, pkgDepsForGroup, pkgGroupToText, withResolvedProject, readPkgSetFile, mkDepInfoMap)
 import Idream.Deps (linearizeDeps)
-import Idream.FileLogic (pkgSetFileName, buildDir)
-import Idream.FilePaths (Directory)
-import Idream.Types.Common (PackageName (..), ProjectName (..))
-import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..), IdreamDepInfo (..),IpkgDepInfo (IpkgDepInfo))
-import LittleLogger (logInfo)
-import System.FilePath ((</>))
+import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsFindFiles, fsMakeAbsolute, fsRemovePath, fsWriteFile, fsDoesDirectoryExist)
 import Idream.Effects.Process (Spec (..), procInvokeEnsure_, procDebug_)
+import Idream.FileLogic (pkgSetFileName, buildDir, workDir, outputDir, installDir)
+import Idream.FilePaths (Directory)
+import Idream.Types.Common (PackageName (..), ProjectName (..), PackageType (..))
+import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..), IdreamDepInfo (..),IpkgDepInfo (IpkgDepInfo), depInfoDepends)
+import LittleLogger (logInfo)
+import System.FilePath ((</>), makeRelative, isExtensionOf, (-<.>), dropExtension)
 
 compile :: Directory -> PackageGroup -> AppM ()
 compile projDir group = do
@@ -33,67 +39,112 @@ compile projDir group = do
 compilePkg :: Directory -> DepInfo -> PackageName -> AppM ()
 compilePkg projDir di pn = do
   logInfo ("Compiling " <> unPkgName pn)
-  let realBuildDir = projDir </> buildDir
-      env = [("IDRIS2_PATH", realBuildDir)]
-  case di of
-    DepInfoBuiltin _ -> pure ()
-    DepInfoIdream (IdreamDepInfo _ path _ msourcedir _) -> do
-      let args = maybe [] (\s -> ["--sourcedir", s]) msourcedir
-          spec = Spec "idris2" args (Just path) env
-      -- procInvokeEnsure_ spec
-      procDebug_ spec
-    DepInfoIpkg (IpkgDepInfo path pkgFile _) -> do
-      let args = ["--build", pkgFile, "--output-dir", realBuildDir]
-          spec = Spec "idris2" args (Just path) env
-      -- procInvokeEnsure_ spec
-      procDebug_ spec
+  install <- case di of
+    DepInfoBuiltin _ -> pure False
+    DepInfoIdream idi -> do
+      modules <- findIpkgModules projDir idi
+      liftIO (print modules)
+      let path = idreamDepPath idi
+          depends = idreamDepDepends idi
+          pkgFile = T.unpack (unPkgName pn) -<.> "ipkg"
+          pkgContents = mkIpkgContents pn idi modules
+          rootedPkgFile = projDir </> path </> pkgFile
+      liftIO (print pkgContents)
+      fsWriteFile rootedPkgFile pkgContents
+      runIdris projDir pn path pkgFile depends
+      pure True
+    DepInfoIpkg (IpkgDepInfo path pkgFile depends) -> do
+      runIdris projDir pn path pkgFile depends
+      pure True
+  -- Copy TTC files to install
+  when install (installFiles projDir pn)
 
--- import Data.Foldable (for_)
--- import qualified Data.Text as T
--- import Idream.App (AppM)
--- import Idream.Command.Common (readRootProjFile)
--- import Idream.Effects.FileSystem (fsCopyDir, fsCreateDir)
--- import Idream.Effects.Idris (idrisCompile, idrisGetLibDir)
--- import Idream.FileLogic (compileDir, depGraphFile)
--- import Idream.FilePaths (Directory)
--- import Idream.Graph (BuildPlan, DepNode (..), createBuildPlan, loadGraphFromJSON)
--- import Idream.ToText (ToText (..))
--- import Idream.Types (Project (..))
--- import LittleLogger (logDebug, logInfo)
--- import System.FilePath ((</>))
+newtype ModuleName = ModuleName
+  { unModuleName :: [String]
+  } deriving (Eq, Show)
 
--- -- | Top level function for compiling Idris packages.
--- compileCode :: AppM ()
--- compileCode = do
---   Project _ rootPkgs <- readRootProjFile
---   if null rootPkgs
---     then logInfo ("Project contains no packages yet, skipping compile step. "
---                 <> "Use `idream add` to add a package to this project first.")
---     else do
---       logInfo "Compiling package(s)..."
---       graph <- loadGraphFromJSON depGraphFile
---       let buildPlan = createBuildPlan graph
---       compilePackages buildPlan
---       logInfo "Successfully compiled package(s)!"
+data IpkgMeta = IpkgMeta
+  { imName :: PackageName
+  , imType :: PackageType
+  , imSourcedir :: Maybe FilePath
+  , imModules :: [ModuleName]
+  , imDepends :: [PackageName]
+  } deriving (Eq, Show)
 
--- -- | Performs the actual compilation of the Idris packages.
--- --   Takes the buildplan into account to properly build dependencies in order.
--- compilePackages :: BuildPlan DepNode -> AppM ()
--- compilePackages buildPlan = do
---   libDir <- idrisGetLibDir
---   fsCreateDir compileDir
---   logDebug "Copying files from base packages into compile directory."
---   setupBasePackages libDir
---   for_ buildPlan compilePackage  -- TODO optimize / parallellize, handle deps...
---   where compilePackage (DepNode pkgName projName) = do
---           logDebug ("Compiling package: " <> toText pkgName <> ".")
---           idrisCompile projName pkgName
---           logInfo ("Compiled package: " <> toText pkgName <> ".")
+findExtRel :: String -> Directory -> AppM [FilePath]
+findExtRel ext dir = fmap (fmap (makeRelative dir)) (fsFindFiles (isExtensionOf ext) (Just dir))
 
--- -- Copies over the 'standard' packages used by Idris into the main compilation directory.
--- setupBasePackages :: Directory -> AppM ()
--- setupBasePackages libDir = mapM_ setupBasePackage basePackages where
---   basePackages = ["base", "contrib", "network", "prelude"]
---   setupBasePackage pkg = do
---     let fromDir = libDir </> T.unpack pkg
---     fsCopyDir fromDir compileDir
+-- | Extracts the filename for use in ipkg file.
+--   e.g. LightYear/Position.idr -> LightYear.Position
+extractModuleName :: FilePath -> ModuleName
+extractModuleName = ModuleName . splitParts . trimPrefix . dropExtension where
+  splitParts = groupBy (\_ b -> b /= '/')
+  replaceSlash c = c
+  trimPrefix s = fromMaybe s (stripPrefix "./" s)
+
+findIpkgModules :: Directory -> IdreamDepInfo -> AppM [ModuleName]
+findIpkgModules projDir (IdreamDepInfo _ path _ msourcedir _) = do
+  let pkgPath = projDir </> path
+      srcPath = maybe pkgPath (pkgPath </>) msourcedir
+  idrFiles <- findExtRel "idr" srcPath
+  pure (fmap extractModuleName idrFiles)
+
+mkIpkgContents :: PackageName -> IdreamDepInfo -> [ModuleName] -> Text
+mkIpkgContents pn (IdreamDepInfo _ path ty msourcedir depends) modules =
+  T.unlines $ filter (not . T.null)
+    [ "package " <> unPkgName pn
+    , "-- AUTOGENERATED BY idream. DO NOT EDIT."
+    ]
+
+-- -- | Converts the ipkg metadata to a text representation.
+-- ipkgMetadataToText :: IpkgMetadata -> Text
+-- ipkgMetadataToText (IpkgMetadata projName pkg modules) =
+--   let (Package pkgName pkgType (SourceDir srcDir) dependencies) = pkg
+--       fullPkgName = toText projName <> "_" <> toText pkgName
+--       exeName = toText pkgName
+--       mods = T.pack $ intercalate ", " $ formatFileNames srcDir modules
+--       deps = T.intercalate ", " $ toText <$> dependencies
+--       sourceDir = T.pack srcDir
+--   in T.unlines [ "package " <> fullPkgName
+--                , "-- NOTE: This is an auto-generated file by idream. Do not edit."
+--                , "modules = " <> mods
+--                , if null dependencies then "" else "pkgs = " <> deps
+--                , "sourcedir = " <> sourceDir
+--                , if pkgType == Executable then "executable = " <> exeName else ""
+--                , if pkgType == Executable then "main = Main" else ""
+--                ]
+
+runIdris :: Directory -> PackageName -> Directory -> FilePath -> [PackageName] -> AppM ()
+runIdris projDir pn path pkgFile depends = do
+  absWorkDir <- fsMakeAbsolute (projDir </> workDir)
+  let absBuildDir = absWorkDir </> "build"
+      absOutputDir = absWorkDir </> "output"
+      absInstallDir = absWorkDir </> "install"
+      depNames = fmap (T.unpack . unPkgName) depends
+      idpath = intercalate ":" (fmap (absInstallDir </>) depNames)
+      env = [("IDRIS2_PATH", idpath)]
+      pkgDirPart = T.unpack (unPkgName pn)
+      absPkgBuildDir = absBuildDir </> pkgDirPart
+      absPkgOutputDir = absOutputDir </> pkgDirPart
+      args = [ "--build", pkgFile
+             , "--build-dir", absPkgBuildDir
+             , "--output-dir", absPkgOutputDir
+             , "--verbose"
+             ]
+      spec = Spec "idris2" args (Just (projDir </> path)) env
+  procInvokeEnsure_ spec
+  -- procDebug_ spec
+
+installFiles :: Directory -> PackageName -> AppM ()
+installFiles projDir pn = do
+  let pkgDirPart = T.unpack (unPkgName pn)
+      pkgBuildDir = projDir </> buildDir </> pkgDirPart
+      pkgTtcDir = pkgBuildDir </> "ttc"
+      pkgInstallDir = projDir </> installDir </> pkgDirPart
+  fsRemovePath pkgInstallDir
+  ttcDirExists <- fsDoesDirectoryExist pkgTtcDir
+  when ttcDirExists $ do
+    ttcs <- findExtRel "ttc" pkgTtcDir
+    unless (null ttcs) $ do
+      fsCreateDir pkgInstallDir
+      for_ ttcs (\ttc -> fsCopyFile (pkgTtcDir </> ttc) (pkgInstallDir </> ttc))
