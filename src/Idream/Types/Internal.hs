@@ -5,6 +5,7 @@ module Idream.Types.Internal
   , DepInfo (..)
   , depInfoDepends
   , DepInfoMap (..)
+  , LocatedPackage (..)
   , ResolvedProject (..)
   ) where
 
@@ -108,7 +109,12 @@ depInfoDepends d =
 newtype DepInfoMap = DepInfoMap { unDepInfoMap :: Map PackageName DepInfo }
   deriving newtype (Eq, Show, ToJSON)
 
+data LocatedPackage = LocatedPackage
+  { lpPath :: Directory
+  , lpPkg :: Package
+  } deriving (Eq, Show)
+
 data ResolvedProject = ResolvedProject
   { rpName :: ProjectName
-  , rpPackages :: [(Directory, Package)]
+  , rpPackages :: Map PackageName LocatedPackage
   } deriving (Eq, Show)

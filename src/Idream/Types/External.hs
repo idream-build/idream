@@ -1,11 +1,11 @@
 module Idream.Types.External
   ( Project (..)
   , Package (..)
-  , BuildType (..)
   , LocalRepoRef (..)
   , GitRepoRef (..)
   , RepoRef (..)
   , PackageRef (..)
+  , ProjectRef (..)
   , PackageSet (..)
   ) where
 
@@ -59,21 +59,6 @@ instance ToJSON Package where
     , "depends" .= depends
     ]
 
-data BuildType = BuildTypeIdream | BuildTypeIpkg deriving (Eq, Show, Ord, Enum, Bounded)
-
-instance FromJSON BuildType where
-  parseJSON =
-    withText "BuildType" $ \case
-      "idream" -> pure BuildTypeIdream
-      "ipkg" -> pure BuildTypeIpkg
-      _ -> fail "Expected one of: idream/ipkg"
-
-instance ToJSON BuildType where
-  toJSON b =
-    case b of
-      BuildTypeIdream -> String "idream"
-      BuildTypeIpkg -> String "ipkg"
-
 newtype LocalRepoRef = LocalRepoRef
   { lrrPath :: Directory
   } deriving newtype (Eq, Show, ToJSON, FromJSON)
@@ -114,26 +99,43 @@ instance ToJSON RepoRef where
       RepoRefGit x -> object ["git" .= toJSON x]
 
 data PackageRef = PackageRef
-  { prRepo :: RepoName
-  , prType :: Maybe BuildType
-  , prSubdir :: Maybe Directory
-  , prDepends :: Maybe [PackageName]
+  { pkgRefRepo :: RepoName
+  , pkgRefSubdir :: Maybe Directory
+  , pkgRefDepends :: Maybe [PackageName]
   } deriving (Eq, Show)
 
 instance FromJSON PackageRef where
   parseJSON = withObject "PackageRef" $ \o -> do
     repo <- o .: "repo"
-    ty <- o .:? "type"
     subdir <- o .:? "subdir"
     depends <- o .:? "depends"
-    pure (PackageRef repo ty subdir depends)
+    pure (PackageRef repo subdir depends)
 
 instance ToJSON PackageRef where
-  toJSON (PackageRef repo ty subdir depends) = object
+  toJSON (PackageRef repo subdir depends) = object
     [ "repo" .= toJSON repo
-    , "ty" .= toJSON ty
     , "subdir" .= toJSON subdir
     , "depends" .= toJSON depends
+    ]
+
+data ProjectRef = ProjectRef
+  { projRefRepo :: RepoName
+  , projRefSubdir :: Maybe Directory
+  , projRefPkgs :: [PackageName]
+  } deriving (Eq, Show)
+
+instance FromJSON ProjectRef where
+  parseJSON = withObject "ProjectRef" $ \o -> do
+    repo <- o .: "repo"
+    subdir <- o .:? "subdir"
+    pkgs <- o .: "packages"
+    pure (ProjectRef repo subdir pkgs)
+
+instance ToJSON ProjectRef where
+  toJSON (ProjectRef repo subdir pkgs) = object
+    [ "repo" .= toJSON repo
+    , "subdir" .= toJSON subdir
+    , "packages" .= toJSON pkgs
     ]
 
 -- | Type containing information about a package set
@@ -144,14 +146,19 @@ instance ToJSON PackageRef where
 data PackageSet = PackageSet
   { psRepos :: Maybe (Map RepoName RepoRef)
   , psPkgs :: Maybe (Map PackageName PackageRef)
+  , psProjects :: Maybe [ProjectRef]
   } deriving (Eq, Show)
 
 instance FromJSON PackageSet where
   parseJSON = withObject "PackageSet" $ \o -> do
     repos <- o .:? "repos"
     pkgs <- o .:? "packages"
-    pure (PackageSet repos pkgs)
+    projects <- o .:? "projects"
+    pure (PackageSet repos pkgs projects)
 
 instance ToJSON PackageSet where
-  toJSON (PackageSet repos pkgs) =
-    object ["repos" .= toJSON repos, "packages" .= toJSON pkgs]
+  toJSON (PackageSet repos pkgs projects) = object
+    [ "repos" .= toJSON repos
+    , "packages" .= toJSON pkgs
+    , "projects" .= toJSON projects
+    ]

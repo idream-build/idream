@@ -18,7 +18,7 @@ import Idream.FileLogic (pkgFileName, projFileName)
 import Idream.FilePaths (Directory)
 import Idream.Types.Common (PackageName (..), PackageType (..))
 import Idream.Types.External (Package (..), Project (..))
-import Idream.Types.Internal (ResolvedProject (..))
+import Idream.Types.Internal (ResolvedProject (..), LocatedPackage (..))
 import LittleLogger (logInfo)
 import System.FilePath ((</>))
 import UnliftIO.Exception (throwIO)
@@ -86,7 +86,7 @@ addPackageToProject projDir pkgSubDir pkgName pkgType = do
           projFile = projDir </> projFileName
       proj <- readProjFile projFile
       resolvedProj <- resolveProj proj
-      for_ (rpPackages resolvedProj) $ \(d, p) ->
+      for_ (rpPackages resolvedProj) $ \(LocatedPackage d p) ->
         when (packageName p == pkgName) (throwIO (PackageNameAlreadyExistsErr d pkgName))
       fsCreateDir pkgDir
       fsCreateDir pkgSrcDir

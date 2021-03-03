@@ -1,0 +1,4 @@
+{
+  "name": "remoteproj",
+  "paths": ["remotelib1", "remotelib2"]
+}

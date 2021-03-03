@@ -7,14 +7,19 @@
   "packages": {
     "testlib1": {
       "repo": "examples",
-      "type": "ipkg",
       "subdir": "testlib1"
     },
     "testlib2": {
       "repo": "examples",
-      "type": "ipkg",
       "subdir": "testlib2",
       "depends": ["testlib1"]
     }
-  }
+  },
+  "projects": [
+    {
+      "repo": "examples",
+      "subdir": "remoteproj",
+      "packages": ["remotelib2"]
+    }
+  ]
 }

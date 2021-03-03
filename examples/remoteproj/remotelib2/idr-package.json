@@ -1,0 +1,4 @@
+{
+  "name": "remotelib2",
+  "depends": ["remotelib1"]
+}

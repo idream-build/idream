@@ -13,7 +13,7 @@ import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import Idream.App (AppM)
-import Idream.Command.Common (PackageGroup, fullPkgDepsForGroup, pkgDepsForGroup, pkgGroupToText, withResolvedProject, readPkgSetFile, mkDepInfoMap)
+import Idream.Command.Common (PackageGroup, fullPkgDepsForGroup, pkgDepsForGroup, pkgGroupToText, withResolvedProject, readPkgSetFile, mkDepInfoMap, findExtRel)
 import Idream.Deps (linearizeDeps, lookupDeps, closureDeps)
 import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsFindFiles, fsMakeAbsolute, fsRemovePath, fsWriteFile, fsDoesDirectoryExist)
 import Idream.Effects.Process (Spec (..), procInvokeEnsure_, procDebug_)
@@ -29,16 +29,18 @@ compile projDir group = do
   withResolvedProject "compile" projDir $ \rp -> do
     logInfo ("Compiling project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
     ps <- readPkgSetFile (projDir </> pkgSetFileName)
-    dim <- mkDepInfoMap rp ps
+    dim <- mkDepInfoMap projDir rp ps
     liftIO (print dim)
     let filtDeps = fullPkgDepsForGroup rp group dim
         linPkgs = linearizeDeps filtDeps
         transDeps = closureDeps filtDeps
     liftIO (print linPkgs)
     for_ linPkgs $ \pn -> do
-      let di = unDepInfoMap dim Map.! pn
-          tdepends = Set.toList (lookupDeps pn transDeps)
-      compilePkg projDir di pn tdepends
+      case Map.lookup pn (unDepInfoMap dim) of
+        Nothing -> error ("TODO - throw package not found error for " <> show pn)
+        Just di -> do
+          let tdepends = Set.toList (lookupDeps pn transDeps)
+          compilePkg projDir di pn tdepends
 
 compilePkg :: Directory -> DepInfo -> PackageName -> [PackageName] -> AppM ()
 compilePkg projDir di pn tdepends = do
@@ -68,9 +70,6 @@ newtype ModuleName = ModuleName
 
 moduleNameText :: ModuleName -> Text
 moduleNameText = T.intercalate "." . fmap T.pack . unModuleName
-
-findExtRel :: String -> Directory -> AppM [FilePath]
-findExtRel ext dir = fmap (fmap (makeRelative dir)) (fsFindFiles (isExtensionOf ext) (Just dir))
 
 -- | Extracts the filename for use in ipkg file.
 --   e.g. LightYear/Position.idr -> LightYear.Position
