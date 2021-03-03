@@ -1,4 +1,4 @@
-module Idream.Command.Repl where
+module Idream.OldCommand.Repl where
 -- module Idream.Command.Repl ( startRepl ) where
 
 

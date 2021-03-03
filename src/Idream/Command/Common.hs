@@ -20,11 +20,16 @@ module Idream.Command.Common
   , PkgParseErr (..)
   , PkgSetParseErr (..)
   , ProjParseErr (..)
+  , DuplicatePackageInSetErr (..)
+  , DuplicatePackageInResolvedErr (..)
+  , MissingRepoInPackageSetErr (..)
+  , MissingDeclaredPackageErr (..)
+  , NoUniqueIpkgErr (..)
   ) where
 
 import Control.Exception (Exception (..))
-import Control.Monad (join)
-import Data.Foldable (toList)
+import Control.Monad (join, unless)
+import Data.Foldable (for_, toList)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -34,17 +39,20 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Traversable (for)
 import Idream.App (AppM)
-import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, restrictDeps, unionAllDeps,
-                    unionDeps, depsVertices, depsFromMap)
-import Idream.Effects.Serde (serdeReadJSON)
-import Idream.FileLogic (pkgFileName, projFileName, fetchDir)
-import Idream.FilePaths (Directory)
-import Idream.Types.Common (PackageName (..), RepoName (..), PackageType (..))
-import Idream.Types.External (Package (..), PackageRef (..), PackageSet (..), Project (..), ProjectRef (..), RepoRef (..), LocalRepoRef (..))
-import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..), IdreamDepInfo (..), BuiltinDepInfo (..), IpkgDepInfo (..), LocatedPackage (..), depInfoDepends)
-import LittleLogger (logWarning)
-import System.FilePath ((</>), isExtensionOf, makeRelative, isPathSeparator)
+import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, depsFromMap, depsVertices,
+                    restrictDeps, unionAllDeps, unionDeps)
 import Idream.Effects.FileSystem (fsFindFiles)
+import Idream.Effects.Serde (serdeReadJSON)
+import Idream.FileLogic (fetchDir, pkgFileName, projFileName)
+import Idream.FilePaths (Directory)
+import Idream.Types.Common (PackageName (..), PackageType (..), ProjectName (..), RepoName (..))
+import Idream.Types.External (LocalRepoRef (..), Package (..), PackageRef (..), PackageSet (..), Project (..),
+                              ProjectRef (..), RepoRef (..))
+import Idream.Types.Internal (BuiltinDepInfo (..), DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), IpkgDepInfo (..),
+                              LocatedPackage (..), ResolvedProject (..), depInfoDepends)
+import LittleLogger (logWarning)
+import System.FilePath (isExtensionOf, isPathSeparator, makeRelative, (</>))
+import UnliftIO.Exception (throwIO)
 
 -- | Error type for describing errors when parsing project file.
 data ProjParseErr = ProjParseErr FilePath String
@@ -70,6 +78,41 @@ instance Exception PkgSetParseErr where
   displayException (PkgSetParseErr path err) =
     "Failed to parse package set file at " <> path <> ": " <> err <> "."
 
+newtype DuplicatePackageInSetErr = DuplicatePackageInSetErr PackageName
+  deriving (Eq, Show)
+
+instance Exception DuplicatePackageInSetErr where
+  displayException (DuplicatePackageInSetErr pn) =
+    "Duplicate package in initial package set: " <> T.unpack (unPkgName pn)
+
+newtype DuplicatePackageInResolvedErr = DuplicatePackageInResolvedErr PackageName
+  deriving (Eq, Show)
+
+instance Exception DuplicatePackageInResolvedErr where
+  displayException (DuplicatePackageInResolvedErr pn) =
+    "Duplicate package in resolved package set: " <> T.unpack (unPkgName pn)
+
+newtype MissingRepoInPackageSetErr = MissingRepoInPackageSetErr RepoName
+  deriving (Eq, Show)
+
+instance Exception MissingRepoInPackageSetErr where
+  displayException (MissingRepoInPackageSetErr rn) =
+    "Missing repo definition in package set: " <> T.unpack (unRepoName rn)
+
+data MissingDeclaredPackageErr = MissingDeclaredPackageErr ProjectName PackageName
+  deriving (Eq, Show)
+
+instance Exception MissingDeclaredPackageErr where
+  displayException (MissingDeclaredPackageErr jn pn) =
+    "Missing package declared in project: " <> T.unpack (unProjName jn) <> " " <> T.unpack (unPkgName pn)
+
+newtype NoUniqueIpkgErr = NoUniqueIpkgErr Directory
+  deriving (Eq, Show)
+
+instance Exception NoUniqueIpkgErr where
+  displayException (NoUniqueIpkgErr path) =
+    "Could not find unique ipkg file in directory: " <> path
+
 findExtRel :: String -> Directory -> AppM [FilePath]
 findExtRel ext dir = fmap (fmap (makeRelative dir)) (fsFindFiles (isExtensionOf ext) (Just dir))
 
@@ -85,13 +128,13 @@ readPkgSetFile path = serdeReadJSON (PkgSetParseErr path) path
 readProjFile :: FilePath -> AppM Project
 readProjFile path = serdeReadJSON (ProjParseErr path) path
 
-mkUniquePkgMap :: [(PackageName, LocatedPackage)] -> AppM (Map PackageName LocatedPackage)
-mkUniquePkgMap = foldr go (pure Map.empty) where
-  go (pn, lp) mm = do
+mkUniqueMap :: (Exception e, Ord k) => (k -> e) -> [(k, v)] -> AppM (Map k v)
+mkUniqueMap f = foldr go (pure Map.empty) where
+  go (k, v) mm = do
     m <- mm
-    case Map.lookup pn m of
-      Nothing -> pure (Map.insert pn lp m)
-      _ -> error "TODO throw error on duplicate"
+    case Map.lookup k m of
+      Nothing -> pure (Map.insert k v m)
+      _ -> throwIO (f k)
 
 -- | Reads project and package info into one struct.
 resolveProj :: Project -> AppM ResolvedProject
@@ -101,7 +144,7 @@ resolveProj (Project pn mpaths) = do
     pkg <- readPkgFile (path </> pkgFileName)
     let pn = packageName pkg
     pure (pn, LocatedPackage path pkg)
-  pmap <- mkUniquePkgMap lps
+  pmap <- mkUniqueMap DuplicatePackageInSetErr lps
   pure (ResolvedProject pn pmap)
 
 initRepoDeps :: PackageSet -> Deps PackageName RepoName
@@ -210,7 +253,7 @@ getRepoDir rn rr =
 mkPkgDepInfo :: Map RepoName RepoRef -> PackageRef -> AppM DepInfo
 mkPkgDepInfo repoRefs (PackageRef rn msubdir mdepends) = do
   case Map.lookup rn repoRefs of
-    Nothing -> error "TODO - throw for missing repo"
+    Nothing -> throwIO (MissingRepoInPackageSetErr rn)
     Just rr -> do
       let repoDir = getRepoDir rn rr
           path = maybe repoDir (repoDir </>) msubdir
@@ -218,7 +261,7 @@ mkPkgDepInfo repoRefs (PackageRef rn msubdir mdepends) = do
       pkgCand <- findExtRel "ipkg" path
       case filter (not . any isPathSeparator) pkgCand of
         [pkgFile] -> pure (DepInfoIpkg (IpkgDepInfo path pkgFile depends))
-        _ -> error ("TODO - throw for no unique pkg " <> show path <> " " <> show pkgCand)
+        _ -> throwIO (NoUniqueIpkgErr path)
 
 mkPkgDepPair :: Map RepoName RepoRef -> PackageName -> PackageRef -> AppM (PackageName, DepInfo)
 mkPkgDepPair repoRefs pn pr = fmap (pn,) (mkPkgDepInfo repoRefs pr)
@@ -226,20 +269,16 @@ mkPkgDepPair repoRefs pn pr = fmap (pn,) (mkPkgDepInfo repoRefs pr)
 mkProjDepPairs :: Directory -> Map RepoName RepoRef -> ProjectRef -> AppM [(PackageName, DepInfo)]
 mkProjDepPairs projDir repoRefs (ProjectRef rn msubdir pkgs) = do
   case Map.lookup rn repoRefs of
-    Nothing -> error "TODO - throw for missing repo"
+    Nothing -> throwIO (MissingRepoInPackageSetErr rn)
     Just rr -> do
       let repoDir = getRepoDir rn rr
           path = maybe repoDir (repoDir </>) msubdir
           subProjFile = projDir </> path </> projFileName
       subProj <- readProjFile subProjFile
       subResolvedProj <- resolveProj subProj
-      error "TODO - finish"
-      -- let subPkgMap = Map.fromList
-      -- for pkgs $ \pn -> do
-      --   case Map.lookup pn (rpPackages ResolvedProject)
-      --   let pkgDir = "TODO"
-      --   pkgDef <- undefined
-      --   mkProjectDepInfo False pkgDir pkgDef
+      let pmap = rpPackages subResolvedProj
+      for_ pkgs $ \pn -> unless (Map.member pn pmap) (throwIO (MissingDeclaredPackageErr (projectName subProj) pn))
+      pure (fmap (mkProjectDepPair False) (Map.elems pmap))
 
 mkDepInfoMap :: Directory -> ResolvedProject -> PackageSet -> AppM DepInfoMap
 mkDepInfoMap projDir rp ps = do
@@ -250,5 +289,6 @@ mkDepInfoMap projDir rp ps = do
       projRefs = fromMaybe [] (psProjects ps)
   pkgPairs <- for pkgRefs (uncurry (mkPkgDepPair repoRefs))
   projPairs <- fmap join (for projRefs (mkProjDepPairs projDir repoRefs))
-  let m = Map.fromList (localPairs ++ builtinPairs ++ pkgPairs ++ projPairs)
+  let allPairs = localPairs ++ builtinPairs ++ pkgPairs ++ projPairs
+  m <- mkUniqueMap DuplicatePackageInResolvedErr allPairs
   pure (DepInfoMap m)

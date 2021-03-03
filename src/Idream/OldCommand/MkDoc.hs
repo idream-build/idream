@@ -1,4 +1,4 @@
-module Idream.Command.MkDoc where
+module Idream.OldCommand.MkDoc where
 -- module Idream.Command.MkDoc ( generateDocs ) where
 
 -- -- Imports

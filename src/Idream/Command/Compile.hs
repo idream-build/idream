@@ -1,11 +1,13 @@
 module Idream.Command.Compile
   ( compile
+  , MissingPackageInResolvedErr (..)
   ) where
 
+import Control.Exception (Exception (..))
 import Control.Monad (unless, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
-import Data.List (intercalate, stripPrefix, groupBy)
+import Data.List (groupBy, intercalate, stripPrefix)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
@@ -13,16 +15,27 @@ import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import Idream.App (AppM)
-import Idream.Command.Common (PackageGroup, fullPkgDepsForGroup, pkgDepsForGroup, pkgGroupToText, withResolvedProject, readPkgSetFile, mkDepInfoMap, findExtRel)
-import Idream.Deps (linearizeDeps, lookupDeps, closureDeps)
-import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsFindFiles, fsMakeAbsolute, fsRemovePath, fsWriteFile, fsDoesDirectoryExist)
-import Idream.Effects.Process (Spec (..), procInvokeEnsure_, procDebug_)
-import Idream.FileLogic (pkgSetFileName, buildDir, workDir, outputDir, installDir)
+import Idream.Command.Common (PackageGroup, findExtRel, fullPkgDepsForGroup, mkDepInfoMap, pkgDepsForGroup,
+                              pkgGroupToText, readPkgSetFile, withResolvedProject)
+import Idream.Deps (closureDeps, linearizeDeps, lookupDeps)
+import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsDoesDirectoryExist, fsFindFiles, fsMakeAbsolute,
+                                  fsRemovePath, fsWriteFile)
+import Idream.Effects.Process (Spec (..), procDebug_, procInvokeEnsure_)
+import Idream.FileLogic (buildDir, installDir, outputDir, pkgSetFileName, workDir)
 import Idream.FilePaths (Directory)
-import Idream.Types.Common (PackageName (..), ProjectName (..), PackageType (..))
-import Idream.Types.Internal (ResolvedProject (..), DepInfoMap (..), DepInfo (..), IdreamDepInfo (..),IpkgDepInfo (IpkgDepInfo), depInfoDepends)
+import Idream.Types.Common (PackageName (..), PackageType (..), ProjectName (..))
+import Idream.Types.Internal (DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), IpkgDepInfo (IpkgDepInfo),
+                              ResolvedProject (..), depInfoDepends)
 import LittleLogger (logInfo)
-import System.FilePath ((</>), makeRelative, isExtensionOf, (-<.>), dropExtension)
+import System.FilePath (dropExtension, isExtensionOf, makeRelative, (-<.>), (</>))
+import UnliftIO.Exception (throwIO)
+
+newtype MissingPackageInResolvedErr = MissingPackageInResolvedErr PackageName
+  deriving (Eq, Show)
+
+instance Exception MissingPackageInResolvedErr where
+  displayException (MissingPackageInResolvedErr pn) =
+    "Missing packaged in resolved set: " <> T.unpack (unPkgName pn)
 
 compile :: Directory -> PackageGroup -> AppM ()
 compile projDir group = do
@@ -37,7 +50,7 @@ compile projDir group = do
     liftIO (print linPkgs)
     for_ linPkgs $ \pn -> do
       case Map.lookup pn (unDepInfoMap dim) of
-        Nothing -> error ("TODO - throw package not found error for " <> show pn)
+        Nothing -> throwIO (MissingPackageInResolvedErr pn)
         Just di -> do
           let tdepends = Set.toList (lookupDeps pn transDeps)
           compilePkg projDir di pn tdepends

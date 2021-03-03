@@ -24,7 +24,8 @@ import qualified Data.Text.IO as TIO
 import Idream.App (AppM)
 import Idream.FilePaths (Directory)
 import Shelly (cp_r, find, fromText, shelly, silently, toTextIgnore)
-import UnliftIO.Directory (copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, makeAbsolute, removePathForcibly)
+import UnliftIO.Directory (copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, makeAbsolute,
+                           removePathForcibly)
 import UnliftIO.Exception (catch, catchIO, throwIO)
 
 data WriteFileErr = WriteFileErr FilePath IOException
