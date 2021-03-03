@@ -43,7 +43,7 @@ compilePkg projDir di pn = do
       -- procInvokeEnsure_ spec
       procDebug_ spec
     DepInfoIpkg (IpkgDepInfo path pkgFile _) -> do
-      let args = ["--build", pkgFile]
+      let args = ["--build", pkgFile, "--output-dir", realBuildDir]
           spec = Spec "idris2" args (Just path) env
       -- procInvokeEnsure_ spec
       procDebug_ spec

@@ -1,0 +1,20 @@
+{
+  "repos": {
+    "examples": {
+      "local": ".."
+    }
+  },
+  "packages": {
+    "testlib1": {
+      "repo": "examples",
+      "type": "ipkg",
+      "subdir": "testlib1"
+    },
+    "testlib2": {
+      "repo": "examples",
+      "type": "ipkg",
+      "subdir": "testlib2",
+      "depends": ["testlib1"]
+    }
+  }
+}
