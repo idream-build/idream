@@ -1,7 +1,7 @@
 module Main
 
 import Testlib2
-import System (exit)
+import System
 
 main : IO ()
-main = if length val2 == 0 then exit 1 else pure ()
+main = if length val2 == 0 then exitFailure else pure ()
