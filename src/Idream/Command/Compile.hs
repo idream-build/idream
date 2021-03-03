@@ -5,7 +5,6 @@ module Idream.Command.Compile
 
 import Control.Exception (Exception (..))
 import Control.Monad (unless, when)
-import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
 import Data.List (groupBy, intercalate, stripPrefix)
 import qualified Data.Map as Map
@@ -43,11 +42,9 @@ compile projDir group = do
     logInfo ("Compiling project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
     ps <- readPkgSetFile (projDir </> pkgSetFileName)
     dim <- mkDepInfoMap projDir rp ps
-    liftIO (print dim)
     let filtDeps = fullPkgDepsForGroup rp group dim
         linPkgs = linearizeDeps filtDeps
         transDeps = closureDeps filtDeps
-    liftIO (print linPkgs)
     for_ linPkgs $ \pn -> do
       case Map.lookup pn (unDepInfoMap dim) of
         Nothing -> throwIO (MissingPackageInResolvedErr pn)
@@ -62,12 +59,10 @@ compilePkg projDir di pn tdepends = do
     DepInfoBuiltin _ -> pure False
     DepInfoIdream idi -> do
       modules <- findIpkgModules projDir idi
-      liftIO (print modules)
       let path = idreamDepPath idi
           pkgFile = T.unpack (unPkgName pn) -<.> "ipkg"
           pkgContents = mkIpkgContents pn idi modules
           rootedPkgFile = projDir </> path </> pkgFile
-      liftIO (print pkgContents)
       fsWriteFile rootedPkgFile pkgContents
       runIdris projDir pn path pkgFile tdepends
       pure True
@@ -133,8 +128,7 @@ runIdris projDir pn path pkgFile tdepends = do
              , "--verbose"
              ]
       spec = Spec "idris2" args (Just (projDir </> path)) env
-  -- procInvokeEnsure_ spec
-  procDebug_ spec
+  procInvokeEnsure_ spec
 
 installFiles :: Directory -> PackageName -> AppM ()
 installFiles projDir pn = do

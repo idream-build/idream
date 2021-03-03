@@ -85,7 +85,7 @@ addPackageToProject projDir pkgSubDir pkgName pkgType = do
       let pkgSrcDir = pkgDir </> "src"
           projFile = projDir </> projFileName
       proj <- readProjFile projFile
-      resolvedProj <- resolveProj proj
+      resolvedProj <- resolveProj projDir proj
       for_ (rpPackages resolvedProj) $ \(LocatedPackage d p) ->
         when (packageName p == pkgName) (throwIO (PackageNameAlreadyExistsErr d pkgName))
       fsCreateDir pkgDir
