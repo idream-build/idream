@@ -49,7 +49,7 @@ instance Exception MissingLocalPathErr where
 -- | Top level function that tries to fetch all dependencies.
 fetchImpl :: Directory -> PackageGroup -> RefreshStrategy -> AppM ()
 fetchImpl projDir group refreshStrat = do
-  withResolvedProject "fetch" projDir $ \rp -> do
+  withResolvedProject projDir $ \rp -> do
     logInfo ("Fetching dependencies for project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
     pkgSet <- readPkgSetFile (projDir </> pkgSetFileName)
     let repoRefs = reposForGroup rp pkgSet group

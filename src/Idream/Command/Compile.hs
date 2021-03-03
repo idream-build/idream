@@ -14,7 +14,7 @@ import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import Idream.App (AppM)
-import Idream.Command.Common (PackageGroup, findExtRel, fullPkgDepsForGroup, mkDepInfoMap, pkgDepsForGroup,
+import Idream.Command.Common (PackageGroup, findExtRel, fullPkgDepsForGroup, mkDepInfoMap,
                               pkgGroupToText, readPkgSetFile, withResolvedProject)
 import Idream.Deps (closureDeps, linearizeDeps, lookupDeps)
 import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsDoesDirectoryExist, fsFindFiles, fsMakeAbsolute,
@@ -38,7 +38,7 @@ instance Exception MissingPackageInResolvedErr where
 
 compileImpl :: Directory -> PackageGroup -> AppM ()
 compileImpl projDir group = do
-  withResolvedProject "compile" projDir $ \rp -> do
+  withResolvedProject projDir $ \rp -> do
     logInfo ("Compiling project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
     ps <- readPkgSetFile (projDir </> pkgSetFileName)
     dim <- mkDepInfoMap projDir rp ps
@@ -51,6 +51,7 @@ compileImpl projDir group = do
         Just di -> do
           let tdepends = Set.toList (lookupDeps pn transDeps)
           compilePkg projDir di pn tdepends
+    logInfo "Finished compiling."
 
 compilePkg :: Directory -> DepInfo -> PackageName -> [PackageName] -> AppM ()
 compilePkg projDir di pn tdepends = do

@@ -13,7 +13,6 @@ module Idream.Command.Common
   , pkgGroupMember
   , pkgGroupToText
   , reposForGroup
-  , pkgDepsForGroup
   , fullPkgDepsForGroup
   , withResolvedProject
   , mkDepInfoMap
@@ -28,7 +27,7 @@ module Idream.Command.Common
   ) where
 
 import Control.Exception (Exception (..))
-import Control.Monad (join, unless)
+import Control.Monad (join, unless, when)
 import Data.Foldable (for_, toList)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -195,31 +194,32 @@ reposForGroup rp ps g =
       refs = fromMaybe Map.empty (psRepos ps)
   in Map.fromList (fmap (\r -> (r, refs Map.! r)) (Set.toList repos))
 
-pkgDepsForGroup :: ResolvedProject -> PackageGroup -> Deps PackageName PackageName
-pkgDepsForGroup rp g =
-  let ipd = initPkgDeps rp
-  in case g of
-    PackageGroupAll -> ipd
-    PackageGroupSubset s -> restrictDeps (`Set.member` s) ipd
+-- pkgDepsForGroup :: ResolvedProject -> PackageGroup -> Deps PackageName PackageName
+-- pkgDepsForGroup rp g =
+--   let ipd = initPkgDeps rp
+--   in case g of
+--     PackageGroupAll -> ipd
+--     PackageGroupSubset s -> restrictDeps (`Set.member` s) ipd
 
 depInfoPkgDeps :: DepInfoMap -> Deps PackageName PackageName
 depInfoPkgDeps = depsFromGroups . fmap (fmap (Set.fromList . depInfoDepends)) . Map.toList . unDepInfoMap
 
 fullPkgDepsForGroup :: ResolvedProject -> PackageGroup -> DepInfoMap -> Deps PackageName PackageName
 fullPkgDepsForGroup rp g dim =
-  let x = pkgDepsForGroup rp g
-      y = depInfoPkgDeps dim
-      z = depsVertices x
+  let y = depInfoPkgDeps dim
+      z = case g of
+            PackageGroupAll -> Map.keysSet (rpPackages rp)
+            PackageGroupSubset s -> s
   in restrictDeps (`Set.member` z) y
 
-withResolvedProject :: Text -> Directory -> (ResolvedProject -> AppM ()) -> AppM ()
-withResolvedProject step projDir act = do
+withResolvedProject :: Directory -> (ResolvedProject -> AppM ()) -> AppM ()
+withResolvedProject projDir act = do
   proj <- readProjFile (projDir </> projFileName)
   rp <- resolveProj projDir proj
-  if null (rpPackages rp)
-    then logWarning ("Project contains no packages yet, skipping " <> step <> " step."
-                    <> "Use `idream add` to add a package to this project first.")
-    else act rp
+  when (null (rpPackages rp)) $ do
+    logWarning ("Project contains no packages yet."
+               <> "Use `idream add` to add a package to this project.")
+  act rp
 
 mkProjectDepInfo :: Bool -> Directory -> Package -> DepInfo
 mkProjectDepInfo local path (Package _ mty msourcedir mdepends) = DepInfoIdream pdi where
