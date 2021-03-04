@@ -7,7 +7,9 @@ A simple build system for Idris
 
 ## Current status
 
-TODO(ejconlon) Give an accurate report.
+It works for basic package resolution and compilation.
+
+Notably, it does NOT yet support recursive project fetching, but you probably won't hit that.
 
 
 ## Contributors
