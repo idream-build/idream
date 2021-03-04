@@ -1,6 +1,5 @@
 module Idream.Command.Fetch
   ( fetchImpl
-  , fetchInner
   , PkgMissingInPkgSetErr (..)
   , DisableRefreshErr (..)
   , MissingLocalPathErr (..)
@@ -45,10 +44,6 @@ fetchImpl :: Directory -> PackageGroup -> RefreshStrategy -> AppM ()
 fetchImpl projDir group refreshStrat = do
   rp <- readResolvedProject projDir
   logInfo ("Fetching dependencies for project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group)
-  fetchInner projDir rp group refreshStrat
-
-fetchInner :: Directory -> ResolvedProject -> PackageGroup -> RefreshStrategy -> AppM ()
-fetchInner projDir rp group refreshStrat = do
   pkgSet <- readPkgSetFile (projDir </> pkgSetFileName)
   let repoRefs = reposForGroup rp pkgSet group
   logInfo "Resolving dependencies"

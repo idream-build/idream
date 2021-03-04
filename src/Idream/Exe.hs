@@ -19,10 +19,10 @@ import Idream.Types.Common (PackageName (..), ProjectName (..), RefreshStrategy)
 -- | Main function.
 main :: IO ()
 main = do
-  Args severity mayProjDir refreshStrat command <- parseCmdLineArgs
+  Args severity mayProjDir command <- parseCmdLineArgs
   let projDir = effectiveProjDir mayProjDir command
       app = newApp severity
-  runAppM app (processCommand projDir refreshStrat command)
+  runAppM app (processCommand projDir command)
 
 -- | Gets the project dir as configured through args or convention.
 effectiveProjDir :: Maybe Directory -> Command -> Directory
@@ -35,16 +35,16 @@ effectiveProjDir mayProjDir cmd =
     Just d -> d
 
 -- | Function that processes the given command.
-processCommand :: Directory -> RefreshStrategy -> Command -> AppM ()
-processCommand projDir refreshStrat command =
+processCommand :: Directory -> Command -> AppM ()
+processCommand projDir command =
   case command of
-    Fetch pkgGroup ->
+    Fetch pkgGroup refreshStrat ->
       fetchImpl projDir pkgGroup refreshStrat
     Compile pkgGroup ->
-      compileImpl projDir pkgGroup refreshStrat
+      compileImpl projDir pkgGroup
     Clean -> cleanImpl projDir
     New projName -> newImpl projDir projName
     Add mayPkgSubDir pkgName pkgType ->
       addImpl projDir mayPkgSubDir pkgName pkgType
-    Test pkgGroup -> testImpl projDir pkgGroup refreshStrat
+    Test pkgGroup -> testImpl projDir pkgGroup
     _ -> error ("TODO implement command: " <> show command)

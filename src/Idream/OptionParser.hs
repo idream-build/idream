@@ -57,7 +57,7 @@ commandParser = hsubparser commands where
           <> mkCmd "add" addCmdParser "Adds a package to an existing idream project."
           <> mkCmd "test" testCmdParser "Runs unit tests for this project."
   mkCmd name parser desc = command name (info parser (progDesc desc))
-  fetchCmdParser = Fetch <$> packageGroupParser
+  fetchCmdParser = Fetch <$> packageGroupParser <*> refreshStratParser
   compileCmdParser = Compile <$> packageGroupParser
   cleanCmdParser = pure Clean
   runCmdParser = Run <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
@@ -71,7 +71,7 @@ commandParser = hsubparser commands where
 
 -- | Helper function for parsing the command line arguments.
 argsParser :: Parser Args
-argsParser = Args <$> logLevelParser <*> projDirParser <*> refreshStratParser <*> commandParser
+argsParser = Args <$> logLevelParser <*> projDirParser <*> commandParser
 
 -- | Function that performs the parsing of command line arguments.
 parseCmdLineArgs :: IO Args

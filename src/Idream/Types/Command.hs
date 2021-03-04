@@ -14,7 +14,7 @@ type Argument = Text
 
 -- | Type describing the various commands that can be passed in via the commandline interface.
 data Command
-  = Fetch PackageGroup          -- ^ Fetches all dependencies as described in json file
+  = Fetch PackageGroup RefreshStrategy  -- ^ Fetches all dependencies as described in json file
   | Compile PackageGroup        -- ^ Compiles all code
   | Clean                       -- ^ Cleans up build artifacts and fetched code
   | Run PackageName [Argument]  -- ^ Runs an executable
@@ -28,6 +28,5 @@ data Command
 data Args = Args
   { argsSeverity :: Severity
   , argsProjDir :: Maybe Directory
-  , argsRefreshStrat :: RefreshStrategy
   , argsCommand :: Command
   } deriving (Eq, Show)

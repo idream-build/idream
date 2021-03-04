@@ -1,6 +1,5 @@
 module Idream.Command.Compile
   ( compileImpl
-  , compileInner
   , MissingPackageInResolvedErr (..)
   ) where
 
@@ -10,14 +9,13 @@ import qualified Data.Set as Set
 import qualified Data.Text as T
 import Idream.Command.Common (PackageGroup, findExtRel, fullPkgDepsForGroup, mkDepInfoMap, pkgGroupToText,
                               readDepInfoMap, readPkgSetFile, readResolvedProject)
-import Idream.Command.Fetch (fetchInner)
 import Idream.Deps (closureDeps, linearizeDeps, lookupDeps)
 import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsDoesDirectoryExist, fsFindFiles, fsMakeAbsolute,
                                   fsRemovePath, fsWriteFile)
 import Idream.Effects.Process (Spec (..), procDebug_, procInvokeEnsure_)
 import Idream.FileLogic (buildDir, installDir, outputDir, pkgSetFileName, workDir)
 import Idream.Prelude
-import Idream.Types.Common (PackageName (..), PackageType (..), ProjectName (..), RefreshStrategy)
+import Idream.Types.Common (PackageName (..), PackageType (..), ProjectName (..))
 import Idream.Types.Internal (DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), IpkgDepInfo (IpkgDepInfo),
                               ResolvedProject (..), depInfoDepends)
 import System.FilePath (dropExtension)
@@ -29,16 +27,11 @@ instance Exception MissingPackageInResolvedErr where
   displayException (MissingPackageInResolvedErr pn) =
     "Missing packaged in resolved set: " <> T.unpack (unPkgName pn)
 
-compileImpl :: Directory -> PackageGroup -> RefreshStrategy -> AppM ()
-compileImpl projDir group refreshStrat = do
+compileImpl :: Directory -> PackageGroup -> AppM ()
+compileImpl projDir group = do
   rp <- readResolvedProject projDir
-  logInfo ("Compiling project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
-  fetchInner projDir rp group refreshStrat
+  logInfo ("Compiling project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group)
   dim <- readDepInfoMap projDir rp
-  compileInner projDir rp group dim
-
-compileInner :: Directory -> ResolvedProject -> PackageGroup -> DepInfoMap -> AppM ()
-compileInner projDir rp group dim = do
   let filtDeps = fullPkgDepsForGroup rp group dim
       linPkgs = linearizeDeps filtDeps
       transDeps = closureDeps filtDeps
@@ -48,7 +41,7 @@ compileInner projDir rp group dim = do
       Just di -> do
         let tdepends = Set.toList (lookupDeps pn transDeps)
         compilePkg projDir di pn tdepends
-  logInfo "Finished compiling."
+  logInfo "Finished compiling"
 
 compilePkg :: Directory -> DepInfo -> PackageName -> [PackageName] -> AppM ()
 compilePkg projDir di pn tdepends = do

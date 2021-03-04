@@ -7,10 +7,11 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import Idream.Command.Common (pkgGroupToText, readDepInfoMap, readResolvedProject)
-import Idream.Command.Compile (compileInner)
-import Idream.Command.Fetch (fetchInner)
+import Idream.Effects.FileSystem (fsFindFiles)
+import Idream.Effects.Process (Spec (..), procInvokeEnsure_)
+import Idream.FileLogic (outputDir)
 import Idream.Prelude
-import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..), RefreshStrategy)
+import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..))
 import Idream.Types.External (Package (..))
 import Idream.Types.Internal (DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), LocatedPackage (..),
                               ResolvedProject (..))
@@ -22,33 +23,38 @@ instance Exception NonTestPackagesErr where
   displayException (NonTestPackagesErr pkgs) =
     "Non-test packages specified in test group: " <> intercalate ", " (fmap (T.unpack . unPkgName) (Set.toList pkgs))
 
-testImpl :: Directory -> PackageGroup -> RefreshStrategy -> AppM ()
-testImpl projDir group refreshStrat = do
+testImpl :: Directory -> PackageGroup -> AppM ()
+testImpl projDir group = do
   rp <- readResolvedProject projDir
   logInfo ("Testing project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
-  fetchInner projDir rp group refreshStrat
   dim <- readDepInfoMap projDir rp
-  let localTestPkgNames = listLocalTestPkgNames rp
-      allTestPkgNames = listAllTestPkgNames dim
-  -- realGroup <- case group of
-  --   PackageGroupAll -> pure localTestPkgNames
-  --   PackageGroupSubset reqNames -> do
-  --     let invalidNames = Set.difference reqNames allTestPkgNames
-  --     unless (Set.null invalidNames) (throwIO (NonTestPackagesErr invalidNames))
-  --     pure reqNames
-  -- compileInner projDir rp realGroup dim
-  error "TODO - finish test"
+  let localTestMap = mkLocalTestMap rp
+      allTestMap = mkAllTestMap dim
+  testMap <- case group of
+    PackageGroupAll -> pure localTestMap
+    PackageGroupSubset reqNames -> do
+      let allNames = Map.keysSet allTestMap
+          invalidNames = Set.difference reqNames allNames
+      unless (Set.null invalidNames) (throwIO (NonTestPackagesErr invalidNames))
+      pure (Map.filterWithKey (\pn _ -> Set.member pn reqNames) allTestMap)
+  for_ (Map.toList testMap) $ \(pn, _) -> do
+    logInfo ("Running test " <> unPkgName pn)
+    let part = T.unpack (unPkgName pn)
+        path = projDir </> outputDir </> part
+        spec = Spec "sh" [part] (Just path) []
+    procInvokeEnsure_ spec
+  logInfo "Finished testing"
 
-listLocalTestPkgNames :: ResolvedProject -> Set PackageName
-listLocalTestPkgNames rp =
-  let allPkgs = fmap lpPkg (Map.elems (rpPackages rp))
-      testPkgs = filter (\p -> packageType p == Just PkgTypeTest) allPkgs
-      pkgNames = fmap packageName testPkgs
-  in Set.fromList pkgNames
+mkLocalTestMap :: ResolvedProject -> Map PackageName Directory
+mkLocalTestMap rp = Map.fromList $ do
+  LocatedPackage path (Package pn mty _ _) <- Map.elems (rpPackages rp)
+  case mty of
+    Just PkgTypeTest -> [(pn, path)]
+    _ -> []
 
-listAllTestPkgNames :: DepInfoMap -> Set PackageName
-listAllTestPkgNames = Set.fromList . (>>= go) . Map.toList . unDepInfoMap where
+mkAllTestMap :: DepInfoMap -> Map PackageName Directory
+mkAllTestMap = Map.fromList . (>>= go) . Map.toList . unDepInfoMap where
   go (pn, di) =
     case di of
-      DepInfoIdream idi | idreamDepType idi == PkgTypeTest -> [pn]
+      DepInfoIdream (IdreamDepInfo _ path ty _ _) | ty == PkgTypeTest -> [(pn, path)]
       _ -> []
