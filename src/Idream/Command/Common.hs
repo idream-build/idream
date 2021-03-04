@@ -27,6 +27,7 @@ module Idream.Command.Common
   , MissingDeclaredPackageErr (..)
   , NoUniqueIpkgErr (..)
   , UnsupportedCodegenExeErr (..)
+  , MissingPackageInResolvedErr (..)
   ) where
 
 import qualified Data.Map as Map
@@ -111,6 +112,13 @@ data UnsupportedCodegenExeErr = UnsupportedCodegenExeErr PackageName Codegen
 instance Exception UnsupportedCodegenExeErr where
   displayException (UnsupportedCodegenExeErr pn cg) =
     "Unsupported codegen " <> toString cg <> " - cannot run " <> toString pn
+
+newtype MissingPackageInResolvedErr = MissingPackageInResolvedErr PackageName
+  deriving (Eq, Show)
+
+instance Exception MissingPackageInResolvedErr where
+  displayException (MissingPackageInResolvedErr pn) =
+    "Missing packaged in resolved set: " <> toString pn
 
 findExtRel :: String -> Directory -> AppM [FilePath]
 findExtRel ext dir = fmap (fmap (makeRelative dir)) (fsFindFiles (isExtensionOf ext) (Just dir))
@@ -315,3 +323,9 @@ mkDepInfoMap projDir rp ps = do
   projPairs <- fmap join (for projRefs (mkProjDepPairs projDir repoRefs))
   let allPairs = localPairs ++ builtinPairs ++ pkgPairs ++ projPairs
   mkUniqueMap DuplicatePackageInResolvedErr allPairs
+
+getDepInfoMap :: PackageName -> DepInfoMap -> AppM DepInfo
+getDepInfoMap pn dim =
+  case Map.lookup pn dim of
+    Nothing -> throwIO (MissingPackageInResolvedErr pn)
+    Just di -> pure di

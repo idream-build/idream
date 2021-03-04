@@ -4,7 +4,8 @@ build/
 images/idream/cache/
 dist/
 dist-newstyle/
-test_project/
+smoke_project/
+tut_project/
 *~
 *.swo
 *.swp

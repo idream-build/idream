@@ -1,18 +1,26 @@
 module Idream.Command.Repl
   ( replImpl
+  , ReplBuiltinPackageErr (..)
   ) where
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Idream.Prelude
+import Idream.Command.Common (fullPkgDepsForGroup, getDepInfoMap, readDepInfoMap, readResolvedProject)
+import Idream.Deps (closureDeps, lookupDeps)
 import Idream.Effects.FileSystem (fsMakeAbsolute)
 import Idream.Effects.Process (Spec (..), procDebug_)
-import Idream.Types.Common (Codegen, PackageName, PackageGroup (PackageGroupSubset))
-import Idream.FileLogic (workDir, buildDirName, outputDirName, installDirName)
-import Idream.Types.Internal (DepInfo (..), IpkgDepInfo (..), IdreamDepInfo (..), ResolvedProject (rpCodegen))
-import Idream.Command.Common (readResolvedProject, readDepInfoMap, fullPkgDepsForGroup)
-import Idream.Deps (closureDeps, lookupDeps)
+import Idream.FileLogic (buildDirName, installDirName, outputDirName, workDir)
+import Idream.Prelude
+import Idream.Types.Common (Codegen, PackageGroup (PackageGroupSubset), PackageName)
+import Idream.Types.Internal (DepInfo (..), IdreamDepInfo (..), IpkgDepInfo (..), ResolvedProject (rpCodegen))
 import UnliftIO.Environment (getEnv)
+
+newtype ReplBuiltinPackageErr = ReplBuiltinPackageErr PackageName
+  deriving (Eq, Show)
+
+instance Exception ReplBuiltinPackageErr where
+  displayException (ReplBuiltinPackageErr pn) =
+    "Cannot open repl for builtin package: " <> toString pn
 
 replImpl :: Directory -> PackageName -> AppM ()
 replImpl projDir pn = do
@@ -23,14 +31,13 @@ replImpl projDir pn = do
       transDeps = closureDeps filtDeps
       tdepends = Set.toList (lookupDeps pn transDeps)
       codegen = rpCodegen rp
-  case Map.lookup pn dim of
-    Nothing -> error "TODO - throw appropriate error"
-    Just di -> replPkg projDir codegen di pn tdepends
+  di <- getDepInfoMap pn dim
+  replPkg projDir codegen di pn tdepends
 
 replPkg :: Directory -> Codegen -> DepInfo -> PackageName -> [PackageName] -> AppM ()
 replPkg projDir codegen di pn tdepends = do
   case di of
-    DepInfoBuiltin _ -> error "TODO - throw appropriate error"
+    DepInfoBuiltin _ -> throwIO (ReplBuiltinPackageErr pn)
     DepInfoIdream idi -> do
       let path = idreamDepPath idi
           pkgFile = toString pn -<.> "ipkg"
@@ -47,10 +54,10 @@ idrisRepl projDir codegen pn path pkgFile tdepends = do
       absInstallDir = absWorkDir </> installDirName
       depNames = fmap toString tdepends
       idpath = intercalate ":" (fmap (absInstallDir </>) depNames)
-      env = [ ("IDRIS2_PATH", idpath)
-            , ("PATH", shellPath)
+      idpathEnv = [("IDRIS2_PATH", idpath) | not (null idpath)]
+      env = [ ("PATH", shellPath)
             , ("TERM", "xterm-256color")
-            ]
+            ] ++ idpathEnv
       pkgDirPart = toString pn
       absPkgBuildDir = absBuildDir </> pkgDirPart
       absPkgOutputDir = absOutputDir </> pkgDirPart
