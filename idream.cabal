@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 093aae59e3e56853cbf277272ca1ca56f54dc23eb5cf7bc4389cfccdf34c3218
+-- hash: 0aba62d368637d44d1e13baab4eb87a1e4f19db0663b3092975e22ec514f4b29
 
 name:           idream
 version:        0.2.0.0
@@ -48,7 +48,7 @@ library
   hs-source-dirs:
       src
   default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
-  ghc-options: -optP-Wno-nonportable-include-path
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path -O2
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
@@ -79,7 +79,7 @@ executable idream
   hs-source-dirs:
       exe
   default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
-  ghc-options: -optP-Wno-nonportable-include-path
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path -O2
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
@@ -113,7 +113,7 @@ test-suite idream-test
   hs-source-dirs:
       test
   default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
-  ghc-options: -optP-Wno-nonportable-include-path
+  ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path -O2
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9

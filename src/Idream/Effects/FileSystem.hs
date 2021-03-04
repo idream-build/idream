@@ -21,7 +21,6 @@ import Idream.Prelude
 import Shelly (cp_r, find, shelly, silently, toTextIgnore)
 import UnliftIO.Directory (copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, makeAbsolute,
                            removePathForcibly)
-import UnliftIO.Exception (catch, catchIO, throwIO)
 
 data WriteFileErr = WriteFileErr FilePath IOException
   deriving (Eq, Show)

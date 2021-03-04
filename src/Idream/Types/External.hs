@@ -9,7 +9,7 @@ module Idream.Types.External
   , PackageSet (..)
   ) where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, withObject, withText, (.:), (.:?), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.:?), (.=))
 import Idream.Prelude
 import Idream.Types.Common (Codegen, GitCommit, GitUrl, PackageName, PackageType, ProjectName, RepoName)
 

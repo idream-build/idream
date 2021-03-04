@@ -3,7 +3,6 @@ module Idream.Command.Repl
   , ReplBuiltinPackageErr (..)
   ) where
 
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Idream.Command.Common (fullPkgDepsForGroup, getDepInfoMap, readDepInfoMap, readResolvedProject)
 import Idream.Deps (closureDeps, lookupDeps)

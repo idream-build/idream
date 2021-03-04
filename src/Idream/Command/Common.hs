@@ -34,12 +34,12 @@ module Idream.Command.Common
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
-import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, depsFromMap, depsVertices,
-                    restrictDeps, unionAllDeps, unionDeps)
+import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, restrictDeps, unionAllDeps,
+                    unionDeps)
 import Idream.Effects.FileSystem (fsFindFiles)
 import Idream.Effects.Process (Spec (..))
 import Idream.Effects.Serde (serdeReadJSON)
-import Idream.FileLogic (fetchDir, outputDir, pkgFileName, pkgSetFileName, projFileName, repoFetchDir)
+import Idream.FileLogic (outputDir, pkgFileName, pkgSetFileName, projFileName, repoFetchDir)
 import Idream.Prelude
 import Idream.Types.Common (Codegen, PackageGroup (..), PackageName, PackageType (..), ProjectName, RepoName)
 import Idream.Types.External (LocalRepoRef (..), Package (..), PackageRef (..), PackageSet (..), Project (..),
@@ -165,7 +165,7 @@ mkProgramSpec projDir codegen pn = do
 
 -- | Reads project and package info into one struct.
 resolveProj :: Directory -> Project -> AppM ResolvedProject
-resolveProj projDir (Project pn mcg mpaths) = do
+resolveProj projDir (Project jn mcg mpaths) = do
   let cg = fromMaybe chezCodegen mcg
       paths = fromMaybe [] mpaths
   lps <- for paths $ \path -> do
@@ -173,7 +173,7 @@ resolveProj projDir (Project pn mcg mpaths) = do
     let pn = packageName pkg
     pure (pn, LocatedPackage path pkg)
   pmap <- mkUniqueMap DuplicatePackageInSetErr lps
-  pure (ResolvedProject pn cg pmap)
+  pure (ResolvedProject jn cg pmap)
 
 initRepoDeps :: PackageSet -> Deps PackageName RepoName
 initRepoDeps (PackageSet _ pkgs projs) = depsFromEdges edges where
@@ -181,7 +181,7 @@ initRepoDeps (PackageSet _ pkgs projs) = depsFromEdges edges where
   pkgEdges = fmap mkPkgEdge (maybe [] Map.toList pkgs)
   projEdges = fromMaybe [] projs >>= mkProjEdge
   mkPkgEdge (name, PackageRef repo _ _) = (name, repo)
-  mkProjEdge (ProjectRef repo _ pkgs) = fmap (, repo) pkgs
+  mkProjEdge (ProjectRef repo _ pns) = fmap (, repo) pns
 
 initPkgDeps :: ResolvedProject -> Deps PackageName PackageName
 initPkgDeps (ResolvedProject _ _ pkgs) = depsFromGroups groups where

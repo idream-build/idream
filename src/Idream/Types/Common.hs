@@ -15,31 +15,29 @@ module Idream.Types.Common
 
 import Data.Aeson (FromJSON (..), FromJSONKey, ToJSON (..), ToJSONKey, Value (..), withText)
 import qualified Data.Set as Set
-import Data.String (IsString)
-import qualified Data.Text as T
 import Idream.Prelude
 
-newtype PackageName = PackageName { unPkgName :: Text }
+newtype PackageName = PackageName Text
   deriving newtype (Eq, Ord, Show, ToJSONKey, FromJSONKey, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
 
-newtype ProjectName = ProjectName { unProjName :: Text }
+newtype ProjectName = ProjectName Text
   deriving newtype (Eq, Ord, Show, ToJSONKey, FromJSONKey, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
 
-newtype RepoName = RepoName { unRepoName :: Text }
+newtype RepoName = RepoName Text
   deriving newtype (Eq, Ord, Show, ToJSONKey, FromJSONKey, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
 
-newtype Codegen = Codegen { unCodegen :: Text }
+newtype Codegen = Codegen Text
   deriving newtype (Eq, Ord, Show, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
 
-newtype GitUrl = GitUrl { unGitUrl :: Text }
+newtype GitUrl = GitUrl Text
   deriving newtype (Eq, Ord, Show, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
 
-newtype GitCommit = GitCommit { unGitCommit :: Text }
+newtype GitCommit = GitCommit Text
   deriving newtype (Eq, Ord, Show, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
 

@@ -6,11 +6,9 @@ module Idream.Command.Test
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Idream.Command.Common (mkProgramSpec, pkgGroupToText, readDepInfoMap, readResolvedProject)
-import Idream.Effects.FileSystem (fsFindFiles)
 import Idream.Effects.Process (procInvokeEnsure_)
-import Idream.FileLogic (outputDir)
 import Idream.Prelude
-import Idream.Types.Common (PackageGroup (..), PackageName, PackageType (..), ProjectName)
+import Idream.Types.Common (PackageGroup (..), PackageName, PackageType (..))
 import Idream.Types.External (Package (..))
 import Idream.Types.Internal (DepInfo (..), DepInfoMap, IdreamDepInfo (..), LocatedPackage (..), ResolvedProject (..))
 

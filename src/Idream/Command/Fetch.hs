@@ -6,7 +6,6 @@ module Idream.Command.Fetch
   ) where
 
 import qualified Data.Map as Map
-import qualified Data.Text as T
 import Idream.Command.Common (PackageGroup, pkgGroupToText, readPkgSetFile, readResolvedProject, reposForGroup)
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsRemovePath)
 import Idream.Effects.Git (gitClone, gitFetch, gitReadCurrentBranch, gitReadOriginUrl, gitSwitch)

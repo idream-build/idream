@@ -3,21 +3,18 @@ module Idream.Command.Compile
   ) where
 
 import Data.List (groupBy, stripPrefix)
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
-import Idream.Command.Common (PackageGroup, findExtRel, fullPkgDepsForGroup, getDepInfoMap, mkDepInfoMap,
-                              pkgGroupToText, readDepInfoMap, readPkgSetFile, readResolvedProject)
+import Idream.Command.Common (PackageGroup, findExtRel, fullPkgDepsForGroup, getDepInfoMap, pkgGroupToText,
+                              readDepInfoMap, readResolvedProject)
 import Idream.Deps (closureDeps, linearizeDeps, lookupDeps)
-import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsDoesDirectoryExist, fsFindFiles, fsMakeAbsolute,
-                                  fsRemovePath, fsWriteFile)
-import Idream.Effects.Process (Spec (..), procDebug_, procInvokeEnsure_)
-import Idream.FileLogic (buildDir, buildDirName, installDir, installDirName, outputDir, outputDirName, pkgSetFileName,
-                         workDir)
+import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsDoesDirectoryExist, fsMakeAbsolute, fsRemovePath,
+                                  fsWriteFile)
+import Idream.Effects.Process (Spec (..), procInvokeEnsure_)
+import Idream.FileLogic (buildDir, buildDirName, installDir, installDirName, outputDirName, workDir)
 import Idream.Prelude
-import Idream.Types.Common (Codegen, PackageName, PackageType (..), ProjectName)
-import Idream.Types.Internal (DepInfo (..), DepInfoMap, IdreamDepInfo (..), IpkgDepInfo (..), ResolvedProject (..),
-                              depInfoDepends)
+import Idream.Types.Common (Codegen, PackageName, PackageType (..))
+import Idream.Types.Internal (DepInfo (..), IdreamDepInfo (..), IpkgDepInfo (..), ResolvedProject (..))
 import System.FilePath (dropExtension)
 
 compileImpl :: Directory -> PackageGroup -> AppM ()
@@ -65,8 +62,9 @@ instance ToText ModuleName where
 -- | Extracts the filename for use in ipkg file.
 --   e.g. LightYear/Position.idr -> LightYear.Position
 extractModuleName :: FilePath -> ModuleName
-extractModuleName = ModuleName . fmap toText . splitParts . trimPrefix . dropExtension where
+extractModuleName = ModuleName . fmap (toText . fmap replaceSlash) . splitParts . trimPrefix . dropExtension where
   splitParts = groupBy (\_ b -> b /= '/')
+  replaceSlash '/' = '.'
   replaceSlash c = c
   trimPrefix s = fromMaybe s (stripPrefix "./" s)
 
@@ -79,7 +77,7 @@ findIpkgModules projDir (IdreamDepInfo _ path _ msourcedir _) = do
 
 -- TODO(ejconlon) Split module and dep lists with newlines for better diffs
 mkIpkgContents :: PackageName -> IdreamDepInfo -> [ModuleName] -> Text
-mkIpkgContents pn (IdreamDepInfo _ path ty msourcedir depends) modules =
+mkIpkgContents pn (IdreamDepInfo _ _ ty msourcedir depends) modules =
   let isExe = ty /= PkgTypeLibrary
       modsList = T.intercalate ", " (fmap toText modules)
       depsList = T.intercalate ", " (fmap toText depends)

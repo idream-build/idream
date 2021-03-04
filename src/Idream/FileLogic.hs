@@ -18,7 +18,6 @@ module Idream.FileLogic
   , pkgSetFileName
   ) where
 
-import qualified Data.Text as T
 import Idream.Prelude
 import Idream.Types.Common (PackageName, RepoName)
 
