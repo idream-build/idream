@@ -6,8 +6,8 @@ module Idream.Effects.Serde
 import Data.Aeson (FromJSON, ToJSON, eitherDecodeFileStrict')
 import Data.Aeson.Encode.Pretty (Config (..), Indent (..), defConfig, encodePretty')
 import qualified Data.ByteString.Lazy as BSL
-import Idream.Prelude
 import Idream.Effects.FileSystem (ReadFileErr (..), WriteFileErr (..))
+import Idream.Prelude
 
 serdeReadJSON :: (Exception e, FromJSON a) => (String -> e) -> FilePath -> AppM a
 serdeReadJSON conv path = do

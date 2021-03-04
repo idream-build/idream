@@ -6,13 +6,14 @@ module Idream.Command.Test
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
-import Idream.Command.Common (readDepInfoMap, readResolvedProject, pkgGroupToText)
+import Idream.Command.Common (pkgGroupToText, readDepInfoMap, readResolvedProject)
 import Idream.Command.Compile (compileInner)
 import Idream.Command.Fetch (fetchInner)
 import Idream.Prelude
-import Idream.Types.Common (PackageGroup (..), RefreshStrategy, ProjectName (..), PackageName (..), PackageType (..))
-import Idream.Types.Internal (ResolvedProject (..), LocatedPackage (..), DepInfoMap (..), DepInfo (..), IdreamDepInfo (..))
+import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..), RefreshStrategy)
 import Idream.Types.External (Package (..))
+import Idream.Types.Internal (DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), LocatedPackage (..),
+                              ResolvedProject (..))
 
 newtype NonTestPackagesErr = NonTestPackagesErr (Set PackageName)
   deriving (Eq, Show)

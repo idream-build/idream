@@ -4,7 +4,6 @@ module Idream.Exe
   ) where
 
 import qualified Data.Text as T
-import Idream.Prelude
 import Idream.Command.Add (addImpl)
 import Idream.Command.Clean (cleanImpl)
 import Idream.Command.Common (PackageGroup (..))
@@ -13,6 +12,7 @@ import Idream.Command.Fetch (fetchImpl)
 import Idream.Command.New (newImpl)
 import Idream.Command.Test (testImpl)
 import Idream.OptionParser (parseCmdLineArgs)
+import Idream.Prelude
 import Idream.Types.Command (Args (..), Command (..))
 import Idream.Types.Common (PackageName (..), ProjectName (..), RefreshStrategy)
 

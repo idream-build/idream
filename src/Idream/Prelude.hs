@@ -37,8 +37,8 @@ import Control.Monad (join, unless, void, when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Foldable (for_, toList)
 import Data.List (intercalate)
-import Data.Maybe (fromMaybe)
 import Data.Map (Map)
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Traversable (for)
@@ -47,7 +47,7 @@ import LittleLogger (HasSimpleLog (..), Severity, SimpleLogAction, defaultSimple
                      logDebug, logError, logInfo, logWarning)
 import LittleRIO (RIO, runRIO)
 import Prelude
-import System.FilePath ((</>), (-<.>))
+import System.FilePath ((-<.>), (</>))
 import UnliftIO.Exception (catch, catchIO, throwIO)
 
 type Directory = FilePath
