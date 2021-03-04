@@ -17,7 +17,7 @@ import Idream.FileLogic (buildDir, buildDirName, installDir, installDirName, out
                          workDir)
 import Idream.Prelude
 import Idream.Types.Common (PackageName, PackageType (..), ProjectName)
-import Idream.Types.Internal (DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), IpkgDepInfo (IpkgDepInfo),
+import Idream.Types.Internal (DepInfo (..), DepInfoMap, IdreamDepInfo (..), IpkgDepInfo (..),
                               ResolvedProject (..), depInfoDepends)
 import System.FilePath (dropExtension)
 
@@ -37,7 +37,7 @@ compileImpl projDir group = do
       linPkgs = linearizeDeps filtDeps
       transDeps = closureDeps filtDeps
   for_ linPkgs $ \pn -> do
-    case Map.lookup pn (unDepInfoMap dim) of
+    case Map.lookup pn dim of
       Nothing -> throwIO (MissingPackageInResolvedErr pn)
       Just di -> do
         let tdepends = Set.toList (lookupDeps pn transDeps)

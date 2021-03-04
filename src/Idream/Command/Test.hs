@@ -11,9 +11,9 @@ import Idream.Effects.FileSystem (fsFindFiles)
 import Idream.Effects.Process (Spec (..), procInvokeEnsure_)
 import Idream.FileLogic (outputDir)
 import Idream.Prelude
-import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..))
+import Idream.Types.Common (PackageGroup (..), PackageName, PackageType (..), ProjectName)
 import Idream.Types.External (Package (..))
-import Idream.Types.Internal (DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), LocatedPackage (..),
+import Idream.Types.Internal (DepInfo (..), DepInfoMap, IdreamDepInfo (..), LocatedPackage (..),
                               ResolvedProject (..))
 
 newtype NonTestPackagesErr = NonTestPackagesErr (Set PackageName)
@@ -53,7 +53,7 @@ mkLocalTestMap rp = Map.fromList $ do
     _ -> []
 
 mkAllTestMap :: DepInfoMap -> Map PackageName Directory
-mkAllTestMap = Map.fromList . (>>= go) . Map.toList . unDepInfoMap where
+mkAllTestMap = Map.fromList . (>>= go) . Map.toList where
   go (pn, di) =
     case di of
       DepInfoIdream (IdreamDepInfo _ path ty _ _) | ty == PkgTypeTest -> [(pn, path)]

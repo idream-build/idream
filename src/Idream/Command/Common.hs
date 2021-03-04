@@ -36,10 +36,10 @@ import Idream.Effects.FileSystem (fsFindFiles)
 import Idream.Effects.Serde (serdeReadJSON)
 import Idream.FileLogic (fetchDir, pkgFileName, pkgSetFileName, projFileName, repoFetchDir)
 import Idream.Prelude
-import Idream.Types.Common (PackageGroup (..), PackageName, PackageType (..), ProjectName, RepoName)
+import Idream.Types.Common (Codegen, PackageGroup (..), PackageName, PackageType (..), ProjectName, RepoName)
 import Idream.Types.External (LocalRepoRef (..), Package (..), PackageRef (..), PackageSet (..), Project (..),
                               ProjectRef (..), RepoRef (..))
-import Idream.Types.Internal (BuiltinDepInfo (..), DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), IpkgDepInfo (..),
+import Idream.Types.Internal (BuiltinDepInfo (..), DepInfo (..), DepInfoMap, IdreamDepInfo (..), IpkgDepInfo (..),
                               LocatedPackage (..), ResolvedProject (..), depInfoDepends)
 import System.FilePath (isExtensionOf, isPathSeparator, makeRelative)
 
@@ -125,16 +125,21 @@ mkUniqueMap f = foldr go (pure Map.empty) where
       Nothing -> pure (Map.insert k v m)
       _ -> throwIO (f k)
 
+-- | The Idris2 default codegen.
+defaultCodegen :: Codegen
+defaultCodegen = fromText "chez"
+
 -- | Reads project and package info into one struct.
 resolveProj :: Directory -> Project -> AppM ResolvedProject
-resolveProj projDir (Project pn mpaths) = do
-  let paths = fromMaybe [] mpaths
+resolveProj projDir (Project pn mcg mpaths) = do
+  let cg = fromMaybe defaultCodegen mcg
+      paths = fromMaybe [] mpaths
   lps <- for paths $ \path -> do
     pkg <- readPkgFile (projDir </> path </> pkgFileName)
     let pn = packageName pkg
     pure (pn, LocatedPackage path pkg)
   pmap <- mkUniqueMap DuplicatePackageInSetErr lps
-  pure (ResolvedProject pn pmap)
+  pure (ResolvedProject pn cg pmap)
 
 initRepoDeps :: PackageSet -> Deps PackageName RepoName
 initRepoDeps (PackageSet _ pkgs projs) = depsFromEdges edges where
@@ -145,7 +150,7 @@ initRepoDeps (PackageSet _ pkgs projs) = depsFromEdges edges where
   mkProjEdge (ProjectRef repo _ pkgs) = fmap (, repo) pkgs
 
 initPkgDeps :: ResolvedProject -> Deps PackageName PackageName
-initPkgDeps (ResolvedProject  _ pkgs) = depsFromGroups groups where
+initPkgDeps (ResolvedProject _ _ pkgs) = depsFromGroups groups where
   groups = fmap (mkGroup . lpPkg . snd) (Map.toList pkgs)
   mkGroup (Package name _ _ depends) = (name, maybe Set.empty Set.fromList depends)
 
@@ -192,7 +197,7 @@ reposForGroup rp ps g =
 --     PackageGroupSubset s -> restrictDeps (`Set.member` s) ipd
 
 depInfoPkgDeps :: DepInfoMap -> Deps PackageName PackageName
-depInfoPkgDeps = depsFromGroups . fmap (fmap (Set.fromList . depInfoDepends)) . Map.toList . unDepInfoMap
+depInfoPkgDeps = depsFromGroups . fmap (fmap (Set.fromList . depInfoDepends)) . Map.toList
 
 fullPkgDepsForGroup :: ResolvedProject -> PackageGroup -> DepInfoMap -> Deps PackageName PackageName
 fullPkgDepsForGroup rp g dim =
@@ -284,5 +289,4 @@ mkDepInfoMap projDir rp ps = do
   pkgPairs <- for pkgRefs (uncurry (mkPkgDepPair projDir repoRefs))
   projPairs <- fmap join (for projRefs (mkProjDepPairs projDir repoRefs))
   let allPairs = localPairs ++ builtinPairs ++ pkgPairs ++ projPairs
-  m <- mkUniqueMap DuplicatePackageInResolvedErr allPairs
-  pure (DepInfoMap m)
+  mkUniqueMap DuplicatePackageInResolvedErr allPairs

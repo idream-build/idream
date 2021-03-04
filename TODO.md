@@ -1,5 +1,5 @@
 * Fetch recursively
-* Impl test command
+* Impl codegen option
 * Impl run command
 * Impl repl command
 * Impl install command

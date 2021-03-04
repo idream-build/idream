@@ -13,7 +13,7 @@ import Idream.Command.Test (testImpl)
 import Idream.OptionParser (parseCmdLineArgs)
 import Idream.Prelude
 import Idream.Types.Command (Args (..), Command (..))
-import Idream.Types.Common (PackageName (..), ProjectName (..), RefreshStrategy)
+import Idream.Types.Common (PackageName, ProjectName, RefreshStrategy)
 
 -- | Main function.
 main :: IO ()

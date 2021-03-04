@@ -11,25 +11,30 @@ module Idream.Types.External
 
 import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, withObject, withText, (.:), (.:?), (.=))
 import Idream.Prelude
-import Idream.Types.Common (PackageName, PackageType, ProjectName, RepoName)
+import Idream.Types.Common (Codegen, GitUrl, GitCommit, PackageName, PackageType, ProjectName, RepoName)
 
 -- | Type containing project data (coming from idr-project.json).
 --   A project consists of 1 or more packages that are closely related to
 --   each other. This can for example be a binary, library, tests, ...
 data Project = Project
   { projectName :: ProjectName
+  , projectCodegen :: Maybe Codegen
   , projectPaths :: Maybe [FilePath]
   } deriving (Eq, Show)
 
 instance FromJSON Project where
   parseJSON = withObject "Project" $ \o -> do
     name <- o .: "name"
+    codegen <- o .:? "codegen"
     paths <- o .:? "paths"
-    pure (Project name paths)
+    pure (Project name codegen paths)
 
 instance ToJSON Project where
-  toJSON (Project name paths) =
-    object ["name" .= toJSON name, "paths" .= toJSON paths]
+  toJSON (Project name codegen paths) = object
+    [ "name" .= name
+    , "codegen" .= codegen
+    , "paths" .= paths
+    ]
 
 -- | Type containing package data (coming from idr-package.json).
 --   A package can depend on 1 or more projects (which can possibly contain
@@ -62,8 +67,8 @@ newtype LocalRepoRef = LocalRepoRef
   } deriving newtype (Eq, Show, ToJSON, FromJSON)
 
 data GitRepoRef = GitRepoRef
-  { grrUrl :: Text
-  , grrCommit :: Text
+  { grrUrl :: GitUrl
+  , grrCommit :: GitCommit
   } deriving (Eq, Show)
 
 instance FromJSON GitRepoRef where
@@ -74,7 +79,7 @@ instance FromJSON GitRepoRef where
 
 instance ToJSON GitRepoRef where
   toJSON (GitRepoRef url commit) =
-    object ["url" .= toJSON url, "commit" .= toJSON commit]
+    object ["url" .= url, "commit" .= commit]
 
 data RepoRef =
     RepoRefLocal LocalRepoRef
@@ -93,8 +98,8 @@ instance FromJSON RepoRef where
 instance ToJSON RepoRef where
   toJSON ref =
     case ref of
-      RepoRefLocal x -> object ["local" .= toJSON x]
-      RepoRefGit x -> object ["git" .= toJSON x]
+      RepoRefLocal x -> object ["local" .= x]
+      RepoRefGit x -> object ["git" .= x]
 
 data PackageRef = PackageRef
   { pkgRefRepo :: RepoName
@@ -111,9 +116,9 @@ instance FromJSON PackageRef where
 
 instance ToJSON PackageRef where
   toJSON (PackageRef repo subdir depends) = object
-    [ "repo" .= toJSON repo
-    , "subdir" .= toJSON subdir
-    , "depends" .= toJSON depends
+    [ "repo" .= repo
+    , "subdir" .= subdir
+    , "depends" .= depends
     ]
 
 data ProjectRef = ProjectRef
@@ -131,9 +136,9 @@ instance FromJSON ProjectRef where
 
 instance ToJSON ProjectRef where
   toJSON (ProjectRef repo subdir pkgs) = object
-    [ "repo" .= toJSON repo
-    , "subdir" .= toJSON subdir
-    , "packages" .= toJSON pkgs
+    [ "repo" .= repo
+    , "subdir" .= subdir
+    , "packages" .= pkgs
     ]
 
 -- | Type containing information about a package set
@@ -156,7 +161,7 @@ instance FromJSON PackageSet where
 
 instance ToJSON PackageSet where
   toJSON (PackageSet repos pkgs projects) = object
-    [ "repos" .= toJSON repos
-    , "packages" .= toJSON pkgs
-    , "projects" .= toJSON projects
+    [ "repos" .= repos
+    , "packages" .= pkgs
+    , "projects" .= projects
     ]

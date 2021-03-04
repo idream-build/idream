@@ -20,7 +20,7 @@ module Idream.FileLogic
 
 import qualified Data.Text as T
 import Idream.Prelude
-import Idream.Types.Common (PackageName (..), RepoName (..))
+import Idream.Types.Common (PackageName, RepoName)
 
 -- NOTE: all these functions return a path relative to root of a project!
 

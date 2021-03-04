@@ -6,7 +6,7 @@ module Idream.Types.Command
 
 import qualified Data.Text as T
 import Idream.Prelude
-import Idream.Types.Common (PackageGroup, PackageName, PackageType, ProjectName (..), RefreshStrategy)
+import Idream.Types.Common (PackageGroup, PackageName, PackageType, ProjectName, RefreshStrategy)
 import LittleLogger (Severity)
 
 -- | Type alias for command line arguments passed to the run command.

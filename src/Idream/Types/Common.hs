@@ -2,6 +2,9 @@ module Idream.Types.Common
   ( PackageName
   , ProjectName
   , RepoName
+  , Codegen
+  , GitUrl
+  , GitCommit
   , PackageType (..)
   , packageTypeFromText
   , PackageGroup (..)
@@ -26,6 +29,18 @@ newtype ProjectName = ProjectName { unProjName :: Text }
 
 newtype RepoName = RepoName { unRepoName :: Text }
   deriving newtype (Eq, Ord, Show, ToJSONKey, FromJSONKey, ToJSON, FromJSON,
+                    IsString, ToString, IsText, ToText)
+
+newtype Codegen = Codegen { unCodegen :: Text }
+  deriving newtype (Eq, Ord, Show, ToJSON, FromJSON,
+                    IsString, ToString, IsText, ToText)
+
+newtype GitUrl = GitUrl { unGitUrl :: Text }
+  deriving newtype (Eq, Ord, Show, ToJSON, FromJSON,
+                    IsString, ToString, IsText, ToText)
+
+newtype GitCommit = GitCommit { unGitCommit :: Text }
+  deriving newtype (Eq, Ord, Show, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
 
 data PackageType = PkgTypeLibrary | PkgTypeExecutable | PkgTypeTest

@@ -12,7 +12,7 @@ import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsRemovePat
 import Idream.Effects.Git (gitClone, gitFetch, gitReadCurrentBranch, gitReadOriginUrl, gitSwitch)
 import Idream.FileLogic (fetchDir, pkgSetFileName)
 import Idream.Prelude
-import Idream.Types.Common (ProjectName (..), RefreshStrategy (..), RepoName (..))
+import Idream.Types.Common (ProjectName, RefreshStrategy (..), RepoName)
 import Idream.Types.External (GitRepoRef (..), LocalRepoRef (..), RepoRef (..))
 import Idream.Types.Internal (ResolvedProject (..))
 
@@ -80,17 +80,17 @@ gitEnsure repoDir refreshStrat rn desiredRef@(GitRepoRef url commit) = do
       curRef <- gitReadCurrentRef repoDir
       case (curRef == desiredRef, refreshStrat) of
         (True, ForceRefresh) -> do
-          logInfo ("Fetching " <> commit)
+          logInfo ("Fetching " <> toText commit)
           gitFetch repoDir commit
-          logInfo ("Switching " <> commit)
+          logInfo ("Switching " <> toText commit)
           gitSwitch repoDir commit
         (True, _) -> pure ()
         (False, DisableRefresh) -> throwIO (DisableRefreshErr rn)
         (False, _) -> do
-          logInfo ("Re-cloning " <> url <> " at " <> commit)
+          logInfo ("Re-cloning " <> toText url <> " at " <> toText commit)
           fsRemovePath repoDir
           gitClone repoDir url commit
     else do
       when (refreshStrat == DisableRefresh) (throwIO (DisableRefreshErr rn))
-      logInfo ("Cloning " <> url <> " at " <> commit)
+      logInfo ("Cloning " <> toText url <> " at " <> toText commit)
       gitClone repoDir url commit

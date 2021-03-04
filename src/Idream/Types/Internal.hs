@@ -4,14 +4,14 @@ module Idream.Types.Internal
   , IpkgDepInfo (..)
   , DepInfo (..)
   , depInfoDepends
-  , DepInfoMap (..)
+  , DepInfoMap
   , LocatedPackage (..)
   , ResolvedProject (..)
   ) where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.:?), (.=))
 import Idream.Prelude
-import Idream.Types.Common (PackageName, PackageType, ProjectName)
+import Idream.Types.Common (Codegen, PackageName, PackageType, ProjectName)
 import Idream.Types.External (Package)
 
 newtype BuiltinDepInfo = BuiltinDepInfo { builtinDepDepends :: [PackageName] }
@@ -23,7 +23,7 @@ instance FromJSON BuiltinDepInfo where
 
 instance ToJSON BuiltinDepInfo where
   toJSON (BuiltinDepInfo depends) =
-    object ["depends" .= toJSON depends]
+    object ["depends" .= depends]
 
 data IdreamDepInfo = IdreamDepInfo
   { idreamDepLocal :: Bool  -- local == is part of current project, not a ref
@@ -44,11 +44,11 @@ instance FromJSON IdreamDepInfo where
 
 instance ToJSON IdreamDepInfo where
   toJSON (IdreamDepInfo local path ty sourcedir depends) = object
-    [ "local" .= toJSON local
-    , "path" .= toJSON path
-    , "type" .= toJSON ty
-    , "sourcedir" .= toJSON sourcedir
-    , "depends" .= toJSON depends
+    [ "local" .= local
+    , "path" .= path
+    , "type" .= ty
+    , "sourcedir" .= sourcedir
+    , "depends" .= depends
     ]
 
 data IpkgDepInfo = IpkgDepInfo
@@ -66,9 +66,9 @@ instance FromJSON IpkgDepInfo where
 
 instance ToJSON IpkgDepInfo where
   toJSON (IpkgDepInfo path pkgFile depends) = object
-    [ "path" .= toJSON path
-    , "pkgfile" .= toJSON pkgFile
-    , "depends" .= toJSON depends
+    [ "path" .= path
+    , "pkgfile" .= pkgFile
+    , "depends" .= depends
     ]
 
 data DepInfo =
@@ -94,9 +94,9 @@ instance FromJSON DepInfo where
 instance ToJSON DepInfo where
   toJSON d =
     case d of
-      DepInfoBuiltin x -> object ["builtin" .= toJSON x]
-      DepInfoIdream x -> object ["idream" .= toJSON x]
-      DepInfoIpkg x -> object ["ipkg" .= toJSON x]
+      DepInfoBuiltin x -> object ["builtin" .= x]
+      DepInfoIdream x -> object ["idream" .= x]
+      DepInfoIpkg x -> object ["ipkg" .= x]
 
 depInfoDepends :: DepInfo -> [PackageName]
 depInfoDepends d =
@@ -105,8 +105,7 @@ depInfoDepends d =
     DepInfoIdream x -> idreamDepDepends x
     DepInfoIpkg x -> ipkgDepDepends x
 
-newtype DepInfoMap = DepInfoMap { unDepInfoMap :: Map PackageName DepInfo }
-  deriving newtype (Eq, Show, ToJSON)
+type DepInfoMap = Map PackageName DepInfo
 
 data LocatedPackage = LocatedPackage
   { lpPath :: Directory
@@ -115,5 +114,6 @@ data LocatedPackage = LocatedPackage
 
 data ResolvedProject = ResolvedProject
   { rpName :: ProjectName
+  , rpCodegen :: Codegen
   , rpPackages :: Map PackageName LocatedPackage
   } deriving (Eq, Show)
