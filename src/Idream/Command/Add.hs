@@ -75,9 +75,10 @@ mainContents PkgTypeLibrary = libIdrContents
 mainContents _ = mainIdrContents
 
 -- | Creates a new project template.
-addImpl :: Directory -> Directory -> PackageName -> PackageType -> AppM ()
-addImpl projDir pkgSubDir pkgName pkgType = do
-  let pkgDir = projDir </> pkgSubDir
+addImpl :: Directory -> Maybe Directory -> PackageName -> PackageType -> AppM ()
+addImpl projDir mayPkgSubDir pkgName pkgType = do
+  let pkgSubDir = fromMaybe (T.unpack (unPkgName pkgName)) mayPkgSubDir
+      pkgDir = projDir </> pkgSubDir
   pkgDirExists <- fsDoesDirectoryExist pkgDir
   if pkgDirExists
     then throwIO (PackageDirAlreadyExistsErr pkgDir pkgName)

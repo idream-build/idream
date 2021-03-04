@@ -1,5 +1,6 @@
 module Idream.Command.Fetch
   ( fetchImpl
+  , fetchInner
   , PkgMissingInPkgSetErr (..)
   , DisableRefreshErr (..)
   , MissingLocalPathErr (..)
@@ -11,7 +12,7 @@ import Data.Foldable (for_)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import Idream.App (AppM)
-import Idream.Command.Common (PackageGroup, pkgGroupToText, readPkgSetFile, reposForGroup, withResolvedProject)
+import Idream.Command.Common (PackageGroup, pkgGroupToText, readPkgSetFile, readResolvedProject, reposForGroup)
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsRemovePath)
 import Idream.Effects.Git (gitClone, gitFetch, gitReadCurrentBranch, gitReadOriginUrl, gitSwitch)
 import Idream.FileLogic (fetchDir, pkgSetFileName)
@@ -30,7 +31,7 @@ newtype PkgMissingInPkgSetErr = PkgMissingInPkgSetErr ProjectName
 
 instance Exception PkgMissingInPkgSetErr where
   displayException (PkgMissingInPkgSetErr (ProjectName n)) =
-    "Package missing in package set: " <> T.unpack n <> "."
+    "Package missing in package set: " <> T.unpack n
 
 newtype DisableRefreshErr = DisableRefreshErr RepoName
   deriving (Eq, Show)
@@ -49,15 +50,19 @@ instance Exception MissingLocalPathErr where
 -- | Top level function that tries to fetch all dependencies.
 fetchImpl :: Directory -> PackageGroup -> RefreshStrategy -> AppM ()
 fetchImpl projDir group refreshStrat = do
-  withResolvedProject projDir $ \rp -> do
-    logInfo ("Fetching dependencies for project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
-    pkgSet <- readPkgSetFile (projDir </> pkgSetFileName)
-    let repoRefs = reposForGroup rp pkgSet group
-    logInfo "Resolving dependencies"
-    fsCreateDir fetchDir
-    for_ (Map.toList repoRefs) $ \(repo, ref) -> do
-      fetchRepo projDir refreshStrat repo ref
-  logInfo "Finished fetching dependencies."
+  rp <- readResolvedProject projDir
+  logInfo ("Fetching dependencies for project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group)
+  fetchInner projDir rp group refreshStrat
+
+fetchInner :: Directory -> ResolvedProject -> PackageGroup -> RefreshStrategy -> AppM ()
+fetchInner projDir rp group refreshStrat = do
+  pkgSet <- readPkgSetFile (projDir </> pkgSetFileName)
+  let repoRefs = reposForGroup rp pkgSet group
+  logInfo "Resolving dependencies"
+  fsCreateDir (projDir </> fetchDir)
+  for_ (Map.toList repoRefs) $ \(repo, ref) -> do
+    fetchRepo projDir refreshStrat repo ref
+  logInfo "Finished fetching dependencies"
 
 -- | Fetches a project as specified in the top level package set file.
 -- TODO(ejconlon) Recursively fetch repo deps for idream projects
@@ -65,7 +70,7 @@ fetchRepo :: Directory -> RefreshStrategy -> RepoName -> RepoRef -> AppM ()
 fetchRepo projDir refreshStrat repo ref =
   case ref of
     RepoRefLocal (LocalRepoRef localDir) -> do
-      localExists <- fsDoesDirectoryExist localDir
+      localExists <- fsDoesDirectoryExist (projDir </> localDir)
       if localExists
         then pure ()
         else throwIO (MissingLocalPathErr repo localDir)

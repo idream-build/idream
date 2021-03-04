@@ -14,7 +14,8 @@ module Idream.Command.Common
   , pkgGroupToText
   , reposForGroup
   , fullPkgDepsForGroup
-  , withResolvedProject
+  , readResolvedProject
+  , readDepInfoMap
   , mkDepInfoMap
   , PkgParseErr (..)
   , PkgSetParseErr (..)
@@ -28,6 +29,7 @@ module Idream.Command.Common
 
 import Control.Exception (Exception (..))
 import Control.Monad (join, unless, when)
+import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_, toList)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -42,7 +44,7 @@ import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFrom
                     restrictDeps, unionAllDeps, unionDeps)
 import Idream.Effects.FileSystem (fsFindFiles)
 import Idream.Effects.Serde (serdeReadJSON)
-import Idream.FileLogic (fetchDir, pkgFileName, projFileName)
+import Idream.FileLogic (fetchDir, pkgFileName, pkgSetFileName, projFileName)
 import Idream.FilePaths (Directory)
 import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..), RepoName (..))
 import Idream.Types.External (LocalRepoRef (..), Package (..), PackageRef (..), PackageSet (..), Project (..),
@@ -212,14 +214,19 @@ fullPkgDepsForGroup rp g dim =
             PackageGroupSubset s -> s
   in restrictDeps (`Set.member` z) y
 
-withResolvedProject :: Directory -> (ResolvedProject -> AppM ()) -> AppM ()
-withResolvedProject projDir act = do
+readResolvedProject :: Directory -> AppM ResolvedProject
+readResolvedProject projDir = do
   proj <- readProjFile (projDir </> projFileName)
   rp <- resolveProj projDir proj
   when (null (rpPackages rp)) $ do
     logWarning ("Project contains no packages yet."
                <> "Use `idream add` to add a package to this project.")
-  act rp
+  pure rp
+
+readDepInfoMap :: Directory -> ResolvedProject -> AppM DepInfoMap
+readDepInfoMap projDir rp = do
+  ps <- readPkgSetFile (projDir </> pkgSetFileName)
+  mkDepInfoMap projDir rp ps
 
 mkProjectDepInfo :: Bool -> Directory -> Package -> DepInfo
 mkProjectDepInfo local path (Package _ mty msourcedir mdepends) = DepInfoIdream pdi where
@@ -248,21 +255,21 @@ getRepoDir rn rr =
     RepoRefLocal (LocalRepoRef d) -> d
     _ -> fetchDir </> T.unpack (unRepoName rn)
 
-mkPkgDepInfo :: Map RepoName RepoRef -> PackageRef -> AppM DepInfo
-mkPkgDepInfo repoRefs (PackageRef rn msubdir mdepends) = do
+mkPkgDepInfo :: Directory -> Map RepoName RepoRef -> PackageRef -> AppM DepInfo
+mkPkgDepInfo projDir repoRefs (PackageRef rn msubdir mdepends) = do
   case Map.lookup rn repoRefs of
     Nothing -> throwIO (MissingRepoInPackageSetErr rn)
     Just rr -> do
       let repoDir = getRepoDir rn rr
           path = maybe repoDir (repoDir </>) msubdir
           depends = fromMaybe [] mdepends
-      pkgCand <- findExtRel "ipkg" path
+      pkgCand <- findExtRel "ipkg" (projDir </> path)
       case filter (not . any isPathSeparator) pkgCand of
         [pkgFile] -> pure (DepInfoIpkg (IpkgDepInfo path pkgFile depends))
         _ -> throwIO (NoUniqueIpkgErr path)
 
-mkPkgDepPair :: Map RepoName RepoRef -> PackageName -> PackageRef -> AppM (PackageName, DepInfo)
-mkPkgDepPair repoRefs pn pr = fmap (pn,) (mkPkgDepInfo repoRefs pr)
+mkPkgDepPair :: Directory -> Map RepoName RepoRef -> PackageName -> PackageRef -> AppM (PackageName, DepInfo)
+mkPkgDepPair projDir repoRefs pn pr = fmap (pn,) (mkPkgDepInfo projDir repoRefs pr)
 
 mkProjDepPairs :: Directory -> Map RepoName RepoRef -> ProjectRef -> AppM [(PackageName, DepInfo)]
 mkProjDepPairs projDir repoRefs (ProjectRef rn msubdir pkgs) = do
@@ -277,7 +284,7 @@ mkProjDepPairs projDir repoRefs (ProjectRef rn msubdir pkgs) = do
       subResolvedProj <- resolveProj subProjDir subProj
       let pmap = rpPackages subResolvedProj
       for_ pkgs $ \pn -> unless (Map.member pn pmap) (throwIO (MissingDeclaredPackageErr (projectName subProj) pn))
-      pure (fmap (mkRemoteDepPair subProjDir) (Map.elems pmap))
+      pure (fmap (mkRemoteDepPair path) (Map.elems pmap))
 
 mkDepInfoMap :: Directory -> ResolvedProject -> PackageSet -> AppM DepInfoMap
 mkDepInfoMap projDir rp ps = do
@@ -286,7 +293,7 @@ mkDepInfoMap projDir rp ps = do
       repoRefs = fromMaybe Map.empty (psRepos ps)
       pkgRefs = maybe [] Map.toList (psPkgs ps)
       projRefs = fromMaybe [] (psProjects ps)
-  pkgPairs <- for pkgRefs (uncurry (mkPkgDepPair repoRefs))
+  pkgPairs <- for pkgRefs (uncurry (mkPkgDepPair projDir repoRefs))
   projPairs <- fmap join (for projRefs (mkProjDepPairs projDir repoRefs))
   let allPairs = localPairs ++ builtinPairs ++ pkgPairs ++ projPairs
   m <- mkUniqueMap DuplicatePackageInResolvedErr allPairs
