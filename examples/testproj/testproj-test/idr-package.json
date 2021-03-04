@@ -1,5 +1,0 @@
-{
-  "name": "testproj-test",
-  "type": "test",
-  "depends": ["testlib2", "remotelib2"]
-}

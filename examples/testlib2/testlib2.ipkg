@@ -1,6 +1,0 @@
-package testlib2
-
-modules = Testlib2
-
-depends = testlib1
-

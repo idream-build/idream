@@ -1,7 +1,7 @@
 build/
 .stack-work/
 .idream-work/
-images/idream/cache/
+images/base/cache/
 dist/
 dist-newstyle/
 smoke_project/
