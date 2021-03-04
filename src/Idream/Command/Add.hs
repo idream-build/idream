@@ -10,7 +10,7 @@ import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsWriteFile
 import Idream.Effects.Serde (serdeWriteJSON)
 import Idream.FileLogic (pkgFileName, projFileName)
 import Idream.Prelude
-import Idream.Types.Common (PackageName (..), PackageType (..))
+import Idream.Types.Common (PackageName, PackageType (..))
 import Idream.Types.External (Package (..), Project (..))
 import Idream.Types.Internal (LocatedPackage (..), ResolvedProject (..))
 
@@ -18,15 +18,15 @@ data PackageDirAlreadyExistsErr = PackageDirAlreadyExistsErr Directory PackageNa
   deriving (Eq, Show)
 
 instance Exception PackageDirAlreadyExistsErr where
-  displayException (PackageDirAlreadyExistsErr pkgDir (PackageName p)) =
-    "Failed to add package " <> T.unpack p <> " to project; directory " <> pkgDir <> " already exists."
+  displayException (PackageDirAlreadyExistsErr pkgDir pn) =
+    "Failed to add package " <> toString pn <> " to project; directory " <> pkgDir <> " already exists."
 
 data PackageNameAlreadyExistsErr = PackageNameAlreadyExistsErr Directory PackageName
   deriving (Eq, Show)
 
 instance Exception PackageNameAlreadyExistsErr where
-  displayException (PackageNameAlreadyExistsErr pkgDir (PackageName p)) =
-    "Failed to add package " <> T.unpack p <> " to project; it already exists at " <> pkgDir
+  displayException (PackageNameAlreadyExistsErr pkgDir pn) =
+    "Failed to add package " <> toString pn <> " to project; it already exists at " <> pkgDir
 
 libIdrContents, mainIdrContents :: Text
 libIdrContents =
@@ -45,15 +45,14 @@ mainIdrContents =
             ]
 
 idrPkgJsonContents :: PackageName -> PackageType -> Text
-idrPkgJsonContents (PackageName pkgName) pkgType =
+idrPkgJsonContents pn pkgType =
   T.unlines
     [ "{"
-    , "  \"name\": \"" <> pkgName <> "\","
-    , "  \"source_dir\": \"src\","
-    , if pkgType == PkgTypeLibrary
-      then "  \"executable\": false,"
-      else "  \"executable\": true,"
-    , "  \"dependencies\": []"
+    , "  \"name\": \"" <> toText pn <> "\","
+    , "  \"type\": \"" <> toText pkgType <> "\","
+    , "  \"sourcedir\": \"src\","
+    , "  \"depends\": ["
+    , "  ]"
     , "}"
     ]
 
@@ -68,7 +67,7 @@ mainContents _ = mainIdrContents
 -- | Creates a new project template.
 addImpl :: Directory -> Maybe Directory -> PackageName -> PackageType -> AppM ()
 addImpl projDir mayPkgSubDir pkgName pkgType = do
-  let pkgSubDir = fromMaybe (T.unpack (unPkgName pkgName)) mayPkgSubDir
+  let pkgSubDir = fromMaybe (toString pkgName) mayPkgSubDir
       pkgDir = projDir </> pkgSubDir
   pkgDirExists <- fsDoesDirectoryExist pkgDir
   if pkgDirExists
@@ -87,4 +86,4 @@ addImpl projDir mayPkgSubDir pkgName pkgType = do
       let paths = fromMaybe [] (projectPaths proj) ++ [pkgSubDir]
           proj' = proj { projectPaths = Just paths }
       serdeWriteJSON projFile proj'
-      logInfo ("Successfully added package " <> unPkgName pkgName <> " to project.")
+      logInfo ("Successfully added package " <> toText pkgName <> " to project.")

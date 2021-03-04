@@ -1,12 +1,18 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Idream.Prelude
   ( Directory
   , App
   , newApp
   , AppM
   , runAppM
+  , ToString (..)
+  , IsText (..)
+  , ToText (..)
   , module Prelude
   , Exception (..)
   , IOException
+  , IsString (..)
   , Map
   , MonadIO (..)
   , Set
@@ -40,7 +46,9 @@ import Data.List (intercalate)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
+import Data.String (IsString (..))
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Traversable (for)
 import Lens.Micro (lens)
 import LittleLogger (HasSimpleLog (..), Severity, SimpleLogAction, defaultSimpleLogAction, filterActionSeverity,
@@ -66,3 +74,36 @@ type AppM a = RIO App a
 
 runAppM :: MonadIO m => App -> AppM a -> m a
 runAppM = runRIO
+
+-- | Useful for coercing string-like newtypes back to strings
+--   without unwrapping everywhere.
+--   This is different from 'Show' in that it should form an
+--   bijection with 'fromString' from 'IsString' if both are defined.
+class ToString a where
+  toString :: a -> String
+
+instance ToString String where
+  toString = id
+
+instance ToString Text where
+  toString = T.unpack
+
+-- | Like 'IsString' but again mostly useful for newtype coercions.
+class IsText a where
+  fromText :: Text -> a
+
+instance IsText String where
+  fromText = T.unpack
+
+instance IsText Text where
+  fromText = id
+
+-- | Like 'ToString'.
+class ToText a where
+  toText :: a -> Text
+
+instance ToText String where
+  toText = T.pack
+
+instance ToText Text where
+  toText = id

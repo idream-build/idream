@@ -18,7 +18,7 @@ module Idream.Effects.FileSystem
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Idream.Prelude
-import Shelly (cp_r, find, fromText, shelly, silently, toTextIgnore)
+import Shelly (cp_r, find, shelly, silently, toTextIgnore)
 import UnliftIO.Directory (copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, makeAbsolute,
                            removePathForcibly)
 import UnliftIO.Exception (catch, catchIO, throwIO)
@@ -28,21 +28,21 @@ data WriteFileErr = WriteFileErr FilePath IOException
 
 instance Exception WriteFileErr where
   displayException (WriteFileErr path err) =
-    "Failed to write to file (" <> path <> "), reason: " <> displayException err <> "."
+    "Failed to write to file (" <> path <> "), reason: " <> displayException err
 
 data ReadFileErr = ReadFileErr FilePath IOException
   deriving (Eq, Show)
 
 instance Exception ReadFileErr where
   displayException (ReadFileErr path err) =
-    "Failed to read from file (" <> path <> "), reason: " <> displayException err <> "."
+    "Failed to read from file (" <> path <> "), reason: " <> displayException err
 
 data CreateDirErr = CreateDirErr Directory IOException
   deriving (Eq, Show)
 
 instance Exception CreateDirErr where
   displayException (CreateDirErr dir err) =
-    "Failed to create directory (" <> dir <> "), reason: " <> displayException err <> "."
+    "Failed to create directory (" <> dir <> "), reason: " <> displayException err
 
 data CopyDirErr = CopyDirErr Directory Directory SomeException
   deriving (Show)
@@ -50,19 +50,18 @@ data CopyDirErr = CopyDirErr Directory Directory SomeException
 instance Exception CopyDirErr where
   displayException (CopyDirErr fromDir toDir err) =
     "Failed to copy files from " <> fromDir <> " to " <> toDir
-      <> ", reason: " <> displayException err <> "."
+      <> ", reason: " <> displayException err
 
 data FindFilesErr = FindFilesErr Directory SomeException
   deriving (Show)
 
 instance Exception FindFilesErr where
   displayException (FindFilesErr inDir err) =
-    "Error when trying to find files (" <> inDir <> "), reason: " <> displayException err <> "."
+    "Error when trying to find files (" <> inDir <> "), reason: " <> displayException err
 
 fsCopyDir :: Directory -> Directory -> AppM ()
 fsCopyDir fromDir toDir = catch act (throwIO . CopyDirErr fromDir toDir) where
-  toFilePath = fromText . T.pack
-  act = shelly (silently (cp_r (toFilePath fromDir) (toFilePath toDir)))
+  act = shelly (silently (cp_r fromDir toDir))
 
 fsCopyFile :: FilePath -> FilePath -> AppM ()
 fsCopyFile = copyFile

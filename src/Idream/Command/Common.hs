@@ -34,9 +34,9 @@ import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFrom
                     restrictDeps, unionAllDeps, unionDeps)
 import Idream.Effects.FileSystem (fsFindFiles)
 import Idream.Effects.Serde (serdeReadJSON)
-import Idream.FileLogic (fetchDir, pkgFileName, pkgSetFileName, projFileName)
+import Idream.FileLogic (fetchDir, pkgFileName, pkgSetFileName, projFileName, repoFetchDir)
 import Idream.Prelude
-import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..), RepoName (..))
+import Idream.Types.Common (PackageGroup (..), PackageName, PackageType (..), ProjectName, RepoName)
 import Idream.Types.External (LocalRepoRef (..), Package (..), PackageRef (..), PackageSet (..), Project (..),
                               ProjectRef (..), RepoRef (..))
 import Idream.Types.Internal (BuiltinDepInfo (..), DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), IpkgDepInfo (..),
@@ -49,7 +49,7 @@ data ProjParseErr = ProjParseErr FilePath String
 
 instance Exception ProjParseErr where
   displayException (ProjParseErr path err) =
-    "Failed to parse project file at " <> path <> ": " <> err <> "."
+    "Failed to parse project file at " <> path <> ": " <> err
 
 -- | Error type used for describing errors that can occur while reading out a package file.
 data PkgParseErr = PkgParseErr FilePath String
@@ -57,7 +57,7 @@ data PkgParseErr = PkgParseErr FilePath String
 
 instance Exception PkgParseErr where
   displayException (PkgParseErr path err) =
-    "Failed to parse package file at " <> path <> ": " <> err <> "."
+    "Failed to parse package file at " <> path <> ": " <> err
 
 -- | Error type used for describing errors that can occur while reading out a package set file.
 data PkgSetParseErr = PkgSetParseErr FilePath String
@@ -65,35 +65,35 @@ data PkgSetParseErr = PkgSetParseErr FilePath String
 
 instance Exception PkgSetParseErr where
   displayException (PkgSetParseErr path err) =
-    "Failed to parse package set file at " <> path <> ": " <> err <> "."
+    "Failed to parse package set file at " <> path <> ": " <> err
 
 newtype DuplicatePackageInSetErr = DuplicatePackageInSetErr PackageName
   deriving (Eq, Show)
 
 instance Exception DuplicatePackageInSetErr where
   displayException (DuplicatePackageInSetErr pn) =
-    "Duplicate package in initial package set: " <> T.unpack (unPkgName pn)
+    "Duplicate package in initial package set: " <> toString pn
 
 newtype DuplicatePackageInResolvedErr = DuplicatePackageInResolvedErr PackageName
   deriving (Eq, Show)
 
 instance Exception DuplicatePackageInResolvedErr where
   displayException (DuplicatePackageInResolvedErr pn) =
-    "Duplicate package in resolved package set: " <> T.unpack (unPkgName pn)
+    "Duplicate package in resolved package set: " <> toString pn
 
 newtype MissingRepoInPackageSetErr = MissingRepoInPackageSetErr RepoName
   deriving (Eq, Show)
 
 instance Exception MissingRepoInPackageSetErr where
   displayException (MissingRepoInPackageSetErr rn) =
-    "Missing repo definition in package set: " <> T.unpack (unRepoName rn)
+    "Missing repo definition in package set: " <> toString rn
 
 data MissingDeclaredPackageErr = MissingDeclaredPackageErr ProjectName PackageName
   deriving (Eq, Show)
 
 instance Exception MissingDeclaredPackageErr where
   displayException (MissingDeclaredPackageErr jn pn) =
-    "Missing package declared in project: " <> T.unpack (unProjName jn) <> " " <> T.unpack (unPkgName pn)
+    "Missing package declared in project: " <> toString jn <> " " <> toString pn
 
 newtype NoUniqueIpkgErr = NoUniqueIpkgErr Directory
   deriving (Eq, Show)
@@ -174,7 +174,7 @@ pkgGroupToText :: PackageGroup -> Text
 pkgGroupToText g =
   case g of
     PackageGroupAll -> "all packages"
-    PackageGroupSubset pns -> "selected packages (" <> T.intercalate ", " (fmap unPkgName (Set.toList pns)) <> ")"
+    PackageGroupSubset pns -> "selected packages (" <> T.intercalate ", " (fmap toText (Set.toList pns)) <> ")"
 
 reposForGroup :: ResolvedProject -> PackageSet -> PackageGroup -> Map RepoName RepoRef
 reposForGroup rp ps g =
@@ -241,7 +241,7 @@ getRepoDir :: RepoName -> RepoRef -> Directory
 getRepoDir rn rr =
   case rr of
     RepoRefLocal (LocalRepoRef d) -> d
-    _ -> fetchDir </> T.unpack (unRepoName rn)
+    _ -> repoFetchDir rn
 
 mkPkgDepInfo :: Directory -> Map RepoName RepoRef -> PackageRef -> AppM DepInfo
 mkPkgDepInfo projDir repoRefs (PackageRef rn msubdir mdepends) = do

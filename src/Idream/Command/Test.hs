@@ -21,12 +21,12 @@ newtype NonTestPackagesErr = NonTestPackagesErr (Set PackageName)
 
 instance Exception NonTestPackagesErr where
   displayException (NonTestPackagesErr pkgs) =
-    "Non-test packages specified in test group: " <> intercalate ", " (fmap (T.unpack . unPkgName) (Set.toList pkgs))
+    "Non-test packages specified in test group: " <> intercalate ", " (fmap toString (Set.toList pkgs))
 
 testImpl :: Directory -> PackageGroup -> AppM ()
 testImpl projDir group = do
   rp <- readResolvedProject projDir
-  logInfo ("Testing project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
+  logInfo ("Testing project " <> toText (rpName rp) <> " with " <> pkgGroupToText group)
   dim <- readDepInfoMap projDir rp
   let localTestMap = mkLocalTestMap rp
       allTestMap = mkAllTestMap dim
@@ -38,8 +38,8 @@ testImpl projDir group = do
       unless (Set.null invalidNames) (throwIO (NonTestPackagesErr invalidNames))
       pure (Map.filterWithKey (\pn _ -> Set.member pn reqNames) allTestMap)
   for_ (Map.toList testMap) $ \(pn, _) -> do
-    logInfo ("Running test " <> unPkgName pn)
-    let part = T.unpack (unPkgName pn)
+    logInfo ("Running test " <> toText pn)
+    let part = toString pn
         path = projDir </> outputDir </> part
         spec = Spec "sh" [part] (Just path) []
     procInvokeEnsure_ spec

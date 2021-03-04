@@ -7,29 +7,37 @@ import qualified Data.Text as T
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsWriteFile)
 import Idream.FileLogic (buildDir, pkgSetFileName, projFileName)
 import Idream.Prelude
-import Idream.Types.Common (ProjectName (..))
+import Idream.Types.Common (ProjectName)
 
 data ProjectDirAlreadyExistsErr = ProjectDirAlreadyExistsErr Directory ProjectName
   deriving (Eq, Show)
 
 instance Exception ProjectDirAlreadyExistsErr where
-  displayException (ProjectDirAlreadyExistsErr projDir (ProjectName pn)) =
-    "Failed to add package " <> T.unpack pn <> " to project; directory " <> projDir <> " already exists."
+  displayException (ProjectDirAlreadyExistsErr projDir pn) =
+    "Failed to add package " <> toString pn <> " to project; directory " <> projDir <> " already exists."
 
 gitignoreContents, idrPkgSetJsonContents :: Text
-gitignoreContents = "/" <> T.pack buildDir <> "\n"
-idrPkgSetJsonContents = "{}\n"
+gitignoreContents = "/" <> toText buildDir <> "\n"
+idrPkgSetJsonContents = T.unlines
+  [ "{"
+  , "  \"repos\": {"
+  , "  },"
+  , "  \"packages\": {"
+  , "  },"
+  , "  \"projects\": ["
+  , "  ]"
+  , "}"
+  ]
 
 idrProjectJsonContents :: ProjectName -> Text
-idrProjectJsonContents (ProjectName pn) =
-  T.unlines [ "{"
-            , "    \"name\": \"" <> pn <> "\","
-            , "    \"paths\": ["
-            , ""
-            , "    ]"
-            , "}"
-            , ""
-            ]
+idrProjectJsonContents jn = T.unlines
+  [ "{"
+  , "  \"name\": \"" <> toText jn <> "\","
+  , "  \"paths\": ["
+  , "  ]"
+  , "}"
+  , ""
+  ]
 
 -- | Creates a new project template.
 newImpl :: Directory -> ProjectName -> AppM ()
@@ -42,5 +50,5 @@ newImpl projDir projName = do
   fsWriteFile (relPath ".gitignore") gitignoreContents
   fsWriteFile (relPath projFileName) (idrProjectJsonContents projName)
   fsWriteFile (relPath pkgSetFileName) idrPkgSetJsonContents
-  logInfo ("Successfully initialized project: " <> unProjName projName <> ".")
+  logInfo ("Successfully initialized project: " <> toText projName)
   where relPath path = projDir </> path

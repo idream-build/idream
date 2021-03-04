@@ -3,7 +3,6 @@ module Idream.Exe
   , main
   ) where
 
-import qualified Data.Text as T
 import Idream.Command.Add (addImpl)
 import Idream.Command.Clean (cleanImpl)
 import Idream.Command.Common (PackageGroup (..))
@@ -30,7 +29,7 @@ effectiveProjDir mayProjDir cmd =
   case mayProjDir of
     Nothing ->
       case cmd of
-        New jn -> T.unpack (unProjName jn)
+        New jn -> toString jn
         _ -> "."
     Just d -> d
 

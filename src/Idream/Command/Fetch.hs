@@ -22,49 +22,49 @@ newtype PkgMissingInPkgSetErr = PkgMissingInPkgSetErr ProjectName
   deriving (Eq, Show)
 
 instance Exception PkgMissingInPkgSetErr where
-  displayException (PkgMissingInPkgSetErr (ProjectName n)) =
-    "Package missing in package set: " <> T.unpack n
+  displayException (PkgMissingInPkgSetErr jn) =
+    "Package missing in package set: " <> toString jn
 
 newtype DisableRefreshErr = DisableRefreshErr RepoName
   deriving (Eq, Show)
 
 instance Exception DisableRefreshErr where
-  displayException (DisableRefreshErr (RepoName n)) =
-    "Refresh disabled but repo is not usable: " <> T.unpack n
+  displayException (DisableRefreshErr rn) =
+    "Refresh disabled but repo is not usable: " <> toString rn
 
 data MissingLocalPathErr = MissingLocalPathErr RepoName Directory
   deriving (Eq, Show)
 
 instance Exception MissingLocalPathErr where
-  displayException (MissingLocalPathErr (RepoName n) path) =
-    "Missing local path for repo: " <> T.unpack n <> " - " <> path
+  displayException (MissingLocalPathErr rn path) =
+    "Missing local path for repo: " <> toString rn <> " " <> path
 
 -- | Top level function that tries to fetch all dependencies.
 fetchImpl :: Directory -> PackageGroup -> RefreshStrategy -> AppM ()
 fetchImpl projDir group refreshStrat = do
   rp <- readResolvedProject projDir
-  logInfo ("Fetching dependencies for project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group)
+  logInfo ("Fetching dependencies for project " <> toText (rpName rp) <> " with " <> pkgGroupToText group)
   pkgSet <- readPkgSetFile (projDir </> pkgSetFileName)
   let repoRefs = reposForGroup rp pkgSet group
   logInfo "Resolving dependencies"
   fsCreateDir (projDir </> fetchDir)
-  for_ (Map.toList repoRefs) $ \(repo, ref) -> do
-    fetchRepo projDir refreshStrat repo ref
+  for_ (Map.toList repoRefs) $ \(rn, ref) -> do
+    fetchRepo projDir refreshStrat rn ref
   logInfo "Finished fetching dependencies"
 
 -- | Fetches a project as specified in the top level package set file.
 -- TODO(ejconlon) Recursively fetch repo deps for idream projects
 fetchRepo :: Directory -> RefreshStrategy -> RepoName -> RepoRef -> AppM ()
-fetchRepo projDir refreshStrat repo ref =
+fetchRepo projDir refreshStrat rn ref =
   case ref of
     RepoRefLocal (LocalRepoRef localDir) -> do
       localExists <- fsDoesDirectoryExist (projDir </> localDir)
       if localExists
         then pure ()
-        else throwIO (MissingLocalPathErr repo localDir)
+        else throwIO (MissingLocalPathErr rn localDir)
     RepoRefGit gitRef -> do
-      let repoDir = projDir </> fetchDir </> T.unpack (unRepoName repo)
-      gitEnsure repoDir refreshStrat repo gitRef
+      let repoDir = projDir </> fetchDir </> toString rn
+      gitEnsure repoDir refreshStrat rn gitRef
 
 gitReadCurrentRef :: Directory -> AppM GitRepoRef
 gitReadCurrentRef repoDir = do
@@ -73,7 +73,7 @@ gitReadCurrentRef repoDir = do
   pure (GitRepoRef url commit)
 
 gitEnsure :: Directory -> RefreshStrategy -> RepoName -> GitRepoRef -> AppM ()
-gitEnsure repoDir refreshStrat repo desiredRef@(GitRepoRef url commit) = do
+gitEnsure repoDir refreshStrat rn desiredRef@(GitRepoRef url commit) = do
   repoExists <- fsDoesDirectoryExist repoDir
   if repoExists
     then do
@@ -85,12 +85,12 @@ gitEnsure repoDir refreshStrat repo desiredRef@(GitRepoRef url commit) = do
           logInfo ("Switching " <> commit)
           gitSwitch repoDir commit
         (True, _) -> pure ()
-        (False, DisableRefresh) -> throwIO (DisableRefreshErr repo)
+        (False, DisableRefresh) -> throwIO (DisableRefreshErr rn)
         (False, _) -> do
           logInfo ("Re-cloning " <> url <> " at " <> commit)
           fsRemovePath repoDir
           gitClone repoDir url commit
     else do
-      when (refreshStrat == DisableRefresh) (throwIO (DisableRefreshErr repo))
+      when (refreshStrat == DisableRefresh) (throwIO (DisableRefreshErr rn))
       logInfo ("Cloning " <> url <> " at " <> commit)
       gitClone repoDir url commit

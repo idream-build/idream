@@ -1,19 +1,21 @@
 -- | idream-specific constants and path manipulation functions.
 module Idream.FileLogic
   ( workDir
+  , buildDirName
   , buildDir
+  , outputDirName
   , outputDir
+  , fetchDirName
   , fetchDir
+  , installDirName
   , installDir
   , pkgBuildDir
   , pkgOutputDir
-  , repoDir
+  , pkgInstallDir
+  , repoFetchDir
   , projFileName
   , pkgFileName
-  , ipkgFileName
   , pkgSetFileName
-  , depGraphMapFile
-  , depInfoMapFile
   ) where
 
 import qualified Data.Text as T
@@ -26,32 +28,45 @@ import Idream.Types.Common (PackageName (..), RepoName (..))
 workDir :: Directory
 workDir = ".idream-work"
 
+buildDirName :: Directory
+buildDirName = "build"
+
 buildDir :: Directory
-buildDir = workDir </> "build"
+buildDir = workDir </> buildDirName
+
+outputDirName :: Directory
+outputDirName = "output"
 
 outputDir :: Directory
-outputDir = workDir </> "output"
+outputDir = workDir </> outputDirName
+
+fetchDirName :: Directory
+fetchDirName = "fetch"
 
 fetchDir :: Directory
-fetchDir = workDir </> "fetch"
+fetchDir = workDir </> fetchDirName
+
+installDirName :: Directory
+installDirName = "install"
 
 installDir :: Directory
-installDir = workDir </> "install"
+installDir = workDir </> installDirName
 
 -- | Directory that is used for storing build artifacts of a specific package.
 pkgBuildDir :: PackageName -> Directory
-pkgBuildDir (PackageName pkgName) =
-  buildDir </> T.unpack pkgName
+pkgBuildDir = (buildDir </>) . toString
 
 -- | Directory that is used for storing output artifacts of a specific package.
 pkgOutputDir :: PackageName -> Directory
-pkgOutputDir (PackageName pkgName) =
-  outputDir </> T.unpack pkgName
+pkgOutputDir = (outputDir </>) . toString
+
+-- | Directory that is used for storing install artifacts of a specific package.
+pkgInstallDir :: PackageName -> Directory
+pkgInstallDir = (installDir </>) . toString
 
 -- | Directory where a dependency is downloaded to.
-repoDir :: RepoName -> Directory
-repoDir (RepoName repoName) =
-  fetchDir </> T.unpack repoName
+repoFetchDir :: RepoName -> Directory
+repoFetchDir = (fetchDir </>) . toString
 
 -- | File which contains project information.
 projFileName :: FilePath
@@ -61,18 +76,6 @@ projFileName = "idr-project.json"
 pkgFileName :: FilePath
 pkgFileName = "idr-package.json"
 
--- | Ipkg file
-ipkgFileName :: PackageName -> FilePath
-ipkgFileName (PackageName pkgName) = T.unpack (pkgName <> ".ipkg")
-
 -- | File which contains package set information.
 pkgSetFileName :: FilePath
 pkgSetFileName = "idr-package-set.json"
-
--- | Location of the dependency graph file.
-depGraphMapFile :: FilePath
-depGraphMapFile = workDir </> "dependency-graph.json"
-
--- | Location of the dependency info file.
-depInfoMapFile :: FilePath
-depInfoMapFile = workDir </> "dependency-info.json"

@@ -5,7 +5,7 @@ module Idream.OptionParser
 import Idream.Prelude
 import Idream.Types.Command (Args (..), Command (..))
 import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..),
-                            RefreshStrategy (..), packageGroupFromList, packageTypeFromString, refreshStratFromString)
+                            RefreshStrategy (..), packageGroupFromList, packageTypeFromText, refreshStratFromText)
 import LittleLogger (Severity (..))
 import Options.Applicative
 
@@ -30,7 +30,7 @@ pkgDirParser = optional (option str desc) where
 packageTypeParser :: Parser PackageType
 packageTypeParser = fromMaybe PkgTypeLibrary <$> optional (option (eitherReader f) desc) where
   desc = long "package-type" <> help "Package type (library/executable/test)"
-  f s = case packageTypeFromString s of
+  f s = case packageTypeFromText (toText s) of
     Just pt -> Right pt
     Nothing -> Left "package-type must be one of library/executable/test"
 
@@ -41,7 +41,7 @@ packageGroupParser = packageGroupFromList <$> many (option str desc) where
 refreshStratParser :: Parser RefreshStrategy
 refreshStratParser = fromMaybe EnableRefresh <$> optional (option (eitherReader f) desc) where
   desc = long "refresh-strategy" <> help "Refresh strategy (force/enable/disable)"
-  f s = case refreshStratFromString s of
+  f s = case refreshStratFromText (toText s) of
     Just pt -> Right pt
     Nothing -> Left "refresh-strategy must be one of force/enable/disable"
 
@@ -60,12 +60,12 @@ commandParser = hsubparser commands where
   fetchCmdParser = Fetch <$> packageGroupParser <*> refreshStratParser
   compileCmdParser = Compile <$> packageGroupParser
   cleanCmdParser = pure Clean
-  runCmdParser = Run <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
+  runCmdParser = Run <$> (fromText <$> strArgument (metavar "PACKAGE_NAME"))
                      <*> many (strArgument (metavar "ARGS"))
-  replCmdParser = Repl <$> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
-  newCmdParser = New <$> (ProjectName <$> strArgument (metavar "PROJECT_NAME"))
+  replCmdParser = Repl <$> (fromText <$> strArgument (metavar "PACKAGE_NAME"))
+  newCmdParser = New <$> (fromText <$> strArgument (metavar "PROJECT_NAME"))
   addCmdParser = Add <$> pkgDirParser
-                     <*> (PackageName <$> strArgument (metavar "PACKAGE_NAME"))
+                     <*> (fromText <$> strArgument (metavar "PACKAGE_NAME"))
                      <*> packageTypeParser
   testCmdParser = Test <$> packageGroupParser
 
