@@ -3,6 +3,7 @@ module Idream.Command.Common
   , readPkgFile
   , readPkgSetFile
   , readProjFile
+  , mkProgramSpec
   , resolveProj
   , PackageGroup (..)
   , initPkgDeps
@@ -25,6 +26,7 @@ module Idream.Command.Common
   , MissingRepoInPackageSetErr (..)
   , MissingDeclaredPackageErr (..)
   , NoUniqueIpkgErr (..)
+  , UnsupportedCodegenExeErr (..)
   ) where
 
 import qualified Data.Map as Map
@@ -33,8 +35,9 @@ import qualified Data.Text as T
 import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, depsFromMap, depsVertices,
                     restrictDeps, unionAllDeps, unionDeps)
 import Idream.Effects.FileSystem (fsFindFiles)
+import Idream.Effects.Process (Spec (..))
 import Idream.Effects.Serde (serdeReadJSON)
-import Idream.FileLogic (fetchDir, pkgFileName, pkgSetFileName, projFileName, repoFetchDir)
+import Idream.FileLogic (fetchDir, outputDir, pkgFileName, pkgSetFileName, projFileName, repoFetchDir)
 import Idream.Prelude
 import Idream.Types.Common (Codegen, PackageGroup (..), PackageName, PackageType (..), ProjectName, RepoName)
 import Idream.Types.External (LocalRepoRef (..), Package (..), PackageRef (..), PackageSet (..), Project (..),
@@ -102,6 +105,13 @@ instance Exception NoUniqueIpkgErr where
   displayException (NoUniqueIpkgErr path) =
     "Could not find unique ipkg file in directory: " <> path
 
+data UnsupportedCodegenExeErr = UnsupportedCodegenExeErr PackageName Codegen
+  deriving (Eq, Show)
+
+instance Exception UnsupportedCodegenExeErr where
+  displayException (UnsupportedCodegenExeErr pn cg) =
+    "Unsupported codegen " <> toString cg <> " - cannot run " <> toString pn
+
 findExtRel :: String -> Directory -> AppM [FilePath]
 findExtRel ext dir = fmap (fmap (makeRelative dir)) (fsFindFiles (isExtensionOf ext) (Just dir))
 
@@ -126,13 +136,28 @@ mkUniqueMap f = foldr go (pure Map.empty) where
       _ -> throwIO (f k)
 
 -- | The Idris2 default codegen.
-defaultCodegen :: Codegen
-defaultCodegen = fromText "chez"
+chezCodegen :: Codegen
+chezCodegen = fromText "chez"
+
+-- | The reference counting codegen
+refcCodegen :: Codegen
+refcCodegen = fromText "refc"
+
+mkProgramSpec :: Directory -> Codegen -> PackageName -> AppM Spec
+mkProgramSpec projDir codegen pn = do
+  let part = toString pn
+      path = projDir </> outputDir </> part
+  case codegen of
+    c | c == chezCodegen ->
+      pure (Spec "sh" [part] (Just path) [])
+    c | c == refcCodegen ->
+      pure (Spec part [] (Just path) [])
+    _ -> throwIO (UnsupportedCodegenExeErr pn codegen)
 
 -- | Reads project and package info into one struct.
 resolveProj :: Directory -> Project -> AppM ResolvedProject
 resolveProj projDir (Project pn mcg mpaths) = do
-  let cg = fromMaybe defaultCodegen mcg
+  let cg = fromMaybe chezCodegen mcg
       paths = fromMaybe [] mpaths
   lps <- for paths $ \path -> do
     pkg <- readPkgFile (projDir </> path </> pkgFileName)

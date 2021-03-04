@@ -16,9 +16,9 @@ import Idream.Effects.Process (Spec (..), procDebug_, procInvokeEnsure_)
 import Idream.FileLogic (buildDir, buildDirName, installDir, installDirName, outputDir, outputDirName, pkgSetFileName,
                          workDir)
 import Idream.Prelude
-import Idream.Types.Common (PackageName, PackageType (..), ProjectName)
-import Idream.Types.Internal (DepInfo (..), DepInfoMap, IdreamDepInfo (..), IpkgDepInfo (..),
-                              ResolvedProject (..), depInfoDepends)
+import Idream.Types.Common (Codegen, PackageName, PackageType (..), ProjectName)
+import Idream.Types.Internal (DepInfo (..), DepInfoMap, IdreamDepInfo (..), IpkgDepInfo (..), ResolvedProject (..),
+                              depInfoDepends)
 import System.FilePath (dropExtension)
 
 newtype MissingPackageInResolvedErr = MissingPackageInResolvedErr PackageName
@@ -40,12 +40,13 @@ compileImpl projDir group = do
     case Map.lookup pn dim of
       Nothing -> throwIO (MissingPackageInResolvedErr pn)
       Just di -> do
-        let tdepends = Set.toList (lookupDeps pn transDeps)
-        compilePkg projDir di pn tdepends
+        let codegen = rpCodegen rp
+            tdepends = Set.toList (lookupDeps pn transDeps)
+        compilePkg projDir codegen di pn tdepends
   logInfo "Finished compiling"
 
-compilePkg :: Directory -> DepInfo -> PackageName -> [PackageName] -> AppM ()
-compilePkg projDir di pn tdepends = do
+compilePkg :: Directory -> Codegen -> DepInfo -> PackageName -> [PackageName] -> AppM ()
+compilePkg projDir codegen di pn tdepends = do
   logInfo ("Compiling " <> toText pn)
   install <- case di of
     DepInfoBuiltin _ -> pure False
@@ -56,10 +57,10 @@ compilePkg projDir di pn tdepends = do
           pkgContents = mkIpkgContents pn idi modules
           rootedPkgFile = projDir </> path </> pkgFile
       fsWriteFile rootedPkgFile pkgContents
-      runIdris projDir pn path pkgFile tdepends
+      runIdris projDir codegen pn path pkgFile tdepends
       pure True
     DepInfoIpkg (IpkgDepInfo path pkgFile _) -> do
-      runIdris projDir pn path pkgFile tdepends
+      runIdris projDir codegen pn path pkgFile tdepends
       pure True
   -- Copy TTC files to install
   when install (installFiles projDir pn)
@@ -102,8 +103,8 @@ mkIpkgContents pn (IdreamDepInfo _ path ty msourcedir depends) modules =
     , if null depends then "" else "depends = " <> depsList
     ]
 
-runIdris :: Directory -> PackageName -> Directory -> FilePath -> [PackageName] -> AppM ()
-runIdris projDir pn path pkgFile tdepends = do
+runIdris :: Directory -> Codegen -> PackageName -> Directory -> FilePath -> [PackageName] -> AppM ()
+runIdris projDir codegen pn path pkgFile tdepends = do
   absWorkDir <- fsMakeAbsolute (projDir </> workDir)
   let absBuildDir = absWorkDir </> buildDirName
       absOutputDir = absWorkDir </> outputDirName
@@ -117,6 +118,7 @@ runIdris projDir pn path pkgFile tdepends = do
       args = [ "--build", pkgFile
              , "--build-dir", absPkgBuildDir
              , "--output-dir", absPkgOutputDir
+             , "--codegen", toString codegen
              , "--verbose"
              ]
       spec = Spec "idris2" args (Just (projDir </> path)) env

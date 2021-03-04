@@ -5,16 +5,14 @@ module Idream.Command.Test
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Data.Text as T
-import Idream.Command.Common (pkgGroupToText, readDepInfoMap, readResolvedProject)
+import Idream.Command.Common (mkProgramSpec, pkgGroupToText, readDepInfoMap, readResolvedProject)
 import Idream.Effects.FileSystem (fsFindFiles)
-import Idream.Effects.Process (Spec (..), procInvokeEnsure_)
+import Idream.Effects.Process (procInvokeEnsure_)
 import Idream.FileLogic (outputDir)
 import Idream.Prelude
 import Idream.Types.Common (PackageGroup (..), PackageName, PackageType (..), ProjectName)
 import Idream.Types.External (Package (..))
-import Idream.Types.Internal (DepInfo (..), DepInfoMap, IdreamDepInfo (..), LocatedPackage (..),
-                              ResolvedProject (..))
+import Idream.Types.Internal (DepInfo (..), DepInfoMap, IdreamDepInfo (..), LocatedPackage (..), ResolvedProject (..))
 
 newtype NonTestPackagesErr = NonTestPackagesErr (Set PackageName)
   deriving (Eq, Show)
@@ -39,9 +37,8 @@ testImpl projDir group = do
       pure (Map.filterWithKey (\pn _ -> Set.member pn reqNames) allTestMap)
   for_ (Map.toList testMap) $ \(pn, _) -> do
     logInfo ("Running test " <> toText pn)
-    let part = toString pn
-        path = projDir </> outputDir </> part
-        spec = Spec "sh" [part] (Just path) []
+    let codegen = rpCodegen rp
+    spec <- mkProgramSpec projDir codegen pn
     procInvokeEnsure_ spec
   logInfo "Finished testing"
 

@@ -4,8 +4,8 @@ module Idream.OptionParser
 
 import Idream.Prelude
 import Idream.Types.Command (Args (..), Command (..))
-import Idream.Types.Common (PackageGroup (..), PackageName, PackageType (..), ProjectName,
-                            RefreshStrategy (..), packageGroupFromList, packageTypeFromText, refreshStratFromText)
+import Idream.Types.Common (PackageGroup (..), PackageName, PackageType (..), ProjectName, RefreshStrategy (..),
+                            packageGroupFromList, packageTypeFromText, refreshStratFromText)
 import LittleLogger (Severity (..))
 import Options.Applicative
 

@@ -11,7 +11,7 @@ module Idream.Types.External
 
 import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, withObject, withText, (.:), (.:?), (.=))
 import Idream.Prelude
-import Idream.Types.Common (Codegen, GitUrl, GitCommit, PackageName, PackageType, ProjectName, RepoName)
+import Idream.Types.Common (Codegen, GitCommit, GitUrl, PackageName, PackageType, ProjectName, RepoName)
 
 -- | Type containing project data (coming from idr-project.json).
 --   A project consists of 1 or more packages that are closely related to
