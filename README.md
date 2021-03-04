@@ -1,6 +1,6 @@
 # idream
 
-[![CircleCI](https://circleci.com/gh/idream/idream/tree/master.svg?style=svg)](https://circleci.com/gh/idream/idream/tree/master)
+[![CircleCI](https://circleci.com/gh/idream-build/idream/tree/master.svg?style=svg)](https://circleci.com/gh/idream-build/idream/tree/master)
 
 A simple build system for Idris
 
