@@ -6,11 +6,9 @@ module Idream.Effects.Git
   , gitReadCurrentBranch
   ) where
 
-import Data.Text (Text)
 import qualified Data.Text as T
-import Idream.App (AppM)
 import Idream.Effects.Process (Arg, Result (..), Spec (..), procInvokeEnsure, procInvokeEnsure_)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 
 gitClone :: Directory -> Text -> Text -> AppM ()
 gitClone repoDir url commit = procInvokeEnsure_ spec where

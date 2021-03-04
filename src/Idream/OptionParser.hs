@@ -2,8 +2,7 @@ module Idream.OptionParser
   ( parseCmdLineArgs
   ) where
 
-import Data.Maybe (fromMaybe)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Command (Args (..), Command (..))
 import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..),
                             RefreshStrategy (..), packageGroupFromList, packageTypeFromString, refreshStratFromString)

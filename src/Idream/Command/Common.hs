@@ -27,33 +27,21 @@ module Idream.Command.Common
   , NoUniqueIpkgErr (..)
   ) where
 
-import Control.Exception (Exception (..))
-import Control.Monad (join, unless, when)
-import Control.Monad.IO.Class (liftIO)
-import Data.Foldable (for_, toList)
-import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Maybe (fromMaybe)
-import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Traversable (for)
-import Idream.App (AppM)
 import Idream.Deps (Deps (..), closureDeps, composeDeps, depsFromEdges, depsFromGroups, depsFromMap, depsVertices,
                     restrictDeps, unionAllDeps, unionDeps)
 import Idream.Effects.FileSystem (fsFindFiles)
 import Idream.Effects.Serde (serdeReadJSON)
 import Idream.FileLogic (fetchDir, pkgFileName, pkgSetFileName, projFileName)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Common (PackageGroup (..), PackageName (..), PackageType (..), ProjectName (..), RepoName (..))
 import Idream.Types.External (LocalRepoRef (..), Package (..), PackageRef (..), PackageSet (..), Project (..),
                               ProjectRef (..), RepoRef (..))
 import Idream.Types.Internal (BuiltinDepInfo (..), DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), IpkgDepInfo (..),
                               LocatedPackage (..), ResolvedProject (..), depInfoDepends)
-import LittleLogger (logWarning)
-import System.FilePath (isExtensionOf, isPathSeparator, makeRelative, (</>))
-import UnliftIO.Exception (throwIO)
+import System.FilePath (isExtensionOf, isPathSeparator, makeRelative)
 
 -- | Error type for describing errors when parsing project file.
 data ProjParseErr = ProjParseErr FilePath String

@@ -6,23 +6,16 @@ module Idream.Command.Fetch
   , MissingLocalPathErr (..)
   ) where
 
-import Control.Exception (Exception (..))
-import Control.Monad (when)
-import Data.Foldable (for_)
 import qualified Data.Map as Map
 import qualified Data.Text as T
-import Idream.App (AppM)
 import Idream.Command.Common (PackageGroup, pkgGroupToText, readPkgSetFile, readResolvedProject, reposForGroup)
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsRemovePath)
 import Idream.Effects.Git (gitClone, gitFetch, gitReadCurrentBranch, gitReadOriginUrl, gitSwitch)
 import Idream.FileLogic (fetchDir, pkgSetFileName)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Common (ProjectName (..), RefreshStrategy (..), RepoName (..))
 import Idream.Types.External (GitRepoRef (..), LocalRepoRef (..), RepoRef (..))
 import Idream.Types.Internal (ResolvedProject (..))
-import LittleLogger (logInfo)
-import System.FilePath ((</>))
-import UnliftIO.Exception (throwIO)
 
 -- | Top level error type, models all errors that can occur
 --   during fetching of dependencies.

@@ -10,9 +10,7 @@ module Idream.Types.External
   ) where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), object, withObject, withText, (.:), (.:?), (.=))
-import Data.Map (Map)
-import Data.Text (Text)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Common (PackageName, PackageType, ProjectName, RepoName)
 
 -- | Type containing project data (coming from idr-project.json).

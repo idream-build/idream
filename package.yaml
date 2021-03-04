@@ -40,6 +40,7 @@ default-extensions:
   - DerivingStrategies
   - GeneralizedNewtypeDeriving
   - LambdaCase
+  - NoImplicitPrelude
   - OverloadedStrings
   - ScopedTypeVariables
   - TupleSections

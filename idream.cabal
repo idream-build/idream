@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6cf4c7350e582a1ac73d1686bb33a1e26a58d9a8079137b9f03f7497fdac8755
+-- hash: a82c5a0df8bdabb32d7aec61cc007d84baa49757c7faa6dcfe0d7e5adb4a041f
 
 name:           idream
 version:        0.2.0.0
@@ -22,7 +22,6 @@ extra-source-files:
 
 library
   exposed-modules:
-      Idream.App
       Idream.Command.Add
       Idream.Command.Clean
       Idream.Command.Common
@@ -33,16 +32,12 @@ library
       Idream.Deps
       Idream.Effects.FileSystem
       Idream.Effects.Git
-      Idream.Effects.Idris
       Idream.Effects.Process
       Idream.Effects.Serde
       Idream.Exe
       Idream.FileLogic
-      Idream.FilePaths
-      Idream.OldCommand.MkDoc
-      Idream.OldCommand.Repl
       Idream.OptionParser
-      Idream.Types
+      Idream.Prelude
       Idream.Types.Command
       Idream.Types.Common
       Idream.Types.External
@@ -51,7 +46,7 @@ library
       Paths_idream
   hs-source-dirs:
       src
-  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase OverloadedStrings ScopedTypeVariables TupleSections
+  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
   ghc-options: -optP-Wno-nonportable-include-path
   build-depends:
       aeson >=1.5 && <1.6
@@ -82,7 +77,7 @@ executable idream
       Paths_idream
   hs-source-dirs:
       exe
-  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase OverloadedStrings ScopedTypeVariables TupleSections
+  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
   ghc-options: -optP-Wno-nonportable-include-path
   build-depends:
       aeson >=1.5 && <1.6
@@ -116,7 +111,7 @@ test-suite idream-test
       Paths_idream
   hs-source-dirs:
       test
-  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase OverloadedStrings ScopedTypeVariables TupleSections
+  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
   ghc-options: -optP-Wno-nonportable-include-path
   build-depends:
       aeson >=1.5 && <1.6

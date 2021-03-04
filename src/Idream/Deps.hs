@@ -25,6 +25,7 @@ import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Prelude
 
 data Deps k v = Deps
   { depsEdges :: !(Map k (Set v))

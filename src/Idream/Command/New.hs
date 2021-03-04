@@ -3,18 +3,11 @@ module Idream.Command.New
   , ProjectDirAlreadyExistsErr (..)
   ) where
 
-import Control.Exception (Exception (..))
-import Control.Monad (when)
-import Data.Text (Text)
 import qualified Data.Text as T
-import Idream.App (AppM)
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsWriteFile)
 import Idream.FileLogic (buildDir, pkgSetFileName, projFileName)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Common (ProjectName (..))
-import LittleLogger (logInfo)
-import System.FilePath ((</>))
-import UnliftIO.Exception (throwIO)
 
 data ProjectDirAlreadyExistsErr = ProjectDirAlreadyExistsErr Directory ProjectName
   deriving (Eq, Show)

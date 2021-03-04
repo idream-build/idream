@@ -3,9 +3,8 @@ module Idream.Exe
   , main
   ) where
 
-import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
-import Idream.App (AppM, newApp, runAppM)
+import Idream.Prelude
 import Idream.Command.Add (addImpl)
 import Idream.Command.Clean (cleanImpl)
 import Idream.Command.Common (PackageGroup (..))
@@ -13,7 +12,6 @@ import Idream.Command.Compile (compileImpl)
 import Idream.Command.Fetch (fetchImpl)
 import Idream.Command.New (newImpl)
 import Idream.Command.Test (testImpl)
-import Idream.FilePaths (Directory)
 import Idream.OptionParser (parseCmdLineArgs)
 import Idream.Types.Command (Args (..), Command (..))
 import Idream.Types.Common (PackageName (..), ProjectName (..), RefreshStrategy)

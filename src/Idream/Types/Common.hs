@@ -11,11 +11,10 @@ module Idream.Types.Common
   ) where
 
 import Data.Aeson (FromJSON (..), FromJSONKey, ToJSON (..), ToJSONKey, Value (..), withText)
-import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.String (IsString)
-import Data.Text (Text)
 import qualified Data.Text as T
+import Idream.Prelude
 
 newtype PackageName = PackageName { unPkgName :: Text }
   deriving newtype (Eq, Ord, Show, ToJSONKey, FromJSONKey, ToJSON, FromJSON, IsString)

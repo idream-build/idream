@@ -17,9 +17,8 @@ module Idream.FileLogic
   ) where
 
 import qualified Data.Text as T
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Common (PackageName (..), RepoName (..))
-import System.FilePath ((</>))
 
 -- NOTE: all these functions return a path relative to root of a project!
 

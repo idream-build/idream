@@ -10,8 +10,7 @@ module Idream.Types.Internal
   ) where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.:?), (.=))
-import Data.Map (Map)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Common (PackageName, PackageType, ProjectName)
 import Idream.Types.External (Package)
 

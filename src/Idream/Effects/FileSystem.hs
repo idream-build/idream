@@ -15,14 +15,9 @@ module Idream.Effects.FileSystem
   , FindFilesErr (..)
   ) where
 
-import Control.Exception (Exception (..), IOException, SomeException)
-import Control.Monad.IO.Class (liftIO)
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Idream.App (AppM)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Shelly (cp_r, find, fromText, shelly, silently, toTextIgnore)
 import UnliftIO.Directory (copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, makeAbsolute,
                            removePathForcibly)

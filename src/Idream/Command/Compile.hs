@@ -4,17 +4,10 @@ module Idream.Command.Compile
   , MissingPackageInResolvedErr (..)
   ) where
 
-import Control.Exception (Exception (..))
-import Control.Monad (unless, when)
-import Data.Foldable (for_)
-import Data.List (groupBy, intercalate, stripPrefix)
+import Data.List (groupBy, stripPrefix)
 import qualified Data.Map as Map
-import Data.Maybe (fromMaybe)
-import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Text (Text)
 import qualified Data.Text as T
-import Idream.App (AppM)
 import Idream.Command.Common (PackageGroup, findExtRel, fullPkgDepsForGroup, mkDepInfoMap, pkgGroupToText,
                               readDepInfoMap, readPkgSetFile, readResolvedProject)
 import Idream.Command.Fetch (fetchInner)
@@ -23,13 +16,11 @@ import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsDoesDirectoryExist,
                                   fsRemovePath, fsWriteFile)
 import Idream.Effects.Process (Spec (..), procDebug_, procInvokeEnsure_)
 import Idream.FileLogic (buildDir, installDir, outputDir, pkgSetFileName, workDir)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Common (PackageName (..), PackageType (..), ProjectName (..), RefreshStrategy)
 import Idream.Types.Internal (DepInfo (..), DepInfoMap (..), IdreamDepInfo (..), IpkgDepInfo (IpkgDepInfo),
                               ResolvedProject (..), depInfoDepends)
-import LittleLogger (logInfo)
-import System.FilePath (dropExtension, isExtensionOf, makeRelative, (-<.>), (</>))
-import UnliftIO.Exception (throwIO)
+import System.FilePath (dropExtension)
 
 newtype MissingPackageInResolvedErr = MissingPackageInResolvedErr PackageName
   deriving (Eq, Show)
@@ -43,11 +34,11 @@ compileImpl projDir group refreshStrat = do
   rp <- readResolvedProject projDir
   logInfo ("Compiling project " <> unProjName (rpName rp) <> " with " <> pkgGroupToText group <> ".")
   fetchInner projDir rp group refreshStrat
-  compileInner projDir rp group
-
-compileInner :: Directory -> ResolvedProject -> PackageGroup -> AppM ()
-compileInner projDir rp group = do
   dim <- readDepInfoMap projDir rp
+  compileInner projDir rp group dim
+
+compileInner :: Directory -> ResolvedProject -> PackageGroup -> DepInfoMap -> AppM ()
+compileInner projDir rp group dim = do
   let filtDeps = fullPkgDepsForGroup rp group dim
       linPkgs = linearizeDeps filtDeps
       transDeps = closureDeps filtDeps

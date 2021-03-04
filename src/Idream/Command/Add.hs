@@ -4,24 +4,15 @@ module Idream.Command.Add
   , PackageNameAlreadyExistsErr (..)
   ) where
 
-import Control.Exception (Exception (..))
-import Control.Monad (when)
-import Data.Foldable (for_)
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
 import qualified Data.Text as T
-import Idream.App (AppM)
 import Idream.Command.Common (readProjFile, resolveProj)
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsWriteFile)
 import Idream.Effects.Serde (serdeWriteJSON)
 import Idream.FileLogic (pkgFileName, projFileName)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Common (PackageName (..), PackageType (..))
 import Idream.Types.External (Package (..), Project (..))
 import Idream.Types.Internal (LocatedPackage (..), ResolvedProject (..))
-import LittleLogger (logInfo)
-import System.FilePath ((</>))
-import UnliftIO.Exception (throwIO)
 
 data PackageDirAlreadyExistsErr = PackageDirAlreadyExistsErr Directory PackageName
   deriving (Eq, Show)

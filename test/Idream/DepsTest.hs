@@ -4,6 +4,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Idream.Deps (Deps (..), closureDeps, composeAndUnionDeps, composeDeps, depsFromEdges, depsFromGroups,
                     depsFromPath, depsVertices, linearizeDeps, restrictDeps, revDeps)
+import Prelude
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (testCase, (@?=))
 

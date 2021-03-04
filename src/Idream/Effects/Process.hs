@@ -11,18 +11,12 @@ module Idream.Effects.Process
   , procDebug_
   ) where
 
-import Control.Exception (Exception (..))
-import Control.Monad (void)
-import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromJust)
-import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Idream.App (AppM)
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import System.Exit (ExitCode (..))
 import UnliftIO.Environment (getEnv)
-import UnliftIO.Exception (throwIO)
 import UnliftIO.Process (StdStream (..), createProcess, cwd, env, proc, std_err, std_out, waitForProcess)
 
 -- | Type alias for command when spawning an external OS process.

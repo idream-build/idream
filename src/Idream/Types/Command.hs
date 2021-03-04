@@ -4,9 +4,8 @@ module Idream.Types.Command
   , Args (..)
   ) where
 
-import Data.Text (Text)
 import qualified Data.Text as T
-import Idream.FilePaths (Directory)
+import Idream.Prelude
 import Idream.Types.Common (PackageGroup, PackageName, PackageType, ProjectName (..), RefreshStrategy)
 import LittleLogger (Severity)
 
