@@ -9,6 +9,7 @@ import Idream.Command.Common (PackageGroup (..))
 import Idream.Command.Compile (compileImpl)
 import Idream.Command.Fetch (fetchImpl)
 import Idream.Command.New (newImpl)
+import Idream.Command.Repl (replImpl)
 import Idream.Command.Test (testImpl)
 import Idream.OptionParser (parseCmdLineArgs)
 import Idream.Prelude
@@ -46,4 +47,5 @@ processCommand projDir command =
     Add mayPkgSubDir pkgName pkgType ->
       addImpl projDir mayPkgSubDir pkgName pkgType
     Test pkgGroup -> testImpl projDir pkgGroup
+    Repl pkgName -> replImpl projDir pkgName
     _ -> error ("TODO implement command: " <> show command)

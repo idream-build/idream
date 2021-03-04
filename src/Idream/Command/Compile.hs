@@ -57,10 +57,10 @@ compilePkg projDir codegen di pn tdepends = do
           pkgContents = mkIpkgContents pn idi modules
           rootedPkgFile = projDir </> path </> pkgFile
       fsWriteFile rootedPkgFile pkgContents
-      runIdris projDir codegen pn path pkgFile tdepends
+      idrisBuild projDir codegen pn path pkgFile tdepends
       pure True
     DepInfoIpkg (IpkgDepInfo path pkgFile _) -> do
-      runIdris projDir codegen pn path pkgFile tdepends
+      idrisBuild projDir codegen pn path pkgFile tdepends
       pure True
   -- Copy TTC files to install
   when install (installFiles projDir pn)
@@ -103,8 +103,8 @@ mkIpkgContents pn (IdreamDepInfo _ path ty msourcedir depends) modules =
     , if null depends then "" else "depends = " <> depsList
     ]
 
-runIdris :: Directory -> Codegen -> PackageName -> Directory -> FilePath -> [PackageName] -> AppM ()
-runIdris projDir codegen pn path pkgFile tdepends = do
+idrisBuild :: Directory -> Codegen -> PackageName -> Directory -> FilePath -> [PackageName] -> AppM ()
+idrisBuild projDir codegen pn path pkgFile tdepends = do
   absWorkDir <- fsMakeAbsolute (projDir </> workDir)
   let absBuildDir = absWorkDir </> buildDirName
       absOutputDir = absWorkDir </> outputDirName
