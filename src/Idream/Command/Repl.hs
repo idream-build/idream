@@ -11,8 +11,8 @@ import Idream.Effects.FileSystem (fsMakeAbsolute)
 import Idream.Effects.Process (Spec (..), procDebug_)
 import Idream.FileLogic (buildDirName, installDirName, outputDirName, workDir)
 import Idream.Prelude
-import Idream.Types.Common (Codegen, PackageGroup (PackageGroupSubset), PackageName)
-import Idream.Types.Internal (DepInfo (..), IdreamDepInfo (..), IpkgDepInfo (..), ResolvedProject (rpCodegen))
+import Idream.Types.Common (Codegen, PackageGroup (..), PackageName)
+import Idream.Types.Internal (DepInfo (..), IdreamDepInfo (..), IpkgDepInfo (..), ResolvedProject (..))
 import UnliftIO.Environment (getEnv)
 
 newtype ReplBuiltinPackageErr = ReplBuiltinPackageErr PackageName

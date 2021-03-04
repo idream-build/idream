@@ -18,6 +18,7 @@ module Idream.Command.Common
   , readResolvedProject
   , readDepInfoMap
   , mkDepInfoMap
+  , getDepInfoMap
   , PkgParseErr (..)
   , PkgSetParseErr (..)
   , ProjParseErr (..)
