@@ -32,7 +32,7 @@ format:
 
 .PHONY: lint
 lint:
-	stack exec -- hlint -i 'Parse error' -i 'Reduce duplication' src
+	stack exec -- hlint -i 'Parse error' -i 'Reduce duplication' -i 'Use <=<' src
 
 .PHONY: gen-hie
 gen-hie:

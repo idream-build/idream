@@ -1,6 +1,11 @@
+build/
 .stack-work/
+.idream-work/
+images/base/cache/
 dist/
 dist-newstyle/
+smoke_project/
+tut_project/
 *~
 *.swo
 *.swp

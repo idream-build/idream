@@ -1,0 +1,5 @@
+{
+  "name": "repl-exe",
+  "sourcedir": "src",
+  "depends": ["readline"]
+}
