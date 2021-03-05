@@ -2,7 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/idream-build/idream/tree/master.svg?style=svg)](https://circleci.com/gh/idream-build/idream/tree/master)
 
-A simple build system for Idris
+A simple build system for Idris2.
 
 
 ## Current status
