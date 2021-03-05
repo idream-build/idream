@@ -1,0 +1,28 @@
+{
+  "repos": {
+    "idream_test_dep1": {
+      "git": {
+        "url": "git@github.com:idream-build/idream_test_dep1.git",
+        "commit": "master"
+      }
+    },
+    "idream_test_dep2": {
+      "git": {
+        "url": "git@github.com:idream-build/idream_test_dep2.git",
+        "commit": "master"
+      }
+    }
+  },
+  "packages": {
+  },
+  "projects": [
+    {
+      "repo": "idream_test_dep1",
+      "packages": ["package1", "package2"]
+    },
+    {
+      "repo": "idream_test_dep2",
+      "packages": ["package3"]
+    }
+  ]
+}

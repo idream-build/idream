@@ -1,5 +1,7 @@
 module Idream.Command.Compile
   ( compileImpl
+  , ModuleName (..)
+  , extractModuleName
   ) where
 
 import Data.List (groupBy, stripPrefix)
@@ -8,7 +10,7 @@ import qualified Data.Text as T
 import Idream.Command.Common (PackageGroup, findExtRel, fullPkgDepsForGroup, getDepInfoMap, pkgGroupToText,
                               readDepInfoMap, readResolvedProject)
 import Idream.Deps (closureDeps, linearizeDeps, lookupDeps)
-import Idream.Effects.FileSystem (fsCopyFile, fsCreateDir, fsDoesDirectoryExist, fsMakeAbsolute, fsRemovePath,
+import Idream.Effects.FileSystem (fsCopyDir, fsCreateDir, fsDoesDirectoryExist, fsMakeAbsolute, fsRemovePath,
                                   fsWriteFile)
 import Idream.Effects.Process (Spec (..), procInvokeEnsure_)
 import Idream.FileLogic (buildDir, buildDirName, installDir, installDirName, outputDirName, workDir)
@@ -62,11 +64,18 @@ instance ToText ModuleName where
 -- | Extracts the filename for use in ipkg file.
 --   e.g. LightYear/Position.idr -> LightYear.Position
 extractModuleName :: FilePath -> ModuleName
-extractModuleName = ModuleName . fmap (toText . fmap replaceSlash) . splitParts . trimPrefix . dropExtension where
+extractModuleName =
+    ModuleName .
+    fmap (toText . fmap replaceSlash . trimSlashPrefix) .
+    splitParts .
+    trimSlashPrefix .
+    trimDotPrefix .
+    dropExtension where
   splitParts = groupBy (\_ b -> b /= '/')
   replaceSlash '/' = '.'
   replaceSlash c = c
-  trimPrefix s = fromMaybe s (stripPrefix "./" s)
+  trimDotPrefix s = fromMaybe s (stripPrefix "." s)
+  trimSlashPrefix s = fromMaybe s (stripPrefix "/" s)
 
 findIpkgModules :: Directory -> IdreamDepInfo -> AppM [ModuleName]
 findIpkgModules projDir (IdreamDepInfo _ path _ msourcedir _) = do
@@ -120,11 +129,10 @@ installFiles projDir pn = do
   let pkgDirPart = toString pn
       pkgBuildDir = projDir </> buildDir </> pkgDirPart
       pkgTtcDir = pkgBuildDir </> "ttc"
-      pkgInstallDir = projDir </> installDir </> pkgDirPart
+      projInstallDir = projDir </> installDir
+      pkgInstallDir = projInstallDir </> pkgDirPart
   fsRemovePath pkgInstallDir
   ttcDirExists <- fsDoesDirectoryExist pkgTtcDir
   when ttcDirExists $ do
-    ttcs <- findExtRel "ttc" pkgTtcDir
-    unless (null ttcs) $ do
-      fsCreateDir pkgInstallDir
-      for_ ttcs (\ttc -> fsCopyFile (pkgTtcDir </> ttc) (pkgInstallDir </> ttc))
+    fsCreateDir projInstallDir
+    fsCopyDir pkgTtcDir pkgInstallDir

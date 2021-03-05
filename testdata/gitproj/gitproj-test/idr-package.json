@@ -1,0 +1,6 @@
+{
+  "name": "gitproj-test",
+  "type": "test",
+  "sourcedir": "src",
+  "depends": ["package3"]
+}

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7c0361a1405e47f3cc166ad25f9f4b80f983dda4c2978b1def79a6409487e568
+-- hash: 2394ba520cca5990669a1b09346d772159f7c95021e1260ad7dbcd05ff3b1daa
 
 name:           idream
 version:        0.2.0.0
@@ -109,6 +109,7 @@ test-suite idream-test
   main-is: test.hs
   other-modules:
       Idream.DepsTest
+      Idream.MiscTest
       Paths_idream
   hs-source-dirs:
       test
