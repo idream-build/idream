@@ -11,7 +11,7 @@ import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsRemovePat
 import Idream.Effects.Git (gitClone, gitFetch, gitReadCurrentBranch, gitReadOriginUrl, gitSwitch)
 import Idream.FileLogic (fetchDir, pkgSetFileName)
 import Idream.Prelude
-import Idream.Types.Common (ProjectName, RefreshStrategy (..), RepoName)
+import Idream.Types.Common (GitCommit, GitUrl, ProjectName, RefreshStrategy (..), RepoName)
 import Idream.Types.External (GitRepoRef (..), LocalRepoRef (..), RepoRef (..))
 import Idream.Types.Internal (ResolvedProject (..))
 
@@ -78,18 +78,25 @@ gitEnsure repoDir refreshStrat rn desiredRef@(GitRepoRef url commit) = do
     then do
       curRef <- gitReadCurrentRef repoDir
       case (curRef == desiredRef, refreshStrat) of
-        (True, ForceRefresh) -> do
-          logInfo ("Fetching " <> toText commit)
-          gitFetch repoDir commit
-          logInfo ("Switching " <> toText commit)
-          gitSwitch repoDir commit
+        (True, ForceRefresh) -> gitFetchAndCheckout repoDir commit
         (True, _) -> pure ()
         (False, DisableRefresh) -> throwIO (DisableRefreshErr rn)
         (False, _) -> do
-          logInfo ("Re-cloning " <> toText url <> " at " <> toText commit)
           fsRemovePath repoDir
-          gitClone repoDir url commit
+          gitCloneAndCheckout repoDir url commit
     else do
       when (refreshStrat == DisableRefresh) (throwIO (DisableRefreshErr rn))
-      logInfo ("Cloning " <> toText url <> " at " <> toText commit)
-      gitClone repoDir url commit
+      gitCloneAndCheckout repoDir url commit
+
+gitFetchAndCheckout :: Directory -> GitCommit -> AppM ()
+gitFetchAndCheckout repoDir commit = do
+  logInfo ("Fetching " <> toText commit)
+  gitFetch repoDir commit
+  logInfo ("Checking out " <> toText commit)
+  gitSwitch repoDir commit
+
+gitCloneAndCheckout :: Directory -> GitUrl -> GitCommit -> AppM ()
+gitCloneAndCheckout repoDir url commit = do
+  logInfo ("Cloning " <> toText url)
+  gitClone repoDir url
+  gitFetchAndCheckout repoDir commit

@@ -11,9 +11,9 @@ import Idream.Effects.Process (Arg, Result (..), Spec (..), procInvokeEnsure, pr
 import Idream.Prelude
 import Idream.Types.Common (GitCommit, GitUrl)
 
-gitClone :: Directory -> GitUrl -> GitCommit -> AppM ()
-gitClone repoDir url commit = procInvokeEnsure_ spec where
-  args = ["clone", "--recurse-submodules", "--depth=1", T.unpack ("--branch=" <> toText commit), toString url, repoDir]
+gitClone :: Directory -> GitUrl -> AppM ()
+gitClone repoDir url = procInvokeEnsure_ spec where
+  args = ["clone", "--recurse-submodules", "--depth=1", toString url, repoDir]
   spec = Spec "git" args Nothing []
 
 gitFetch :: Directory -> GitCommit -> AppM ()
@@ -23,7 +23,7 @@ gitFetch repoDir commit = procInvokeEnsure_ spec where
 
 gitSwitch :: Directory -> GitCommit -> AppM ()
 gitSwitch repoDir commit = procInvokeEnsure_ spec where
-  args = ["switch", "--force", toString commit]
+  args = ["checkout", "--force", toString commit]
   spec = Spec "git" args (Just repoDir) []
 
 gitReadLine :: [Arg] -> Directory -> AppM Text

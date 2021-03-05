@@ -4,6 +4,7 @@ module Idream.Types.External
   , LocalRepoRef (..)
   , GitRepoRef (..)
   , RepoRef (..)
+  , PackageOverride (..)
   , PackageRef (..)
   , ProjectRef (..)
   , PackageSet (..)
@@ -101,9 +102,25 @@ instance ToJSON RepoRef where
       RepoRefLocal x -> object ["local" .= x]
       RepoRefGit x -> object ["git" .= x]
 
+newtype PackageOverride = PackageOverride
+  { poSourcedir :: Maybe Directory
+  } deriving (Eq, Show)
+
+instance FromJSON PackageOverride where
+  parseJSON = withObject "PackageOverride" $ \o -> do
+    sourcedir <- o .:? "sourcedir"
+    pure (PackageOverride sourcedir)
+
+instance ToJSON PackageOverride where
+  toJSON (PackageOverride sourcedir) = object
+    [ "sourcedir" .= sourcedir
+    ]
+
 data PackageRef = PackageRef
   { pkgRefRepo :: RepoName
   , pkgRefSubdir :: Maybe Directory
+  , pkgRefIpkg :: Maybe FilePath
+  , pkgRefOverride :: Maybe PackageOverride
   , pkgRefDepends :: Maybe [PackageName]
   } deriving (Eq, Show)
 
@@ -111,13 +128,17 @@ instance FromJSON PackageRef where
   parseJSON = withObject "PackageRef" $ \o -> do
     repo <- o .: "repo"
     subdir <- o .:? "subdir"
+    ipkg <- o .:? "ipkg"
+    override <- o .:? "override"
     depends <- o .:? "depends"
-    pure (PackageRef repo subdir depends)
+    pure (PackageRef repo subdir ipkg override depends)
 
 instance ToJSON PackageRef where
-  toJSON (PackageRef repo subdir depends) = object
+  toJSON (PackageRef repo subdir ipkg override depends) = object
     [ "repo" .= repo
     , "subdir" .= subdir
+    , "ipkg" .= ipkg
+    , "override" .= override
     , "depends" .= depends
     ]
 

@@ -21,6 +21,14 @@ smoke_test_only:
 .PHONY: smoke_test
 smoke_test: install smoke_create smoke_test_only
 
+# TODO(ejconlon) This requires recursive fetching
+# .PHONY: git_test
+# git_test:
+# 	idream --project-dir testdata/gitproj clean
+# 	idream --project-dir testdata/gitproj fetch
+# 	idream --project-dir testdata/gitproj compile
+# 	idream --project-dir testdata/gitproj test
+
 .PHONY: integration_build
 integration_build:
 	bash ./script/build_images.sh

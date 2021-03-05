@@ -29,6 +29,7 @@ module Idream.Command.Common
   , NoUniqueIpkgErr (..)
   , UnsupportedCodegenExeErr (..)
   , MissingPackageInResolvedErr (..)
+  , IpkgOverrideErr (..)
   ) where
 
 import qualified Data.Map as Map
@@ -42,8 +43,8 @@ import Idream.Effects.Serde (serdeReadJSON)
 import Idream.FileLogic (outputDir, pkgFileName, pkgSetFileName, projFileName, repoFetchDir)
 import Idream.Prelude
 import Idream.Types.Common (Codegen, PackageGroup (..), PackageName, PackageType (..), ProjectName, RepoName)
-import Idream.Types.External (LocalRepoRef (..), Package (..), PackageRef (..), PackageSet (..), Project (..),
-                              ProjectRef (..), RepoRef (..))
+import Idream.Types.External (LocalRepoRef (..), Package (..), PackageOverride (..), PackageRef (..), PackageSet (..),
+                              Project (..), ProjectRef (..), RepoRef (..))
 import Idream.Types.Internal (BuiltinDepInfo (..), DepInfo (..), DepInfoMap, IdreamDepInfo (..), IpkgDepInfo (..),
                               LocatedPackage (..), ResolvedProject (..), depInfoDepends)
 import System.FilePath (isExtensionOf, isPathSeparator, makeRelative)
@@ -121,6 +122,13 @@ instance Exception MissingPackageInResolvedErr where
   displayException (MissingPackageInResolvedErr pn) =
     "Missing packaged in resolved set: " <> toString pn
 
+data IpkgOverrideErr = IpkgOverrideErr PackageName FilePath PackageOverride
+  deriving (Eq, Show)
+
+instance Exception IpkgOverrideErr where
+  displayException (IpkgOverrideErr pn ipkg override) =
+    "Package set defines ipkg and override for " <> toString pn <> " " <> ipkg <> " " <> show override
+
 findExtRel :: String -> Directory -> AppM [FilePath]
 findExtRel ext dir = fmap (fmap (makeRelative dir)) (fsFindFiles (isExtensionOf ext) (Just dir))
 
@@ -180,7 +188,7 @@ initRepoDeps (PackageSet _ pkgs projs) = depsFromEdges edges where
   edges = pkgEdges ++ projEdges
   pkgEdges = fmap mkPkgEdge (maybe [] Map.toList pkgs)
   projEdges = fromMaybe [] projs >>= mkProjEdge
-  mkPkgEdge (name, PackageRef repo _ _) = (name, repo)
+  mkPkgEdge (name, PackageRef repo _ _ _ _) = (name, repo)
   mkProjEdge (ProjectRef repo _ pns) = fmap (, repo) pns
 
 initPkgDeps :: ResolvedProject -> Deps PackageName PackageName
@@ -282,21 +290,28 @@ getRepoDir rn rr =
     RepoRefLocal (LocalRepoRef d) -> d
     _ -> repoFetchDir rn
 
-mkPkgDepInfo :: Directory -> Map RepoName RepoRef -> PackageRef -> AppM DepInfo
-mkPkgDepInfo projDir repoRefs (PackageRef rn msubdir mdepends) = do
+mkPkgDepInfo :: Directory -> Map RepoName RepoRef -> PackageName -> PackageRef -> AppM DepInfo
+mkPkgDepInfo projDir repoRefs pn (PackageRef rn msubdir mipkg moverride mdepends) = do
   case Map.lookup rn repoRefs of
     Nothing -> throwIO (MissingRepoInPackageSetErr rn)
     Just rr -> do
       let repoDir = getRepoDir rn rr
           path = maybe repoDir (repoDir </>) msubdir
           depends = fromMaybe [] mdepends
-      pkgCand <- findExtRel "ipkg" (projDir </> path)
-      case filter (not . any isPathSeparator) pkgCand of
-        [pkgFile] -> pure (DepInfoIpkg (IpkgDepInfo path pkgFile depends))
-        _ -> throwIO (NoUniqueIpkgErr path)
+      case (mipkg, moverride) of
+        (Just ipkg, Just override) -> throwIO (IpkgOverrideErr pn ipkg override)
+        (Just ipkg, Nothing) ->
+          pure (DepInfoIpkg (IpkgDepInfo path ipkg depends))
+        (Nothing, Just (PackageOverride msourcedir)) ->
+          pure (DepInfoIdream (IdreamDepInfo False path PkgTypeLibrary msourcedir depends))
+        (Nothing, Nothing) -> do
+          pkgCand <- findExtRel "ipkg" (projDir </> path)
+          case filter (not . any isPathSeparator) pkgCand of
+            [ipkg] -> pure (DepInfoIpkg (IpkgDepInfo path ipkg depends))
+            _ -> throwIO (NoUniqueIpkgErr path)
 
 mkPkgDepPair :: Directory -> Map RepoName RepoRef -> PackageName -> PackageRef -> AppM (PackageName, DepInfo)
-mkPkgDepPair projDir repoRefs pn pr = fmap (pn,) (mkPkgDepInfo projDir repoRefs pr)
+mkPkgDepPair projDir repoRefs pn pr = fmap (pn,) (mkPkgDepInfo projDir repoRefs pn pr)
 
 mkProjDepPairs :: Directory -> Map RepoName RepoRef -> ProjectRef -> AppM [(PackageName, DepInfo)]
 mkProjDepPairs projDir repoRefs (ProjectRef rn msubdir pkgs) = do
