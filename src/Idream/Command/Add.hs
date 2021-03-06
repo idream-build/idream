@@ -65,25 +65,23 @@ mainContents PkgTypeLibrary = libIdrContents
 mainContents _ = mainIdrContents
 
 -- | Creates a new project template.
-addImpl :: Directory -> Maybe Directory -> PackageName -> PackageType -> AppM ()
-addImpl projDir mayPkgSubDir pkgName pkgType = do
+addImpl :: Directory -> Maybe Directory -> PackageName -> PackageType -> Bool -> AppM ()
+addImpl projDir mayPkgSubDir pkgName pkgType allowExisting = do
   let pkgSubDir = fromMaybe (toString pkgName) mayPkgSubDir
       pkgDir = projDir </> pkgSubDir
   pkgDirExists <- fsDoesDirectoryExist pkgDir
-  if pkgDirExists
-    then throwIO (PackageDirAlreadyExistsErr pkgDir pkgName)
-    else do
-      let pkgSrcDir = pkgDir </> "src"
-          projFile = projDir </> projFileName
-      proj <- readProjFile projFile
-      resolvedProj <- resolveProj projDir proj
-      for_ (rpPackages resolvedProj) $ \(LocatedPackage d p) ->
-        when (packageName p == pkgName) (throwIO (PackageNameAlreadyExistsErr d pkgName))
-      fsCreateDir pkgDir
-      fsCreateDir pkgSrcDir
-      fsWriteFile (pkgDir </> pkgFileName) (idrPkgJsonContents pkgName pkgType)
-      fsWriteFile (pkgSrcDir </> mainFile pkgType) (mainContents pkgType)
-      let paths = fromMaybe [] (projectPaths proj) ++ [pkgSubDir]
-          proj' = proj { projectPaths = Just paths }
-      serdeWriteJSON projFile proj'
-      logInfo ("Successfully added package " <> toText pkgName <> " to project.")
+  when (pkgDirExists && not allowExisting) (throwIO (PackageDirAlreadyExistsErr pkgDir pkgName))
+  let pkgSrcDir = pkgDir </> "src"
+      projFile = projDir </> projFileName
+  proj <- readProjFile projFile
+  resolvedProj <- resolveProj projDir proj
+  for_ (rpPackages resolvedProj) $ \(LocatedPackage d p) ->
+    when (packageName p == pkgName) (throwIO (PackageNameAlreadyExistsErr d pkgName))
+  fsCreateDir pkgDir
+  fsCreateDir pkgSrcDir
+  fsWriteFile (pkgDir </> pkgFileName) (idrPkgJsonContents pkgName pkgType)
+  fsWriteFile (pkgSrcDir </> mainFile pkgType) (mainContents pkgType)
+  let paths = fromMaybe [] (projectPaths proj) ++ [pkgSubDir]
+      proj' = proj { projectPaths = Just paths }
+  serdeWriteJSON projFile proj'
+  logInfo ("Successfully added package " <> toText pkgName <> " to project.")

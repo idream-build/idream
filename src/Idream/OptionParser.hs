@@ -45,6 +45,10 @@ refreshStratParser = fromMaybe EnableRefresh <$> optional (option (eitherReader 
     Just pt -> Right pt
     Nothing -> Left "refresh-strategy must be one of force/enable/disable"
 
+allowExistingParser :: Parser Bool
+allowExistingParser = flag False True desc where
+  desc = long "allow-existing" <> help "Allow existing directory (default False)"
+
 -- | Helper function for parsing the commands passed to the build tool.
 commandParser :: Parser Command
 commandParser = hsubparser commands where
@@ -63,10 +67,11 @@ commandParser = hsubparser commands where
   runCmdParser = Run <$> (fromText <$> strArgument (metavar "PACKAGE_NAME"))
                      <*> many (strArgument (metavar "ARGS"))
   replCmdParser = Repl <$> (fromText <$> strArgument (metavar "PACKAGE_NAME"))
-  newCmdParser = New <$> (fromText <$> strArgument (metavar "PROJECT_NAME"))
+  newCmdParser = New <$> (fromText <$> strArgument (metavar "PROJECT_NAME")) <*> allowExistingParser
   addCmdParser = Add <$> pkgDirParser
                      <*> (fromText <$> strArgument (metavar "PACKAGE_NAME"))
                      <*> packageTypeParser
+                     <*> allowExistingParser
   testCmdParser = Test <$> packageGroupParser
 
 -- | Helper function for parsing the command line arguments.

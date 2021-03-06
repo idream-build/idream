@@ -18,8 +18,8 @@ data Command
   | Clean                       -- ^ Cleans up build artifacts and fetched code
   | Run PackageName [Argument]  -- ^ Runs an executable
   | Repl PackageName            -- ^ Opens up the repl
-  | New ProjectName             -- ^ Initializes a new project for use with idream
-  | Add (Maybe Directory) PackageName PackageType  -- ^ Adds a package to an existing idream project
+  | New ProjectName Bool        -- ^ Initializes a new project for use with idream
+  | Add (Maybe Directory) PackageName PackageType Bool  -- ^ Adds a package to an existing idream project
   | Test PackageGroup           -- ^ Runs tests for this project
   deriving (Eq, Show)
 

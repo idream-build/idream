@@ -5,7 +5,7 @@ module Idream.Command.New
 
 import qualified Data.Text as T
 import Idream.Effects.FileSystem (fsCreateDir, fsDoesDirectoryExist, fsWriteFile)
-import Idream.FileLogic (buildDir, pkgSetFileName, projFileName)
+import Idream.FileLogic (pkgSetFileName, projFileName, workDir)
 import Idream.Prelude
 import Idream.Types.Common (ProjectName)
 
@@ -17,7 +17,7 @@ instance Exception ProjectDirAlreadyExistsErr where
     "Failed to add package " <> toString pn <> " to project; directory " <> projDir <> " already exists."
 
 gitignoreContents, idrPkgSetJsonContents :: Text
-gitignoreContents = "/" <> toText buildDir <> "\n"
+gitignoreContents = "/" <> toText workDir <> "\n"
 idrPkgSetJsonContents = T.unlines
   [ "{"
   , "  \"repos\": {"
@@ -40,15 +40,12 @@ idrProjectJsonContents jn = T.unlines
   ]
 
 -- | Creates a new project template.
-newImpl :: Directory -> ProjectName -> AppM ()
-newImpl projDir projName = do
-  -- TODO(ejconlon) Allow this if dir is empty?
+newImpl :: Directory -> ProjectName -> Bool -> AppM ()
+newImpl projDir projName allowExisting = do
   exists <- fsDoesDirectoryExist projDir
-  when exists (throwIO (ProjectDirAlreadyExistsErr projDir projName))
+  when (exists && not allowExisting) (throwIO (ProjectDirAlreadyExistsErr projDir projName))
   fsCreateDir projDir
-  fsCreateDir (relPath buildDir)
-  fsWriteFile (relPath ".gitignore") gitignoreContents
-  fsWriteFile (relPath projFileName) (idrProjectJsonContents projName)
-  fsWriteFile (relPath pkgSetFileName) idrPkgSetJsonContents
+  fsWriteFile (projDir </> ".gitignore") gitignoreContents
+  fsWriteFile (projDir </> projFileName) (idrProjectJsonContents projName)
+  fsWriteFile (projDir </> pkgSetFileName) idrPkgSetJsonContents
   logInfo ("Successfully initialized project: " <> toText projName)
-  where relPath path = projDir </> path

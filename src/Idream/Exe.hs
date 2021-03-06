@@ -28,7 +28,7 @@ effectiveProjDir mayProjDir cmd =
   case mayProjDir of
     Nothing ->
       case cmd of
-        New jn -> toString jn
+        New jn _ -> toString jn
         _ -> "."
     Just d -> d
 
@@ -41,9 +41,9 @@ processCommand projDir command =
     Compile pkgGroup ->
       compileImpl projDir pkgGroup
     Clean -> cleanImpl projDir
-    New projName -> newImpl projDir projName
-    Add mayPkgSubDir pkgName pkgType ->
-      addImpl projDir mayPkgSubDir pkgName pkgType
+    New projName allowExisting -> newImpl projDir projName allowExisting
+    Add mayPkgSubDir pkgName pkgType allowExisting ->
+      addImpl projDir mayPkgSubDir pkgName pkgType allowExisting
     Test pkgGroup -> testImpl projDir pkgGroup
     Repl pkgName -> replImpl projDir pkgName
     _ -> error ("TODO implement command: " <> show command)
