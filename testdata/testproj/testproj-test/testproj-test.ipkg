@@ -3,4 +3,3 @@ package testproj-test
 main = Main
 executable = "testproj-test"
 depends = testlib2, remotelib2
-
