@@ -1,10 +1,7 @@
 module Idream.Command.Compile
   ( compileImpl
-  , ModuleName (..)
-  , extractModuleName
   ) where
 
-import Data.List (groupBy, stripPrefix)
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import Idream.Command.Common (PackageGroup, findExtRel, fullPkgDepsForGroup, getDepInfoMap, pkgGroupToText,
@@ -17,7 +14,7 @@ import Idream.FileLogic (buildDir, buildDirName, installDir, installDirName, out
 import Idream.Prelude
 import Idream.Types.Common (Codegen, PackageName, PackageType (..))
 import Idream.Types.Internal (DepInfo (..), IdreamDepInfo (..), IpkgDepInfo (..), ResolvedProject (..))
-import System.FilePath (dropExtension)
+import Idream.Types.Ipkg (ModuleName, extractModuleName)
 
 compileImpl :: Directory -> PackageGroup -> AppM ()
 compileImpl projDir group = do
@@ -53,29 +50,6 @@ compilePkg projDir codegen di pn tdepends = do
       pure True
   -- Copy TTC files to install
   when install (installFiles projDir pn)
-
-newtype ModuleName = ModuleName
-  { unModuleName :: [Text]
-  } deriving (Eq, Show)
-
-instance ToText ModuleName where
-  toText = T.intercalate "." . unModuleName
-
--- | Extracts the filename for use in ipkg file.
---   e.g. LightYear/Position.idr -> LightYear.Position
-extractModuleName :: FilePath -> ModuleName
-extractModuleName =
-    ModuleName .
-    fmap (toText . fmap replaceSlash . trimSlashPrefix) .
-    splitParts .
-    trimSlashPrefix .
-    trimDotPrefix .
-    dropExtension where
-  splitParts = groupBy (\_ b -> b /= '/')
-  replaceSlash '/' = '.'
-  replaceSlash c = c
-  trimDotPrefix s = fromMaybe s (stripPrefix "." s)
-  trimSlashPrefix s = fromMaybe s (stripPrefix "/" s)
 
 findIpkgModules :: Directory -> IdreamDepInfo -> AppM [ModuleName]
 findIpkgModules projDir (IdreamDepInfo _ path _ msourcedir _) = do

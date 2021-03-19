@@ -18,10 +18,10 @@ import Idream.Types.Common (Codegen, GitCommit, GitUrl, PackageName, PackageType
 --   A project consists of 1 or more packages that are closely related to
 --   each other. This can for example be a binary, library, tests, ...
 data Project = Project
-  { projectName :: ProjectName
-  , projectCodegen :: Maybe Codegen
-  , projectPaths :: Maybe [FilePath]
-  } deriving (Eq, Show)
+  { projectName :: !ProjectName
+  , projectCodegen :: !(Maybe Codegen)
+  , projectPaths :: !(Maybe [FilePath])
+  } deriving stock (Eq, Show, Generic)
 
 instance FromJSON Project where
   parseJSON = withObject "Project" $ \o -> do
@@ -41,11 +41,11 @@ instance ToJSON Project where
 --   A package can depend on 1 or more projects (which can possibly contain
 --   multiple closely related binaries or libraries).
 data Package = Package
-  { packageName :: PackageName
-  , packageType :: Maybe PackageType
-  , packageSourcedir :: Maybe Directory
-  , packageDepends :: Maybe [PackageName]
-  } deriving (Eq, Show)
+  { packageName :: !PackageName
+  , packageType :: !(Maybe PackageType)
+  , packageSourcedir :: !(Maybe Directory)
+  , packageDepends :: !(Maybe [PackageName])
+  } deriving stock (Eq, Show, Generic)
 
 instance FromJSON Package where
   parseJSON = withObject "Package" $ \o -> do
@@ -66,11 +66,12 @@ instance ToJSON Package where
 newtype LocalRepoRef = LocalRepoRef
   { lrrPath :: Directory
   } deriving newtype (Eq, Show, ToJSON, FromJSON)
+    deriving stock (Generic)
 
 data GitRepoRef = GitRepoRef
-  { grrUrl :: GitUrl
-  , grrCommit :: GitCommit
-  } deriving (Eq, Show)
+  { grrUrl :: !GitUrl
+  , grrCommit :: !GitCommit
+  } deriving stock (Eq, Show, Generic)
 
 instance FromJSON GitRepoRef where
   parseJSON = withObject "GitRepoRef" $ \o -> do
@@ -83,9 +84,9 @@ instance ToJSON GitRepoRef where
     object ["url" .= url, "commit" .= commit]
 
 data RepoRef =
-    RepoRefLocal LocalRepoRef
-  | RepoRefGit GitRepoRef
-  deriving (Eq, Show)
+    RepoRefLocal !LocalRepoRef
+  | RepoRefGit !GitRepoRef
+  deriving stock (Eq, Show, Generic)
 
 instance FromJSON RepoRef where
   parseJSON = withObject "RepoRef" $ \o -> do
@@ -104,7 +105,8 @@ instance ToJSON RepoRef where
 
 newtype PackageOverride = PackageOverride
   { poSourcedir :: Maybe Directory
-  } deriving (Eq, Show)
+  } deriving newtype (Eq, Show)
+    deriving stock (Generic)
 
 instance FromJSON PackageOverride where
   parseJSON = withObject "PackageOverride" $ \o -> do
@@ -117,12 +119,12 @@ instance ToJSON PackageOverride where
     ]
 
 data PackageRef = PackageRef
-  { pkgRefRepo :: RepoName
-  , pkgRefSubdir :: Maybe Directory
-  , pkgRefIpkg :: Maybe FilePath
-  , pkgRefOverride :: Maybe PackageOverride
-  , pkgRefDepends :: Maybe [PackageName]
-  } deriving (Eq, Show)
+  { pkgRefRepo :: !RepoName
+  , pkgRefSubdir :: !(Maybe Directory)
+  , pkgRefIpkg :: !(Maybe FilePath)
+  , pkgRefOverride :: !(Maybe PackageOverride)
+  , pkgRefDepends :: !(Maybe [PackageName])
+  } deriving stock (Eq, Show, Generic)
 
 instance FromJSON PackageRef where
   parseJSON = withObject "PackageRef" $ \o -> do
@@ -143,10 +145,10 @@ instance ToJSON PackageRef where
     ]
 
 data ProjectRef = ProjectRef
-  { projRefRepo :: RepoName
-  , projRefSubdir :: Maybe Directory
-  , projRefPkgs :: [PackageName]
-  } deriving (Eq, Show)
+  { projRefRepo :: !RepoName
+  , projRefSubdir :: !(Maybe Directory)
+  , projRefPkgs :: ![PackageName]
+  } deriving stock (Eq, Show, Generic)
 
 instance FromJSON ProjectRef where
   parseJSON = withObject "ProjectRef" $ \o -> do
@@ -168,10 +170,10 @@ instance ToJSON ProjectRef where
 --   projects (which contain packages).
 --   If needed at all, this should exist in the project root.
 data PackageSet = PackageSet
-  { psRepos :: Maybe (Map RepoName RepoRef)
-  , psPkgs :: Maybe (Map PackageName PackageRef)
-  , psProjects :: Maybe [ProjectRef]
-  } deriving (Eq, Show)
+  { psRepos :: !(Maybe (Map RepoName RepoRef))
+  , psPkgs :: !(Maybe (Map PackageName PackageRef))
+  , psProjects :: !(Maybe [ProjectRef])
+  } deriving stock (Eq, Show, Generic)
 
 instance FromJSON PackageSet where
   parseJSON = withObject "PackageSet" $ \o -> do

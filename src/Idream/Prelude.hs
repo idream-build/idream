@@ -11,6 +11,7 @@ module Idream.Prelude
   , ToText (..)
   , module Prelude
   , Exception (..)
+  , Generic
   , IOException
   , IsString (..)
   , Map
@@ -18,6 +19,7 @@ module Idream.Prelude
   , Set
   , SomeException
   , Text
+  , Void
   , (</>)
   , (-<.>)
   , catch
@@ -50,12 +52,15 @@ import Data.String (IsString (..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Traversable (for)
+import Data.Void (Void)
+import GHC.Generics (Generic)
 import Lens.Micro (lens)
 import LittleLogger (HasSimpleLog (..), Severity, SimpleLogAction, defaultSimpleLogAction, filterActionSeverity,
                      logDebug, logError, logInfo, logWarning)
 import LittleRIO (RIO, runRIO)
 import Prelude
 import System.FilePath ((-<.>), (</>))
+import TextShow (showt)
 import UnliftIO.Exception (catch, catchIO, throwIO)
 
 type Directory = FilePath
@@ -107,3 +112,6 @@ instance ToText String where
 
 instance ToText Text where
   toText = id
+
+instance ToText Int where
+  toText = showt

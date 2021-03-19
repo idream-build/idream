@@ -15,7 +15,8 @@ import Idream.Types.Common (Codegen, PackageName, PackageType, ProjectName)
 import Idream.Types.External (Package)
 
 newtype BuiltinDepInfo = BuiltinDepInfo { builtinDepDepends :: [PackageName] }
-  deriving (Eq, Show)
+  deriving newtype (Eq, Show)
+  deriving stock (Generic)
 
 instance FromJSON BuiltinDepInfo where
   parseJSON = withObject "BuiltinDepInfo" $ \o ->
@@ -26,12 +27,12 @@ instance ToJSON BuiltinDepInfo where
     object ["depends" .= depends]
 
 data IdreamDepInfo = IdreamDepInfo
-  { idreamDepLocal :: Bool  -- local == is part of current project, not a ref
-  , idreamDepPath :: Directory
-  , idreamDepType :: PackageType
-  , idreamDepSourcedir :: Maybe Directory
-  , idreamDepDepends :: [PackageName]
-  } deriving (Eq, Show)
+  { idreamDepLocal :: !Bool  -- local == is part of current project, not a ref
+  , idreamDepPath :: !Directory
+  , idreamDepType :: !PackageType
+  , idreamDepSourcedir :: !(Maybe Directory)
+  , idreamDepDepends :: ![PackageName]
+  } deriving stock (Eq, Show, Generic)
 
 instance FromJSON IdreamDepInfo where
   parseJSON = withObject "IdreamDepInfo" $ \o -> do
@@ -52,10 +53,10 @@ instance ToJSON IdreamDepInfo where
     ]
 
 data IpkgDepInfo = IpkgDepInfo
-  { ipkgDepPath :: Directory
-  , ipkgDepPkgFile :: FilePath  -- relative to path
-  , ipkgDepDepends :: [PackageName]
-  } deriving (Eq, Show)
+  { ipkgDepPath :: !Directory
+  , ipkgDepPkgFile :: !FilePath  -- relative to path
+  , ipkgDepDepends :: ![PackageName]
+  } deriving stock (Eq, Show, Generic)
 
 instance FromJSON IpkgDepInfo where
   parseJSON = withObject "IpkgDepInfo" $ \o -> do
@@ -72,10 +73,10 @@ instance ToJSON IpkgDepInfo where
     ]
 
 data DepInfo =
-    DepInfoBuiltin BuiltinDepInfo
-  | DepInfoIdream IdreamDepInfo
-  | DepInfoIpkg IpkgDepInfo
-  deriving (Eq, Show)
+    DepInfoBuiltin !BuiltinDepInfo
+  | DepInfoIdream !IdreamDepInfo
+  | DepInfoIpkg !IpkgDepInfo
+  deriving stock (Eq, Show, Generic)
 
 instance FromJSON DepInfo where
   parseJSON = withObject "DepInfo" $ \o -> do
@@ -108,12 +109,12 @@ depInfoDepends d =
 type DepInfoMap = Map PackageName DepInfo
 
 data LocatedPackage = LocatedPackage
-  { lpPath :: Directory
-  , lpPkg :: Package
-  } deriving (Eq, Show)
+  { lpPath :: !Directory
+  , lpPkg :: !Package
+  } deriving stock (Eq, Show, Generic)
 
 data ResolvedProject = ResolvedProject
-  { rpName :: ProjectName
-  , rpCodegen :: Codegen
-  , rpPackages :: Map PackageName LocatedPackage
-  } deriving (Eq, Show)
+  { rpName :: !ProjectName
+  , rpCodegen :: !Codegen
+  , rpPackages :: !(Map PackageName LocatedPackage)
+  } deriving stock (Eq, Show, Generic)

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2394ba520cca5990669a1b09346d772159f7c95021e1260ad7dbcd05ff3b1daa
+-- hash: 4c44c65a59fa14c73be9f43bf376699faf9bdbd0b124e4a01393e8e869a52b82
 
 name:           idream
 version:        0.2.0.0
@@ -37,17 +37,19 @@ library
       Idream.Effects.Serde
       Idream.Exe
       Idream.FileLogic
+      Idream.IpkgParser
       Idream.OptionParser
       Idream.Prelude
       Idream.Types.Command
       Idream.Types.Common
       Idream.Types.External
       Idream.Types.Internal
+      Idream.Types.Ipkg
   other-modules:
       Paths_idream
   hs-source-dirs:
       src
-  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
+  default-extensions: DeriveFoldable DeriveGeneric DerivingStrategies DerivingVia GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
   ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path -O2
   build-depends:
       aeson >=1.5 && <1.6
@@ -61,6 +63,7 @@ library
     , filepath >=1.4 && <1.5
     , little-logger >=0.3 && <0.4
     , little-rio >=0.2 && <0.3
+    , megaparsec >=9.0 && <9.1
     , microlens >=0.4 && <0.5
     , mtl >=2.2 && <2.3
     , optparse-applicative >=0.15 && <0.16
@@ -78,7 +81,7 @@ executable idream
       Paths_idream
   hs-source-dirs:
       exe
-  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
+  default-extensions: DeriveFoldable DeriveGeneric DerivingStrategies DerivingVia GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
   ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path -O2
   build-depends:
       aeson >=1.5 && <1.6
@@ -93,6 +96,7 @@ executable idream
     , idream
     , little-logger >=0.3 && <0.4
     , little-rio >=0.2 && <0.3
+    , megaparsec >=9.0 && <9.1
     , microlens >=0.4 && <0.5
     , mtl >=2.2 && <2.3
     , optparse-applicative >=0.15 && <0.16
@@ -113,7 +117,7 @@ test-suite idream-test
       Paths_idream
   hs-source-dirs:
       test
-  default-extensions: DeriveFoldable DerivingStrategies GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
+  default-extensions: DeriveFoldable DeriveGeneric DerivingStrategies DerivingVia GeneralizedNewtypeDeriving LambdaCase NoImplicitPrelude OverloadedStrings ScopedTypeVariables TupleSections
   ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path -O2
   build-tool-depends:
       tasty-discover:tasty-discover >=4.2 && <4.3
@@ -130,6 +134,7 @@ test-suite idream-test
     , idream
     , little-logger >=0.3 && <0.4
     , little-rio >=0.2 && <0.3
+    , megaparsec >=9.0 && <9.1
     , microlens >=0.4 && <0.5
     , mtl >=2.2 && <2.3
     , optparse-applicative >=0.15 && <0.16

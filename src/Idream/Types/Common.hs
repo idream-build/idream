@@ -20,29 +20,35 @@ import Idream.Prelude
 newtype PackageName = PackageName Text
   deriving newtype (Eq, Ord, Show, ToJSONKey, FromJSONKey, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
+  deriving stock (Generic)
 
 newtype ProjectName = ProjectName Text
   deriving newtype (Eq, Ord, Show, ToJSONKey, FromJSONKey, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
+  deriving stock (Generic)
 
 newtype RepoName = RepoName Text
   deriving newtype (Eq, Ord, Show, ToJSONKey, FromJSONKey, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
+  deriving stock (Generic)
 
 newtype Codegen = Codegen Text
   deriving newtype (Eq, Ord, Show, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
+  deriving stock (Generic)
 
 newtype GitUrl = GitUrl Text
   deriving newtype (Eq, Ord, Show, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
+  deriving stock (Generic)
 
 newtype GitCommit = GitCommit Text
   deriving newtype (Eq, Ord, Show, ToJSON, FromJSON,
                     IsString, ToString, IsText, ToText)
+  deriving stock (Generic)
 
 data PackageType = PkgTypeLibrary | PkgTypeExecutable | PkgTypeTest
-  deriving (Eq, Show, Ord, Enum, Bounded)
+  deriving stock (Eq, Show, Ord, Enum, Bounded, Generic)
 
 packageTypeFromText :: Text -> Maybe PackageType
 packageTypeFromText t =
@@ -70,8 +76,8 @@ instance ToJSON PackageType where
 -- | Package selector - all or a subset of packages
 data PackageGroup =
     PackageGroupAll
-  | PackageGroupSubset (Set PackageName)
-  deriving (Eq, Show)
+  | PackageGroupSubset !(Set PackageName)
+  deriving stock (Eq, Show, Generic)
 
 packageGroupFromList :: [Text] -> PackageGroup
 packageGroupFromList ss =
@@ -81,7 +87,7 @@ packageGroupFromList ss =
 
 -- | Whether to use the network to refresh repos
 data RefreshStrategy = ForceRefresh | EnableRefresh | DisableRefresh
-  deriving (Eq, Show, Enum, Bounded)
+  deriving stock (Eq, Show, Enum, Bounded, Generic)
 
 refreshStratFromText :: Text -> Maybe RefreshStrategy
 refreshStratFromText t =

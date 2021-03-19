@@ -22,6 +22,7 @@ dependencies:
   - filepath >= 1.4 && < 1.5
   - little-logger >= 0.3 && < 0.4
   - little-rio >= 0.2 && < 0.3
+  - megaparsec >= 9.0 && < 9.1
   - microlens >= 0.4 && < 0.5
   - mtl >= 2.2 && < 2.3
   - optparse-applicative >= 0.15 && < 0.16
@@ -37,7 +38,9 @@ ghc-options: -Wall -Werror -optP-Wno-nonportable-include-path -O2
 
 default-extensions:
   - DeriveFoldable
+  - DeriveGeneric
   - DerivingStrategies
+  - DerivingVia
   - GeneralizedNewtypeDeriving
   - LambdaCase
   - NoImplicitPrelude
