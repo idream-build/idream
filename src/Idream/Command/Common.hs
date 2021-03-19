@@ -194,7 +194,7 @@ initRepoDeps (PackageSet _ pkgs projs) = depsFromEdges edges where
 initPkgDeps :: ResolvedProject -> Deps PackageName PackageName
 initPkgDeps (ResolvedProject _ _ pkgs) = depsFromGroups groups where
   groups = fmap (mkGroup . lpPackage . snd) (Map.toList pkgs)
-  mkGroup (Package name _ _ depends) = (name, maybe Set.empty Set.fromList depends)
+  mkGroup (Package name _ _ _ depends) = (name, maybe Set.empty Set.fromList depends)
 
 repoDeps :: ResolvedProject -> PackageSet -> Deps PackageName RepoName
 repoDeps rp ps = composeDeps (closureDeps (initPkgDeps rp)) (initRepoDeps ps)
@@ -264,10 +264,10 @@ readDepInfoMap projDir rp = do
   mkDepInfoMap projDir rp ps
 
 mkProjectDepInfo :: Bool -> Directory -> Package -> DepInfo
-mkProjectDepInfo local path (Package _ mty msourcedir mdepends) = DepInfoIdream pdi where
+mkProjectDepInfo local path (Package _ mver mty msourcedir mdepends) = DepInfoIdream pdi where
   ty = fromMaybe PkgTypeLibrary mty
   depends = fromMaybe [] mdepends
-  pdi = IdreamDepInfo local path ty msourcedir depends
+  pdi = IdreamDepInfo local mver path ty msourcedir depends
 
 mkLocalDepPair :: LocatedPackage -> (PackageName, DepInfo)
 mkLocalDepPair (LocatedPackage path pkg) = (packageName pkg, mkProjectDepInfo True path pkg)
@@ -302,8 +302,8 @@ mkPkgDepInfo projDir repoRefs pn (PackageRef rn msubdir mipkg moverride mdepends
         (Just ipkg, Just override) -> throwIO (IpkgOverrideErr pn ipkg override)
         (Just ipkg, Nothing) ->
           pure (DepInfoIpkg (IpkgDepInfo path ipkg depends))
-        (Nothing, Just (PackageOverride msourcedir)) ->
-          pure (DepInfoIdream (IdreamDepInfo False path PkgTypeLibrary msourcedir depends))
+        (Nothing, Just (PackageOverride ver msourcedir)) ->
+          pure (DepInfoIdream (IdreamDepInfo False ver path PkgTypeLibrary msourcedir depends))
         (Nothing, Nothing) -> do
           pkgCand <- findExtRel "ipkg" (projDir </> path)
           case filter (not . any isPathSeparator) pkgCand of

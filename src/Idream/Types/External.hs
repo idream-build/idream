@@ -10,9 +10,10 @@ module Idream.Types.External
   , PackageSet (..)
   ) where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.:?), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:?), (.=))
 import Idream.Prelude
 import Idream.Types.Common (Codegen, GitCommit, GitUrl, PackageName, PackageType, ProjectName, RepoName)
+import Idream.Types.Ipkg (PackageVersion)
 
 -- | Type containing project data (coming from idr-project.json).
 --   A project consists of 1 or more packages that are closely related to
@@ -29,6 +30,7 @@ data Project = Project
 --   multiple closely related binaries or libraries).
 data Package = Package
   { packageName :: !PackageName
+  , packageVersion :: !(Maybe PackageVersion)
   , packageType :: !(Maybe PackageType)
   , packageSourcedir :: !(Maybe Directory)
   , packageDepends :: !(Maybe [PackageName])
@@ -66,40 +68,27 @@ instance ToJSON RepoRef where
       RepoRefLocal x -> object ["local" .= x]
       RepoRefGit x -> object ["git" .= x]
 
-newtype PackageOverride = PackageOverride
-  { poSourcedir :: Maybe Directory
-  } deriving newtype (Eq, Show)
-    deriving stock (Generic)
+data PackageOverride = PackageOverride
+  { poVersion :: !(Maybe PackageVersion)
+  , poSourcedir :: !(Maybe Directory)
+  } deriving stock (Eq, Show, Generic)
     deriving (ToJSON, FromJSON) via (AesonRecord PackageOverride)
 
 data PackageRef = PackageRef
-  { pkgRefRepo :: !RepoName
-  , pkgRefSubdir :: !(Maybe Directory)
-  , pkgRefIpkg :: !(Maybe FilePath)
-  , pkgRefOverride :: !(Maybe PackageOverride)
-  , pkgRefDepends :: !(Maybe [PackageName])
+  { pkrRepo :: !RepoName
+  , pkrSubdir :: !(Maybe Directory)
+  , pkrIpkg :: !(Maybe FilePath)
+  , pkrOverride :: !(Maybe PackageOverride)
+  , pkrDepends :: !(Maybe [PackageName])
   } deriving stock (Eq, Show, Generic)
     deriving (ToJSON, FromJSON) via (AesonRecord PackageRef)
 
 data ProjectRef = ProjectRef
-  { projRefRepo :: !RepoName
-  , projRefSubdir :: !(Maybe Directory)
-  , projRefPackages :: ![PackageName]
+  { pjrRepo :: !RepoName
+  , pjrSubdir :: !(Maybe Directory)
+  , pjrPackages :: ![PackageName]
   } deriving stock (Eq, Show, Generic)
-
-instance FromJSON ProjectRef where
-  parseJSON = withObject "ProjectRef" $ \o -> do
-    repo <- o .: "repo"
-    subdir <- o .:? "subdir"
-    pkgs <- o .: "packages"
-    pure (ProjectRef repo subdir pkgs)
-
-instance ToJSON ProjectRef where
-  toJSON (ProjectRef repo subdir pkgs) = object
-    [ "repo" .= repo
-    , "subdir" .= subdir
-    , "packages" .= pkgs
-    ]
+    deriving (ToJSON, FromJSON) via (AesonRecord ProjectRef)
 
 -- | Type containing information about a package set
 --   (as described in idr-package-set.json).

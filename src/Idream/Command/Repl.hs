@@ -38,7 +38,7 @@ replPkg projDir codegen di pn tdepends = do
   case di of
     DepInfoBuiltin _ -> throwIO (ReplBuiltinPackageErr pn)
     DepInfoIdream idi -> do
-      let path = idreamDepPath idi
+      let path = iddPath idi
           pkgFile = toString pn -<.> "ipkg"
       idrisRepl projDir codegen pn path pkgFile tdepends
     DepInfoIpkg (IpkgDepInfo path pkgFile _) -> do

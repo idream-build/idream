@@ -42,7 +42,7 @@ testImpl projDir group = do
 
 mkLocalTestMap :: ResolvedProject -> Map PackageName Directory
 mkLocalTestMap rp = Map.fromList $ do
-  LocatedPackage path (Package pn mty _ _) <- Map.elems (rpPackages rp)
+  LocatedPackage path (Package pn _ mty _ _) <- Map.elems (rpPackages rp)
   case mty of
     Just PkgTypeTest -> [(pn, path)]
     _ -> []
@@ -51,5 +51,5 @@ mkAllTestMap :: DepInfoMap -> Map PackageName Directory
 mkAllTestMap = Map.fromList . (>>= go) . Map.toList where
   go (pn, di) =
     case di of
-      DepInfoIdream (IdreamDepInfo _ path ty _ _) | ty == PkgTypeTest -> [(pn, path)]
+      DepInfoIdream (IdreamDepInfo _ _ path ty _ _) | ty == PkgTypeTest -> [(pn, path)]
       _ -> []

@@ -10,6 +10,7 @@ module Idream.Types.Ipkg
   , ModuleLoc (..)
   , extractModuleLoc
   , PackageDepends (..)
+  , unrestrictedPD
   , PackageDesc (..)
   , minPackageDesc
   ) where
@@ -79,6 +80,9 @@ instance ToText PackageDepends where
         v = toText pvb
     in if T.null v then k else k <> " " <> v
 
+unrestrictedPD :: PackageName -> PackageDepends
+unrestrictedPD = flip PackageDepends unrestrictedPVB
+
 newtype ModuleName = ModuleName
   { unModuleName :: [Text]
   } deriving newtype (Eq, Show, Ord, ToJSON, FromJSON)
@@ -113,24 +117,24 @@ extractModuleLoc :: FilePath -> ModuleLoc
 extractModuleLoc path = ModuleLoc (extractModuleName path) path
 
 data PackageDesc = PackageDesc
-  { pdescName :: !PackageName  -- ^ Name associated with a package.
-  , pdescVersion :: !PackageVersion -- ^ Version of the package
+  { pdescName :: !PackageName -- ^ Name associated with a package.
+  , pdescVersion :: !(Maybe PackageVersion) -- ^ Version of the package
   , pdescAuthors :: !(Maybe Text) -- ^ Author information.
-  , pdescMaintainers :: !(Maybe Text)  -- ^ Maintainer information.
+  , pdescMaintainers :: !(Maybe Text) -- ^ Maintainer information.
   , pdescLicense :: !(Maybe Text) -- ^ Description of the licensing information.
-  , pdescBrief   :: !(Maybe Text)  -- ^ Brief description of the package.
-  , pdescReadme  :: !(Maybe Text)  -- ^ Location of the README file.
+  , pdescBrief   :: !(Maybe Text) -- ^ Brief description of the package.
+  , pdescReadme  :: !(Maybe Text) -- ^ Location of the README file.
   , pdescHomepage :: !(Maybe Text) -- ^ Website associated with the package.
-  , pdescSourceloc :: !(Maybe Text)  -- ^ Location of the source files.
+  , pdescSourceloc :: !(Maybe Text) -- ^ Location of the source files.
   , pdescBugtracker :: !(Maybe Text) -- ^ Location of the project's bug tracker.
   , pdescDepends :: ![PackageDepends] -- ^ Packages to add to search path
   , pdescModules :: ![ModuleName] -- ^ Modules to install
   , pdescMain :: !(Maybe ModuleName) -- ^ Main file (i.e. file to load at REPL)
   , pdescExecutable :: !(Maybe Text) -- ^ Name of executable
-  , pdescOptions :: !(Maybe Text)  -- ^ List of options to give the compiler.
-  , pdescSourcedir :: !(Maybe Text)  -- ^ Source directory for Idris files
-  , pdescBuilddir :: !(Maybe Text)
-  , pdescOutputdir :: !(Maybe Text)
+  , pdescOptions :: !(Maybe Text) -- ^ List of options to give the compiler.
+  , pdescSourcedir :: !(Maybe FilePath) -- ^ Source directory for Idris files
+  , pdescBuilddir :: !(Maybe FilePath)
+  , pdescOutputdir :: !(Maybe FilePath)
   , pdescPrebuild :: !(Maybe Text) -- ^ Script to run before building
   , pdescPostbuild :: !(Maybe Text) -- ^ Script to run after building
   , pdescPreinstall :: !(Maybe Text) -- ^ Script to run after building, before installing
@@ -141,6 +145,7 @@ data PackageDesc = PackageDesc
     deriving (ToJSON, FromJSON) via AesonRecord PackageDesc
 
 instance ToText PackageDesc where
+  -- TODO(ejconlon) Split module and dep lists with newlines for better diffs
   toText pd =
     let pn = pdescName pd
         modules = pdescModules pd
@@ -149,17 +154,18 @@ instance ToText PackageDesc where
         depsList = T.intercalate ", " (fmap toText depends)
     in T.unlines $ filter (not . T.null)
       [ "package " <> toText pn
-      , maybe "" (\x -> "sourcedir = \"" <> x <> "\"") (pdescSourcedir pd)
+      , maybe "" (\x -> "version = " <> toText x) (pdescVersion pd)
+      , maybe "" (\x -> "sourcedir = \"" <> toText x <> "\"") (pdescSourcedir pd)
       , maybe "" (\x -> "main = " <> toText x) (pdescMain pd)
       , maybe "" (\x -> "executable = \"" <> x <> "\"") (pdescExecutable pd)
       , if null modules then "" else "modules = " <> modsList
       , if null depends then "" else "depends = " <> depsList
       ]
 
-minPackageDesc :: PackageName -> PackageVersion -> PackageDesc
-minPackageDesc pn pv = PackageDesc
+minPackageDesc :: PackageName -> PackageDesc
+minPackageDesc pn = PackageDesc
   { pdescName = pn
-  , pdescVersion = pv
+  , pdescVersion = Nothing
   , pdescAuthors = Nothing
   , pdescMaintainers = Nothing
   , pdescLicense = Nothing

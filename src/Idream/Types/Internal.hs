@@ -13,6 +13,7 @@ import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:?), (.=))
 import Idream.Prelude
 import Idream.Types.Common (Codegen, PackageName, PackageType, ProjectName)
 import Idream.Types.External (Package)
+import Idream.Types.Ipkg (PackageVersion)
 
 newtype BuiltinDepInfo = BuiltinDepInfo
   { builtinDepDepends :: [PackageName]
@@ -21,18 +22,19 @@ newtype BuiltinDepInfo = BuiltinDepInfo
     deriving (ToJSON, FromJSON) via (AesonRecord BuiltinDepInfo)
 
 data IdreamDepInfo = IdreamDepInfo
-  { idreamDepLocal :: !Bool  -- local == is part of current project, not a ref
-  , idreamDepPath :: !Directory
-  , idreamDepType :: !PackageType
-  , idreamDepSourcedir :: !(Maybe Directory)
-  , idreamDepDepends :: ![PackageName]
+  { iddLocal :: !Bool  -- local == is part of current project, not a ref
+  , iddVersion :: !(Maybe PackageVersion)
+  , iddPath :: !Directory
+  , iddType :: !PackageType
+  , iddSourcedir :: !(Maybe Directory)
+  , iddDepends :: ![PackageName]
   } deriving stock (Eq, Show, Generic)
     deriving (ToJSON, FromJSON) via (AesonRecord IdreamDepInfo)
 
 data IpkgDepInfo = IpkgDepInfo
-  { ipkgDepPath :: !Directory
-  , ipkgDepPkgfile :: !FilePath  -- relative to path
-  , ipkgDepDepends :: ![PackageName]
+  { ipdPath :: !Directory
+  , ipdPkgfile :: !FilePath  -- relative to path
+  , ipdDepends :: ![PackageName]
   } deriving stock (Eq, Show, Generic)
     deriving (ToJSON, FromJSON) via (AesonRecord IpkgDepInfo)
 
@@ -67,8 +69,8 @@ depInfoDepends :: DepInfo -> [PackageName]
 depInfoDepends d =
   case d of
     DepInfoBuiltin x -> builtinDepDepends x
-    DepInfoIdream x -> idreamDepDepends x
-    DepInfoIpkg x -> ipkgDepDepends x
+    DepInfoIdream x -> iddDepends x
+    DepInfoIpkg x -> ipdDepends x
 
 type DepInfoMap = Map PackageName DepInfo
 
