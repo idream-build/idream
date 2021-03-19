@@ -34,15 +34,15 @@ data PackageVersionBounds = PackageVersionBounds
   } deriving stock (Eq, Show, Generic)
 
 unrestrictedPVB :: PackageVersionBounds
-unrestrictedPVB = PackageVersionBounds Nothing False Nothing False
+unrestrictedPVB = PackageVersionBounds Nothing True Nothing True
 
 exactPVB :: PackageVersion -> PackageVersionBounds
 exactPVB pv = PackageVersionBounds (Just pv) True (Just pv) True
 
 containsPVB :: PackageVersion -> PackageVersionBounds -> Bool
 containsPVB pv (PackageVersionBounds mpvl li mpvu ui) = lowerOk && upperOk where
-  lowerOk = maybe True (\pvl -> pvl < pv || (pvl == pv && li)) mpvl
-  upperOk = maybe True (\pvu -> pvu > pv || (pvu == pv && ui)) mpvu
+  lowerOk = maybe True (\pvl -> if li then pvl <= pv else pvl < pv) mpvl
+  upperOk = maybe True (\pvu -> if ui then pvu >= pv else pvu > pv) mpvu
 
 data PackageDepends = PackageDepends
   { pdepName :: !PackageName
@@ -93,8 +93,8 @@ data PackageDesc = PackageDesc
   , pdescSourceloc :: !(Maybe String)  -- ^ Location of the source files.
   , pdescBugtracker :: !(Maybe String) -- ^ Location of the project's bug tracker.
   , pdescDepends :: ![PackageDepends] -- ^ Packages to add to search path
-  , pdescModules :: ![ModuleLoc] -- ^ Modules to install (namespace, filename)
-  , pdescMainmod :: ![ModuleLoc] -- ^ Main file (i.e. file to load at REPL)
+  , pdescModules :: ![ModuleName] -- ^ Modules to install
+  , pdescMainmod :: ![ModuleName] -- ^ Main file (i.e. file to load at REPL)
   , pdescExecutable :: !(Maybe String) -- ^ Name of executable
   , pdescOptions :: !(Maybe String)  -- ^ List of options to give the compiler.
   , pdescSourcedir :: !(Maybe String)  -- ^ Source directory for Idris files

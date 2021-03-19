@@ -14,6 +14,7 @@ dependencies:
   - base >= 4.13 && < 5
   - aeson >= 1.5 && < 1.6
   - aeson-pretty >= 0.8 && < 0.9
+  - aeson-via >= 0.1.1 && < 0.2
   - algebraic-graphs >= 0.5 && < 0.6
   - bytestring >= 0.10 && < 0.11
   - containers >= 0.6 && < 0.7

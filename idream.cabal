@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4c44c65a59fa14c73be9f43bf376699faf9bdbd0b124e4a01393e8e869a52b82
+-- hash: 0fceb604446be632a3295f0bb74435406c0a51ce2231cb91c4506523889239e9
 
 name:           idream
 version:        0.2.0.0
@@ -54,6 +54,7 @@ library
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
+    , aeson-via >=0.1.1 && <0.2
     , algebraic-graphs >=0.5 && <0.6
     , base >=4.13 && <5
     , bytestring >=0.10 && <0.11
@@ -86,6 +87,7 @@ executable idream
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
+    , aeson-via >=0.1.1 && <0.2
     , algebraic-graphs >=0.5 && <0.6
     , base >=4.13 && <5
     , bytestring >=0.10 && <0.11
@@ -124,6 +126,7 @@ test-suite idream-test
   build-depends:
       aeson >=1.5 && <1.6
     , aeson-pretty >=0.8 && <0.9
+    , aeson-via >=0.1.1 && <0.2
     , algebraic-graphs >=0.5 && <0.6
     , base >=4.13 && <5
     , bytestring >=0.10 && <0.11

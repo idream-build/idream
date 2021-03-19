@@ -2,3 +2,6 @@ resolver: lts-17.6
 
 packages:
 - .
+
+extra-deps:
+- aeson-via-0.1.1
