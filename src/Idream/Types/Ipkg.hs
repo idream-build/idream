@@ -3,6 +3,7 @@ module Idream.Types.Ipkg
   , PackageVersionBounds (..)
   , unrestrictedPVB
   , exactPVB
+  , matchExactPVB
   , containsPVB
   , ModuleName (..)
   , extractModuleName
@@ -10,6 +11,7 @@ module Idream.Types.Ipkg
   , extractModuleLoc
   , PackageDepends (..)
   , PackageDesc (..)
+  , minPackageDesc
   ) where
 
 import Data.List (groupBy, stripPrefix)
@@ -34,11 +36,31 @@ data PackageVersionBounds = PackageVersionBounds
   } deriving stock (Eq, Show, Generic)
     deriving (ToJSON, FromJSON) via (AesonRecord PackageVersionBounds)
 
+instance ToText PackageVersionBounds where
+  toText pvb@(PackageVersionBounds mpvl li mpvu ui) =
+    let ml = fmap (\pvl -> (if li then ">= " else "> ") <> toText pvl) mpvl
+        mu = fmap (\pvu -> (if ui then "<= " else "< ") <> toText pvu) mpvu
+        mv = matchExactPVB pvb
+    in case mv of
+      Just v -> "== " <> toText v
+      Nothing ->
+        case (ml, mu) of
+          (Nothing, Nothing) -> ""
+          (Nothing, Just u) -> u
+          (Just l, Nothing) -> l
+          (Just l, Just u) -> l <> " && " <> u
+
 unrestrictedPVB :: PackageVersionBounds
 unrestrictedPVB = PackageVersionBounds Nothing True Nothing True
 
 exactPVB :: PackageVersion -> PackageVersionBounds
 exactPVB pv = PackageVersionBounds (Just pv) True (Just pv) True
+
+matchExactPVB :: PackageVersionBounds -> Maybe PackageVersion
+matchExactPVB (PackageVersionBounds mpvl li mpvu ui) =
+  if li && ui && mpvl == mpvu
+    then mpvl
+    else Nothing
 
 containsPVB :: PackageVersion -> PackageVersionBounds -> Bool
 containsPVB pv (PackageVersionBounds mpvl li mpvu ui) = lowerOk && upperOk where
@@ -50,6 +72,12 @@ data PackageDepends = PackageDepends
   , pdepBounds :: !PackageVersionBounds
   } deriving stock (Eq, Show, Generic)
     deriving (ToJSON, FromJSON) via (AesonRecord PackageDepends)
+
+instance ToText PackageDepends where
+  toText (PackageDepends pn pvb) =
+    let k = toText pn
+        v = toText pvb
+    in if T.null v then k else k <> " " <> v
 
 newtype ModuleName = ModuleName
   { unModuleName :: [Text]
@@ -87,27 +115,71 @@ extractModuleLoc path = ModuleLoc (extractModuleName path) path
 data PackageDesc = PackageDesc
   { pdescName :: !PackageName  -- ^ Name associated with a package.
   , pdescVersion :: !PackageVersion -- ^ Version of the package
-  , pdescAuthors :: !String -- ^ Author information.
-  , pdescMaintainers :: !(Maybe String)  -- ^ Maintainer information.
-  , pdescLicense :: !(Maybe String) -- ^ Description of the licensing information.
-  , pdescBrief   :: !(Maybe String)  -- ^ Brief description of the package.
-  , pdescReadme  :: !(Maybe String)  -- ^ Location of the README file.
-  , pdescHomepage :: !(Maybe String) -- ^ Website associated with the package.
-  , pdescSourceloc :: !(Maybe String)  -- ^ Location of the source files.
-  , pdescBugtracker :: !(Maybe String) -- ^ Location of the project's bug tracker.
+  , pdescAuthors :: !(Maybe Text) -- ^ Author information.
+  , pdescMaintainers :: !(Maybe Text)  -- ^ Maintainer information.
+  , pdescLicense :: !(Maybe Text) -- ^ Description of the licensing information.
+  , pdescBrief   :: !(Maybe Text)  -- ^ Brief description of the package.
+  , pdescReadme  :: !(Maybe Text)  -- ^ Location of the README file.
+  , pdescHomepage :: !(Maybe Text) -- ^ Website associated with the package.
+  , pdescSourceloc :: !(Maybe Text)  -- ^ Location of the source files.
+  , pdescBugtracker :: !(Maybe Text) -- ^ Location of the project's bug tracker.
   , pdescDepends :: ![PackageDepends] -- ^ Packages to add to search path
   , pdescModules :: ![ModuleName] -- ^ Modules to install
-  , pdescMainmod :: ![ModuleName] -- ^ Main file (i.e. file to load at REPL)
-  , pdescExecutable :: !(Maybe String) -- ^ Name of executable
-  , pdescOptions :: !(Maybe String)  -- ^ List of options to give the compiler.
-  , pdescSourcedir :: !(Maybe String)  -- ^ Source directory for Idris files
-  , pdescBuilddir :: !(Maybe String)
-  , pdescOutputdir :: !(Maybe String)
-  , pdescPrebuild :: !(Maybe String) -- ^ Script to run before building
-  , pdescPostbuild :: !(Maybe String) -- ^ Script to run after building
-  , pdescPreinstall :: !(Maybe String) -- ^ Script to run after building, before installing
-  , pdescPostinstall :: !(Maybe String) -- ^ Script to run after installing
-  , pdescPreclean :: !(Maybe String) -- ^ Script to run before cleaning
-  , pdescPostclean :: !(Maybe String) -- ^ Script to run after cleaning
+  , pdescMain :: !(Maybe ModuleName) -- ^ Main file (i.e. file to load at REPL)
+  , pdescExecutable :: !(Maybe Text) -- ^ Name of executable
+  , pdescOptions :: !(Maybe Text)  -- ^ List of options to give the compiler.
+  , pdescSourcedir :: !(Maybe Text)  -- ^ Source directory for Idris files
+  , pdescBuilddir :: !(Maybe Text)
+  , pdescOutputdir :: !(Maybe Text)
+  , pdescPrebuild :: !(Maybe Text) -- ^ Script to run before building
+  , pdescPostbuild :: !(Maybe Text) -- ^ Script to run after building
+  , pdescPreinstall :: !(Maybe Text) -- ^ Script to run after building, before installing
+  , pdescPostinstall :: !(Maybe Text) -- ^ Script to run after installing
+  , pdescPreclean :: !(Maybe Text) -- ^ Script to run before cleaning
+  , pdescPostclean :: !(Maybe Text) -- ^ Script to run after cleaning
   } deriving stock (Eq, Show, Generic)
     deriving (ToJSON, FromJSON) via AesonRecord PackageDesc
+
+instance ToText PackageDesc where
+  toText pd =
+    let pn = pdescName pd
+        modules = pdescModules pd
+        depends = pdescDepends pd
+        modsList = T.intercalate ", " (fmap toText modules)
+        depsList = T.intercalate ", " (fmap toText depends)
+    in T.unlines $ filter (not . T.null)
+      [ "package " <> toText pn
+      , maybe "" (\x -> "sourcedir = \"" <> x <> "\"") (pdescSourcedir pd)
+      , maybe "" (\x -> "main = " <> toText x) (pdescMain pd)
+      , maybe "" (\x -> "executable = \"" <> x <> "\"") (pdescExecutable pd)
+      , if null modules then "" else "modules = " <> modsList
+      , if null depends then "" else "depends = " <> depsList
+      ]
+
+minPackageDesc :: PackageName -> PackageVersion -> PackageDesc
+minPackageDesc pn pv = PackageDesc
+  { pdescName = pn
+  , pdescVersion = pv
+  , pdescAuthors = Nothing
+  , pdescMaintainers = Nothing
+  , pdescLicense = Nothing
+  , pdescBrief = Nothing
+  , pdescReadme = Nothing
+  , pdescHomepage = Nothing
+  , pdescSourceloc = Nothing
+  , pdescBugtracker = Nothing
+  , pdescDepends = []
+  , pdescModules = []
+  , pdescMain = Nothing
+  , pdescExecutable = Nothing
+  , pdescOptions = Nothing
+  , pdescSourcedir = Nothing
+  , pdescBuilddir = Nothing
+  , pdescOutputdir = Nothing
+  , pdescPrebuild = Nothing
+  , pdescPostbuild = Nothing
+  , pdescPreinstall = Nothing
+  , pdescPostinstall = Nothing
+  , pdescPreclean = Nothing
+  , pdescPostclean = Nothing
+  }
