@@ -193,7 +193,7 @@ initRepoDeps (PackageSet _ pkgs projs) = depsFromEdges edges where
 
 initPkgDeps :: ResolvedProject -> Deps PackageName PackageName
 initPkgDeps (ResolvedProject _ _ pkgs) = depsFromGroups groups where
-  groups = fmap (mkGroup . lpPkg . snd) (Map.toList pkgs)
+  groups = fmap (mkGroup . lpPackage . snd) (Map.toList pkgs)
   mkGroup (Package name _ _ depends) = (name, maybe Set.empty Set.fromList depends)
 
 repoDeps :: ResolvedProject -> PackageSet -> Deps PackageName RepoName
@@ -333,7 +333,7 @@ mkDepInfoMap projDir rp ps = do
   let localPairs = fmap mkLocalDepPair (Map.elems (rpPackages rp))
       builtinPairs = mkBuiltinDepPairs
       repoRefs = fromMaybe Map.empty (psRepos ps)
-      pkgRefs = maybe [] Map.toList (psPkgs ps)
+      pkgRefs = maybe [] Map.toList (psPackages ps)
       projRefs = fromMaybe [] (psProjects ps)
   pkgPairs <- for pkgRefs (uncurry (mkPkgDepPair projDir repoRefs))
   projPairs <- fmap join (for projRefs (mkProjDepPairs projDir repoRefs))

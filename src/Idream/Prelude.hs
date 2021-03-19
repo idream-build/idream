@@ -11,11 +11,9 @@ module Idream.Prelude
   , ToText (..)
   , module Prelude
   , AesonRecord (..)
-  , AesonTag (..)
   , Exception (..)
   , FromJSON
   , Generic
-  , HasTagPrefix (..)
   , IOException
   , IsString (..)
   , Map
@@ -45,7 +43,7 @@ module Idream.Prelude
   , when
   ) where
 
-import AesonVia (AesonRecord (..), AesonTag (..), HasTagPrefix (..))
+import AesonVia (AesonRecord (..))
 import Control.Exception (Exception (..), IOException, SomeException)
 import Control.Monad (join, unless, void, when)
 import Control.Monad.IO.Class (MonadIO (..))

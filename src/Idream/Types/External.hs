@@ -22,20 +22,7 @@ data Project = Project
   , projectCodegen :: !(Maybe Codegen)
   , projectPaths :: !(Maybe [FilePath])
   } deriving stock (Eq, Show, Generic)
-
-instance FromJSON Project where
-  parseJSON = withObject "Project" $ \o -> do
-    name <- o .: "name"
-    codegen <- o .:? "codegen"
-    paths <- o .:? "paths"
-    pure (Project name codegen paths)
-
-instance ToJSON Project where
-  toJSON (Project name codegen paths) = object
-    [ "name" .= name
-    , "codegen" .= codegen
-    , "paths" .= paths
-    ]
+    deriving (ToJSON, FromJSON) via (AesonRecord Project)
 
 -- | Type containing package data (coming from idr-package.json).
 --   A package can depend on 1 or more projects (which can possibly contain
@@ -46,22 +33,7 @@ data Package = Package
   , packageSourcedir :: !(Maybe Directory)
   , packageDepends :: !(Maybe [PackageName])
   } deriving stock (Eq, Show, Generic)
-
-instance FromJSON Package where
-  parseJSON = withObject "Package" $ \o -> do
-    name <- o .: "name"
-    ty <- o .:? "type"
-    sourcedir <- o .:? "sourcedir"
-    depends <- o .:? "depends"
-    pure (Package name ty sourcedir depends)
-
-instance ToJSON Package where
-  toJSON (Package name ty sourcedir depends) = object
-    [ "name" .= name
-    , "type" .= ty
-    , "sourcedir" .= sourcedir
-    , "depends" .= depends
-    ]
+    deriving (ToJSON, FromJSON) via (AesonRecord Package)
 
 newtype LocalRepoRef = LocalRepoRef
   { lrrPath :: Directory
@@ -72,16 +44,7 @@ data GitRepoRef = GitRepoRef
   { grrUrl :: !GitUrl
   , grrCommit :: !GitCommit
   } deriving stock (Eq, Show, Generic)
-
-instance FromJSON GitRepoRef where
-  parseJSON = withObject "GitRepoRef" $ \o -> do
-    url <- o .: "url"
-    commit <- o .: "commit"
-    pure (GitRepoRef url commit)
-
-instance ToJSON GitRepoRef where
-  toJSON (GitRepoRef url commit) =
-    object ["url" .= url, "commit" .= commit]
+    deriving (ToJSON, FromJSON) via (AesonRecord GitRepoRef)
 
 data RepoRef =
     RepoRefLocal !LocalRepoRef
@@ -107,16 +70,7 @@ newtype PackageOverride = PackageOverride
   { poSourcedir :: Maybe Directory
   } deriving newtype (Eq, Show)
     deriving stock (Generic)
-
-instance FromJSON PackageOverride where
-  parseJSON = withObject "PackageOverride" $ \o -> do
-    sourcedir <- o .:? "sourcedir"
-    pure (PackageOverride sourcedir)
-
-instance ToJSON PackageOverride where
-  toJSON (PackageOverride sourcedir) = object
-    [ "sourcedir" .= sourcedir
-    ]
+    deriving (ToJSON, FromJSON) via (AesonRecord PackageOverride)
 
 data PackageRef = PackageRef
   { pkgRefRepo :: !RepoName
@@ -125,29 +79,12 @@ data PackageRef = PackageRef
   , pkgRefOverride :: !(Maybe PackageOverride)
   , pkgRefDepends :: !(Maybe [PackageName])
   } deriving stock (Eq, Show, Generic)
-
-instance FromJSON PackageRef where
-  parseJSON = withObject "PackageRef" $ \o -> do
-    repo <- o .: "repo"
-    subdir <- o .:? "subdir"
-    ipkg <- o .:? "ipkg"
-    override <- o .:? "override"
-    depends <- o .:? "depends"
-    pure (PackageRef repo subdir ipkg override depends)
-
-instance ToJSON PackageRef where
-  toJSON (PackageRef repo subdir ipkg override depends) = object
-    [ "repo" .= repo
-    , "subdir" .= subdir
-    , "ipkg" .= ipkg
-    , "override" .= override
-    , "depends" .= depends
-    ]
+    deriving (ToJSON, FromJSON) via (AesonRecord PackageRef)
 
 data ProjectRef = ProjectRef
   { projRefRepo :: !RepoName
   , projRefSubdir :: !(Maybe Directory)
-  , projRefPkgs :: ![PackageName]
+  , projRefPackages :: ![PackageName]
   } deriving stock (Eq, Show, Generic)
 
 instance FromJSON ProjectRef where
@@ -171,20 +108,7 @@ instance ToJSON ProjectRef where
 --   If needed at all, this should exist in the project root.
 data PackageSet = PackageSet
   { psRepos :: !(Maybe (Map RepoName RepoRef))
-  , psPkgs :: !(Maybe (Map PackageName PackageRef))
+  , psPackages :: !(Maybe (Map PackageName PackageRef))
   , psProjects :: !(Maybe [ProjectRef])
   } deriving stock (Eq, Show, Generic)
-
-instance FromJSON PackageSet where
-  parseJSON = withObject "PackageSet" $ \o -> do
-    repos <- o .:? "repos"
-    pkgs <- o .:? "packages"
-    projects <- o .:? "projects"
-    pure (PackageSet repos pkgs projects)
-
-instance ToJSON PackageSet where
-  toJSON (PackageSet repos pkgs projects) = object
-    [ "repos" .= repos
-    , "packages" .= pkgs
-    , "projects" .= projects
-    ]
+    deriving (ToJSON, FromJSON) via (AesonRecord PackageSet)

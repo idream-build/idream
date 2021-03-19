@@ -9,22 +9,16 @@ module Idream.Types.Internal
   , ResolvedProject (..)
   ) where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.:?), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:?), (.=))
 import Idream.Prelude
 import Idream.Types.Common (Codegen, PackageName, PackageType, ProjectName)
 import Idream.Types.External (Package)
 
-newtype BuiltinDepInfo = BuiltinDepInfo { builtinDepDepends :: [PackageName] }
-  deriving newtype (Eq, Show)
-  deriving stock (Generic)
-
-instance FromJSON BuiltinDepInfo where
-  parseJSON = withObject "BuiltinDepInfo" $ \o ->
-    fmap BuiltinDepInfo (o .: "depends")
-
-instance ToJSON BuiltinDepInfo where
-  toJSON (BuiltinDepInfo depends) =
-    object ["depends" .= depends]
+newtype BuiltinDepInfo = BuiltinDepInfo
+  { builtinDepDepends :: [PackageName]
+  } deriving newtype (Eq, Show)
+    deriving stock (Generic)
+    deriving (ToJSON, FromJSON) via (AesonRecord BuiltinDepInfo)
 
 data IdreamDepInfo = IdreamDepInfo
   { idreamDepLocal :: !Bool  -- local == is part of current project, not a ref
@@ -33,44 +27,14 @@ data IdreamDepInfo = IdreamDepInfo
   , idreamDepSourcedir :: !(Maybe Directory)
   , idreamDepDepends :: ![PackageName]
   } deriving stock (Eq, Show, Generic)
-
-instance FromJSON IdreamDepInfo where
-  parseJSON = withObject "IdreamDepInfo" $ \o -> do
-    local <- o .: "local"
-    path <- o .: "path"
-    ty <- o .: "type"
-    sourcedir <- o .:? "sourcedir"
-    depends <- o .: "depends"
-    pure (IdreamDepInfo local path ty sourcedir depends)
-
-instance ToJSON IdreamDepInfo where
-  toJSON (IdreamDepInfo local path ty sourcedir depends) = object
-    [ "local" .= local
-    , "path" .= path
-    , "type" .= ty
-    , "sourcedir" .= sourcedir
-    , "depends" .= depends
-    ]
+    deriving (ToJSON, FromJSON) via (AesonRecord IdreamDepInfo)
 
 data IpkgDepInfo = IpkgDepInfo
   { ipkgDepPath :: !Directory
-  , ipkgDepPkgFile :: !FilePath  -- relative to path
+  , ipkgDepPkgfile :: !FilePath  -- relative to path
   , ipkgDepDepends :: ![PackageName]
   } deriving stock (Eq, Show, Generic)
-
-instance FromJSON IpkgDepInfo where
-  parseJSON = withObject "IpkgDepInfo" $ \o -> do
-    path <- o .: "path"
-    pkgFile <- o .: "pkgfile"
-    depends <- o .: "depends"
-    pure (IpkgDepInfo path pkgFile depends)
-
-instance ToJSON IpkgDepInfo where
-  toJSON (IpkgDepInfo path pkgFile depends) = object
-    [ "path" .= path
-    , "pkgfile" .= pkgFile
-    , "depends" .= depends
-    ]
+    deriving (ToJSON, FromJSON) via (AesonRecord IpkgDepInfo)
 
 data DepInfo =
     DepInfoBuiltin !BuiltinDepInfo
@@ -110,11 +74,13 @@ type DepInfoMap = Map PackageName DepInfo
 
 data LocatedPackage = LocatedPackage
   { lpPath :: !Directory
-  , lpPkg :: !Package
+  , lpPackage :: !Package
   } deriving stock (Eq, Show, Generic)
+    deriving (ToJSON, FromJSON) via (AesonRecord LocatedPackage)
 
 data ResolvedProject = ResolvedProject
   { rpName :: !ProjectName
   , rpCodegen :: !Codegen
   , rpPackages :: !(Map PackageName LocatedPackage)
   } deriving stock (Eq, Show, Generic)
+    deriving (ToJSON, FromJSON) via (AesonRecord ResolvedProject)
