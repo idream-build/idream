@@ -20,7 +20,7 @@ import System.FilePath (dropExtension)
 
 newtype PackageVersion = PackageVersion
   { unPkgVersion :: [Int]
-  } deriving newtype (Eq, Show, Ord)
+  } deriving newtype (Eq, Show, Ord, ToJSON, FromJSON)
     deriving stock (Generic)
 
 instance ToText PackageVersion where
@@ -32,6 +32,7 @@ data PackageVersionBounds = PackageVersionBounds
   , pvbUpperBound :: !(Maybe PackageVersion)
   , pvbUpperInclusive :: !Bool -- <= if true
   } deriving stock (Eq, Show, Generic)
+    deriving (ToJSON, FromJSON) via (AesonRecord PackageVersionBounds)
 
 unrestrictedPVB :: PackageVersionBounds
 unrestrictedPVB = PackageVersionBounds Nothing True Nothing True
@@ -48,10 +49,11 @@ data PackageDepends = PackageDepends
   { pdepName :: !PackageName
   , pdepBounds :: !PackageVersionBounds
   } deriving stock (Eq, Show, Generic)
+    deriving (ToJSON, FromJSON) via (AesonRecord PackageDepends)
 
 newtype ModuleName = ModuleName
   { unModuleName :: [Text]
-  } deriving newtype (Eq, Show, Ord)
+  } deriving newtype (Eq, Show, Ord, ToJSON, FromJSON)
     deriving stock (Generic)
 
 instance ToText ModuleName where
@@ -77,6 +79,7 @@ data ModuleLoc = ModuleLoc
   { mlName :: !ModuleName
   , mlPath :: !FilePath
   } deriving stock (Eq, Show, Generic)
+    deriving (ToJSON, FromJSON) via (AesonRecord ModuleLoc)
 
 extractModuleLoc :: FilePath -> ModuleLoc
 extractModuleLoc path = ModuleLoc (extractModuleName path) path
@@ -107,3 +110,4 @@ data PackageDesc = PackageDesc
   , pdescPreclean :: !(Maybe String) -- ^ Script to run before cleaning
   , pdescPostclean :: !(Maybe String) -- ^ Script to run after cleaning
   } deriving stock (Eq, Show, Generic)
+    deriving (ToJSON, FromJSON) via AesonRecord PackageDesc

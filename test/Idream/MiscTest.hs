@@ -1,7 +1,7 @@
 module Idream.MiscTest where
 
-import Idream.Types.Ipkg (ModuleName (..), extractModuleName)
 import Idream.Prelude
+import Idream.Types.Ipkg (ModuleName (..), extractModuleName)
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (testCase, (@?=))
 

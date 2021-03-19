@@ -3,7 +3,7 @@ module Idream.Effects.Serde
   , serdeWriteJSON
   ) where
 
-import Data.Aeson (FromJSON, ToJSON, eitherDecodeFileStrict')
+import Data.Aeson (eitherDecodeFileStrict')
 import Data.Aeson.Encode.Pretty (Config (..), Indent (..), defConfig, encodePretty')
 import qualified Data.ByteString.Lazy as BSL
 import Idream.Effects.FileSystem (ReadFileErr (..), WriteFileErr (..))
